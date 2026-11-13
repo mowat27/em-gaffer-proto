@@ -1,0 +1,122 @@
+/*
+ * .tsf-markdown scope (DESIGN 11). The glass preset sets, on bare h1-h4,
+ * font-family display, font-stretch 112%, text-transform uppercase and wide
+ * letter-spacing. `.tsf-markdown h1` (0,1,1) outranks bare `h1` (0,0,1), so
+ * the reset below wins without !important.
+ */
+.tsf-markdown {
+  font-family: var(--pw-font-sans);
+  font-size: var(--pw-fs-md);
+  line-height: var(--pw-lh-relaxed);
+  color: var(--pw-text);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.tsf-markdown h1,
+.tsf-markdown h2,
+.tsf-markdown h3,
+.tsf-markdown h4,
+.tsf-markdown h5,
+.tsf-markdown h6 {
+  font-family: var(--pw-font-sans);
+  font-stretch: 100%;
+  font-weight: var(--pw-fw-semibold);
+  text-transform: none;
+  letter-spacing: normal;
+  line-height: var(--pw-lh-tight);
+  color: var(--pw-text);
+  margin: var(--pw-sp-6) 0 var(--pw-sp-3);
+}
+
+.tsf-markdown > :first-child { margin-top: 0; }
+.tsf-markdown > :last-child { margin-bottom: 0; }
+
+.tsf-markdown h1 { font-size: var(--pw-fs-2xl); }
+.tsf-markdown h2 { font-size: var(--pw-fs-xl); }
+.tsf-markdown h3 { font-size: var(--pw-fs-lg); }
+.tsf-markdown h4,
+.tsf-markdown h5,
+.tsf-markdown h6 { font-size: var(--pw-fs-md); }
+
+.tsf-markdown p { margin: 0 0 var(--pw-sp-3); }
+
+.tsf-markdown ul,
+.tsf-markdown ol {
+  margin: 0 0 var(--pw-sp-3);
+  padding-left: var(--pw-sp-6);
+  list-style: revert;
+  display: block;
+}
+.tsf-markdown li + li { margin-top: var(--pw-sp-1); }
+.tsf-markdown li > ul,
+.tsf-markdown li > ol { margin: var(--pw-sp-1) 0 0; }
+
+.tsf-markdown a {
+  color: var(--pw-accent-text);
+  text-decoration: underline;
+}
+
+.tsf-markdown blockquote {
+  margin: 0 0 var(--pw-sp-3);
+  padding: var(--pw-sp-1) var(--pw-sp-4);
+  border-left: 3px solid var(--pw-border);
+  color: var(--pw-text-2);
+}
+
+.tsf-markdown hr {
+  border: 0;
+  border-top: 1px solid var(--pw-border-subtle);
+  margin: var(--pw-sp-6) 0;
+}
+
+.tsf-markdown code {
+  font-family: var(--pw-font-mono);
+  font-size: var(--pw-fs-sm);
+  background: var(--pw-surface-sunken);
+  border-radius: var(--pw-r-xs);
+  padding: 0 var(--pw-sp-1);
+}
+
+.tsf-markdown pre {
+  margin: 0 0 var(--pw-sp-3);
+  padding: var(--pw-sp-3) var(--pw-sp-4);
+  background: var(--pw-surface-sunken);
+  border: 1px solid var(--pw-border-subtle);
+  border-radius: var(--pw-r-sm);
+  overflow-x: auto;
+}
+.tsf-markdown pre code {
+  background: none;
+  border-radius: 0;
+  padding: 0;
+  font-size: var(--pw-fs-sm);
+  line-height: var(--pw-lh-normal);
+}
+
+.tsf-markdown table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 0 var(--pw-sp-3);
+  border-collapse: collapse;
+  font-size: var(--pw-fs-sm);
+}
+.tsf-markdown th,
+.tsf-markdown td {
+  padding: var(--pw-sp-2) var(--pw-sp-3);
+  border: 1px solid var(--pw-border-subtle);
+  text-align: left;
+  vertical-align: top;
+}
+.tsf-markdown th {
+  font-weight: var(--pw-fw-semibold);
+  background: var(--pw-surface-sunken);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.tsf-markdown img {
+  max-width: 100%;
+  height: auto;
+}

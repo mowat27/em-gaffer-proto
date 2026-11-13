@@ -1,0 +1,7 @@
+
+tsf/.env
+tsf/data/
+tsf/app/node_modules/
+tsf/app/dist/
+tsf/app/.vite/
+builder/jobs/

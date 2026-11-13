@@ -1,0 +1,14 @@
+{
+  "$schema": "https://pi.dev/schemas/models.schema.json",
+  "providers": {
+    "openrouter": {
+      "apiKey": "$OPENROUTER_API_KEY",
+      "authHeader": true,
+      "api": "openai-completions",
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "models": [
+        { "id": "anthropic/claude-sonnet-5.5", "name": "Claude Sonnet 5.5 (OpenRouter, chat API)", "api": "openai-completions", "baseUrl": "https://openrouter.ai/api/v1", "reasoning": true, "input": ["text", "image"], "contextWindow": 1000000, "maxTokens": 64000, "cost": { "input": 3, "output": 15, "cacheRead": 0.3, "cacheWrite": 3.75 } }
+      ]
+    }
+  }
+}

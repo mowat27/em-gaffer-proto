@@ -1,0 +1,6 @@
+{
+  "label": "Gaffer",
+  "kitSubdir": "build-kit",
+  "useShared": true,
+  "needsBoardId": true
+}

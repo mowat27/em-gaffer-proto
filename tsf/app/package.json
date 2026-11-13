@@ -1,0 +1,49 @@
+{
+  "name": "tsf-app",
+  "version": "0.9.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node bin/tsf.mjs start",
+    "dev:web": "vite",
+    "build:web": "vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:e2e": "playwright test",
+    "test:acceptance": "npm run typecheck && npm run lint:ui && npm test && npm run test:integration && npm run test:e2e",
+    "lint:ui": "pw-ui-lint src/web"
+  },
+  "dependencies": {
+    "@earendil-works/chord": "1.5.0",
+    "@earendil-works/pi-ai": "1.5.0",
+    "@earendil-works/pi-codemode": "1.5.0",
+    "@earendil-works/pi-durable": "1.5.0",
+    "@earendil-works/pi-schema": "1.5.0",
+    "@hono/node-server": "2.1.6",
+    "@pw/ui": "file:vendor/precision-weave-ui-0.6.0.tgz",
+    "@vitejs/plugin-react": "6.2.1",
+    "croner": "11.0.0",
+    "hono": "4.13.16",
+    "lucide-react": "1.66.0",
+    "playwright": "1.64.1",
+    "radix-ui": "1.8.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "react-markdown": "10.1.0",
+    "remark-gfm": "4.0.1",
+    "tsx": "4.23.15",
+    "vite": "8.3.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "7.0.2",
+    "vitest": "5.1.0"
+  }
+}

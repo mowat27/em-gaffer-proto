@@ -1,0 +1,159 @@
+/* Navbars and their widgets (P4). Tokens only (--pw-*), 4px scale. */
+
+.tsf-navbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pw-sp-2);
+  min-width: 0;
+}
+
+.tsf-navbar-global {
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
+  padding: 0 var(--pw-sp-2);
+  overflow: hidden;
+}
+
+.tsf-navbar-item {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+/* The first widget of the centre and of the right slot takes the free space before it. */
+.tsf-navbar-item[data-first="true"] {
+  margin-left: auto;
+}
+
+.tsf-navbar-item[data-full="true"] {
+  flex: 1 1 100%;
+}
+
+.tsf-navbar-item[data-full="true"] > * {
+  flex: 1 1 auto;
+}
+
+.tsf-factory-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pw-sp-2);
+  font-weight: var(--pw-fw-semibold);
+  color: var(--pw-text);
+  white-space: nowrap;
+}
+
+.tsf-factory-name svg {
+  width: var(--pw-icon-md);
+  height: var(--pw-icon-md);
+  color: var(--pw-text-2);
+}
+
+/* Context bar: label, a track with a fill, and "used / window". */
+.tsf-context {
+  display: flex;
+  align-items: center;
+  gap: var(--pw-sp-2);
+  min-width: 0;
+  font-size: var(--pw-fs-sm);
+  color: var(--pw-text-2);
+}
+
+.tsf-context-icon {
+  flex: none;
+  width: var(--pw-icon-sm);
+  height: var(--pw-icon-sm);
+}
+
+.tsf-context-label {
+  flex: none;
+}
+
+.tsf-context-track {
+  flex: 1 1 96px;
+  min-width: 64px;
+  height: var(--pw-sp-2);
+  border-radius: var(--pw-r-sm);
+  background: var(--pw-control-track);
+  overflow: hidden;
+  position: relative;
+}
+
+/* The two compaction thresholds. */
+.tsf-context-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--pw-text-2);
+  opacity: 0.7;
+}
+
+.tsf-context-mark[data-kind="forced"] {
+  background: var(--pw-error);
+}
+
+.tsf-context-fill {
+  height: 100%;
+  background: var(--pw-brand);
+  transition: width var(--pw-duration-fast) var(--pw-ease-standard);
+}
+
+.tsf-context[data-tone="warning"] .tsf-context-fill {
+  background: var(--pw-warning);
+}
+
+.tsf-context[data-tone="error"] .tsf-context-fill {
+  background: var(--pw-error);
+}
+
+.tsf-context-num {
+  flex: none;
+  font-family: var(--pw-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Collapsed agent rail: busy or idle at a glance. */
+.tsf-rail-state {
+  width: var(--pw-sp-3);
+  height: var(--pw-sp-3);
+  margin-top: var(--pw-sp-3);
+  border-radius: 50%;
+  background: var(--pw-n-400, var(--pw-text-3));
+  border: 2px solid var(--pw-surface);
+}
+
+.tsf-rail-state:not([data-state="idle"]) {
+  background: var(--pw-accent);
+  animation: tsf-pulse 1.6s var(--pw-ease-standard) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tsf-rail-state {
+    animation: none !important;
+  }
+}
+
+.tsf-layer-control {
+  display: grid;
+  gap: var(--pw-sp-1);
+  min-width: 0;
+}
+
+.tsf-layer-label {
+  color: var(--pw-text-2);
+  font-size: var(--pw-fs-sm);
+}
+
+.tsf-layer-input {
+  display: flex;
+  gap: var(--pw-sp-2);
+  align-items: center;
+}
+
+.tsf-layer-error {
+  margin: 0;
+  color: var(--pw-error);
+  font-size: var(--pw-fs-sm);
+}

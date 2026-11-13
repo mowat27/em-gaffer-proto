@@ -1,0 +1,14 @@
+/* Cron panel. Tokens only (--pw-*), 4px scale. */
+.tsf-cron-dialog { width: min(760px, calc(100vw - var(--pw-sp-8))); }
+.tsf-cron-toolbar { display: flex; justify-content: flex-end; margin-bottom: var(--pw-sp-3); }
+.tsf-cron-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--pw-sp-3); }
+.tsf-cron-row { border: 1px solid var(--pw-border-subtle); border-radius: var(--pw-r-sm); padding: var(--pw-sp-3); display: grid; gap: var(--pw-sp-2); }
+.tsf-cron-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--pw-sp-2); }
+.tsf-cron-title { font-weight: var(--pw-fw-medium); }
+.tsf-cron-expr { font-size: var(--pw-fs-sm); color: var(--pw-text-2); }
+.tsf-cron-spacer { flex: 1; }
+.tsf-cron-prompt { margin: 0; color: var(--pw-text-2); font-size: var(--pw-fs-sm); white-space: pre-wrap; overflow-wrap: anywhere; }
+.tsf-cron-times { margin: 0; display: flex; flex-wrap: wrap; gap: var(--pw-sp-4); font-size: var(--pw-fs-sm); color: var(--pw-text-3); }
+.tsf-cron-form { display: grid; gap: var(--pw-sp-3); }
+.tsf-cron-form-title { margin: 0; font-size: var(--pw-fs-md); }
+.tsf-cron-form-actions { display: flex; justify-content: flex-end; gap: var(--pw-sp-2); }
