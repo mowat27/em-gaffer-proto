@@ -1217,7 +1217,7 @@
     ],
     "lastModified": 1794578207000,
     "etag": "W/\"91b81f85e83c5c0d119d93653691d0b4\"",
-    "checkedAt": 1794615944808
+    "checkedAt": 1794649630711
   },
   "google": {
     "models": [
@@ -2270,7 +2270,7 @@
     ],
     "lastModified": 1794578213000,
     "etag": "W/\"c1bbdfb592f63ee3a542e8e82ab4a1d8\"",
-    "checkedAt": 1794615944907
+    "checkedAt": 1794649630751
   },
   "openai": {
     "models": [
@@ -4340,7 +4340,7 @@
     ],
     "lastModified": 1794578247000,
     "etag": "W/\"9cb1a79c50b9cf662b2087060a30e5dc\"",
-    "checkedAt": 1794615944981
+    "checkedAt": 1794649630866
   },
   "typesafe": {
     "models": [
@@ -4370,7 +4370,7 @@
     ],
     "lastModified": 1794578278000,
     "etag": "W/\"442429959944e1c3cc56a984d9f6051a\"",
-    "checkedAt": 1794615945060
+    "checkedAt": 1794649630931
   },
   "openrouter": {
     "models": [
@@ -7055,13 +7055,13 @@
           "text"
         ],
         "cost": {
-          "input": 0.05,
-          "output": 0.45,
-          "cacheRead": 0.05,
+          "input": 0.0147,
+          "output": 0.0294,
+          "cacheRead": 0.00294,
           "cacheWrite": 0
         },
         "contextWindow": 1048576,
-        "maxTokens": 943718,
+        "maxTokens": 131072,
         "compat": {
           "supportsDeveloperRole": false,
           "thinkingFormat": "openrouter",
@@ -7210,9 +7210,9 @@
           "text"
         ],
         "cost": {
-          "input": 0.535398,
-          "output": 1.070796,
-          "cacheRead": 0.044617,
+          "input": 0.231246,
+          "output": 0.462492,
+          "cacheRead": 0.01927,
           "cacheWrite": 0
         },
         "contextWindow": 1024000,
@@ -8861,9 +8861,9 @@
           "image"
         ],
         "cost": {
-          "input": 0.024,
-          "output": 0.073,
-          "cacheRead": 0.012,
+          "input": 0.012,
+          "output": 0.035,
+          "cacheRead": 0.006,
           "cacheWrite": 0
         },
         "contextWindow": 262144,
@@ -15789,9 +15789,9 @@
           "image"
         ],
         "cost": {
-          "input": 0.011,
-          "output": 0.101,
-          "cacheRead": 0.01,
+          "input": 0.05,
+          "output": 0.7,
+          "cacheRead": 0.025,
           "cacheWrite": 0
         },
         "contextWindow": 262144,
@@ -22127,6 +22127,6 @@
         }
       }
     ],
-    "checkedAt": 1794617194355
+    "checkedAt": 1794653303250
   }
 }

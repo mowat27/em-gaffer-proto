@@ -1,6 +1,6 @@
 ---
 name: import-from-build-kit
-description: Import code and agentics from the @eventmodelers/cli and its build kits into this project's builder agent as like-for-like ports. Use when porting a CLI command, build-kit script, or build-kit behaviour into builder/pi-agent, or when the user asks to extract a tool from an eventmodelers CLI command.
+description: Import code and agentics from the @eventmodelers/cli and its build kits into this project's builder agent as like-for-like ports. Use when porting a CLI command, build-kit script, or build-kit behaviour into builder/pi-agent, when the user asks to extract a tool from an eventmodelers CLI command, or when the builder agent must be stopped from writing a file directly with a tool_call hook.
 argument-hint: "[mode] [cli command and requirements]"
 ---
 
@@ -15,12 +15,14 @@ docs. The port is checked against the CLI module itself before it is reported.
 | Mode | What it does | Typical invocation |
 |------|--------------|--------------------|
 | `tool` | Port one CLI command to a Pi extension tool in `builder/pi-agent/extensions/` | "tool `learn \"<text>\" --topic <topic>`, write to a file the caller passes in, call it capture-learning" |
+| `guard` | Add a `tool_call` hook that blocks direct writes to a file and points the agent at the tool to use | "guard the learnings files, use capture-learning" |
 
 ## Recipes
 
 | Mode | Recipe |
 |------|--------|
 | `tool` | `cookbook/tool.md` |
+| `guard` | `cookbook/guard.md` |
 
 All recipe paths are relative to this skill's directory.
 
@@ -59,5 +61,14 @@ If no mode is given or the mode is unrecognised, list the modes above and stop.
 2. From USER_PROMPT, take the CLI command and flags to port (**COMMAND**), the requested tool name if given
    (**TOOL_NAME**), and any requested changes from the CLI's behaviour, such as a hard-coded path made a
    parameter (**CHANGES**)
+3. Execute the recipe
+4. Return the results
+
+---
+
+### `guard` mode
+
+1. Read `cookbook/guard.md`
+2. From USER_PROMPT, take what to protect (**TARGET**) and the tool the agent must use instead (**TOOL_NAME**)
 3. Execute the recipe
 4. Return the results

@@ -2,13 +2,18 @@
   "$schema": "https://pi.dev/schemas/settings.schema.json",
   "quietStartup": true,
   "defaultProvider": "openrouter",
-  "defaultModel": "anthropic/claude-sonnet-5.5",
-  "defaultThinkingLevel": "low",
+  "defaultModel": "z-ai/glm-5.3",
+  "defaultThinkingLevel": "medium",
   "defaultTools": [
     "read",
     "write",
     "edit"
   ],
   "defaultProjectTrust": "never",
-  "lastChangelogVersion": "1.5.2"
+  "lastChangelogVersion": "1.5.2",
+  "enabledModels": [
+    "openai/gpt-5.6-terra",
+    "openai/gpt-6.1-terra",
+    "openrouter/z-ai/glm-5.3"
+  ]
 }

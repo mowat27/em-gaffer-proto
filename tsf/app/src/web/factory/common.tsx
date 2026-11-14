@@ -119,7 +119,7 @@ export function SettingsForm({
   layer: string;
   values: Record<string, Json> | null;
   fields: FieldSpec[];
-  onSaved?: (changed: string[]) => void;
+  onSaved?: (changed: string[], changes: Record<string, Json>) => void;
   saveLabel?: string;
   children?: ReactNode;
 }) {
@@ -151,7 +151,7 @@ export function SettingsForm({
       await saveSettings(layer, changes);
       setDraft({});
       setSavedAt(Date.now());
-      onSaved?.(dirty);
+      onSaved?.(dirty, changes);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

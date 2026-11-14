@@ -242,6 +242,11 @@
   margin-top: var(--pw-sp-1);
 }
 
+/* Match PageTree's depth × --pw-sp-4 indentation for every nested Pi directory. */
+.tsf-pi-tree .tsf-tree-list .tsf-tree-list {
+  padding-left: var(--pw-sp-4);
+}
+
 .tsf-pi-tree-folder,
 .tsf-pi-tree-file {
   width: 100%;

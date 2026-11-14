@@ -10,6 +10,10 @@
  * run in it (it appends an entry to the logbook file), a commit on top of base, `git format-patch <base>..HEAD` sent
  * to the callback, workspace deleted. The builder has read access to the repository only and no board access.
  *
+ * Halting: pi gets $BUILDER_HALT_FILE, a path outside the workspace. The agent's `halt` tool writes
+ * `{ "reason": "..." }` there when the slice cannot be built. The builder stops pi as soon as the file appears and
+ * sends `{ "outcome": "failed", "reason": <reason> }` instead of a patch.
+ *
  * Configuration is the JSON file named by $BUILDER_CONFIG (the factory's builder layer writes it from its settings).
  * The file is re-read at the start of every job, so a changed pi configuration applies to the next build. Progress is
  * appended as JSON lines to `eventsFile`. Runs on Node 24 type stripping: only erasable TypeScript syntax is used.
@@ -68,6 +72,8 @@ interface Job {
   step: string;
   workspace: string;
   logFile: string;
+  /** Where the agent's halt tool writes `{ reason }` to halt the job (outside the workspace). */
+  haltFile: string;
 }
 
 export function defaultConfig(): BuilderConfig {
@@ -218,10 +224,39 @@ function quoteArg(s: string): string {
 /** Name of the full slice spec file written into the job workspace, relative to it (pi's cwd), for the agent to read. */
 const SLICE_FILE = ".slice.json";
 
-function runPi(job: Job, d: Dispatch): Promise<{ code: number | null; timedOut: boolean; output: string }> {
+/** Pi's live settings file is the single source of provider/model/thinking truth. */
+function livePiSettings(pi: PiConfig): Pick<PiConfig, "provider" | "model" | "thinking"> {
+  const dir = pi.agentDir ? resolve(pi.agentDir.replace(/^~(?=\/|$)/, process.env.HOME ?? "~")) : "";
+  try {
+    const raw = JSON.parse(readFileSync(join(dir, "settings.json"), "utf8")) as Record<string, unknown>;
+    return {
+      provider: typeof raw.defaultProvider === "string" ? raw.defaultProvider : pi.provider,
+      model: typeof raw.defaultModel === "string" ? raw.defaultModel : pi.model,
+      thinking: typeof raw.defaultThinkingLevel === "string" ? raw.defaultThinkingLevel : pi.thinking,
+    };
+  } catch {
+    return { provider: pi.provider, model: pi.model, thinking: pi.thinking };
+  }
+}
+
+/** The reason in a halt file, or null when there is none yet. */
+function readHalt(file: string): string | null {
+  if (!existsSync(file)) return null;
+  const raw = readFileSync(file, "utf8");
+  try {
+    const reason = (JSON.parse(raw) as { reason?: unknown }).reason;
+    if (typeof reason === "string" && reason.trim()) return reason.trim();
+  } catch {
+    /* not JSON: use the text */
+  }
+  return raw.trim() || "the agent halted the job without a reason";
+}
+
+function runPi(job: Job, d: Dispatch): Promise<{ code: number | null; timedOut: boolean; halt: string | null; output: string }> {
   const pi = cfg.pi;
   const command = pi.command.replace(/^~(?=\/|$)/, process.env.HOME ?? "~");
   const agentDir = pi.agentDir ? resolve(pi.agentDir.replace(/^~(?=\/|$)/, process.env.HOME ?? "~")) : "";
+  const live = livePiSettings(pi);
   // The full slice spec (commands, events, readmodels, screens, specifications) as sent by the gaffer: written next
   // to the clone so the agent can read it with a plain relative path (pi's cwd is job.workspace).
   writeFileSync(join(job.workspace, SLICE_FILE), JSON.stringify(d.slice ?? null, null, 2));
@@ -229,6 +264,8 @@ function runPi(job: Job, d: Dispatch): Promise<{ code: number | null; timedOut: 
   // itself; this is the same `/name arg1 arg2` a human types in an interactive pi session.
   const prompt = [
     "/build",
+    // The slice spec is deliberately first: it is the primary input to every build.
+    quoteArg(SLICE_FILE),
     quoteArg(d.task.title),
     quoteArg(d.task.context),
     quoteArg(d.task.sliceId),
@@ -237,22 +274,32 @@ function runPi(job: Job, d: Dispatch): Promise<{ code: number | null; timedOut: 
     quoteArg(d.repo.base),
     quoteArg(pi.model),
     quoteArg(new Date().toISOString()),
-    quoteArg(SLICE_FILE),
   ].join(" ");
-  const args = [...splitArgs(pi.args), "--provider", pi.provider, "--model", pi.model, ...(pi.thinking ? ["--thinking", pi.thinking] : []), "-p", "--", prompt];
-  emit("pi.start", `pi ${pi.provider}/${pi.model}${pi.thinking ? ` (thinking ${pi.thinking})` : ""}`, {
+  const args = [...splitArgs(pi.args), "--provider", live.provider, "--model", live.model, ...(live.thinking ? ["--thinking", live.thinking] : []), "-p", "--", prompt];
+  emit("pi.start", `pi ${live.provider}/${live.model}${live.thinking ? ` (thinking ${live.thinking})` : ""}`, {
     command: pi.command,
     args: args.slice(0, -1),
   });
   appendFileSync(job.logFile, `\n$ ${pi.command} ${args.slice(0, -1).map((a) => (/\s/.test(a) ? JSON.stringify(a) : a)).join(" ")} -- <prompt>\n--- prompt ---\n${prompt}\n--- output ---\n`);
+  rmSync(job.haltFile, { force: true });
   return new Promise((resolveRun) => {
     let output = "";
     let timedOut = false;
+    let halt: string | null = null;
     const child = spawn(command, args, {
       cwd: job.workspace,
-      env: { ...process.env, PI_NO_UPDATE_CHECK: "1", ...(agentDir ? { PI_CODING_AGENT_DIR: agentDir } : {}) },
+      env: { ...process.env, PI_NO_UPDATE_CHECK: "1", BUILDER_HALT_FILE: job.haltFile, ...(agentDir ? { PI_CODING_AGENT_DIR: agentDir } : {}) },
       stdio: ["ignore", "pipe", "pipe"],
     });
+    // The agent called the halt tool: stop pi now rather than waiting for it to finish its turn.
+    const watch = setInterval(() => {
+      if (halt) return;
+      halt = readHalt(job.haltFile);
+      if (!halt) return;
+      emit("pi.halt", `agent halted the job: ${halt.slice(0, 200)}`, { reason: halt });
+      child.kill("SIGTERM");
+      setTimeout(() => child.kill("SIGKILL"), 5000).unref();
+    }, 500);
     const onData = (chunk: Buffer) => {
       const text = chunk.toString("utf8");
       output += text;
@@ -274,13 +321,22 @@ function runPi(job: Job, d: Dispatch): Promise<{ code: number | null; timedOut: 
     );
     child.on("error", (err) => {
       clearTimeout(timer);
+      clearInterval(watch);
       output += `\nspawn error: ${err.message}`;
-      resolveRun({ code: -1, timedOut, output });
+      resolveRun({ code: -1, timedOut, halt, output });
     });
-    child.on("close", (code) => {
+    const finish = (code: number | null) => {
       clearTimeout(timer);
-      resolveRun({ code, timedOut, output });
+      clearInterval(watch);
+      // pi may write the file and exit between two polls.
+      halt = halt ?? readHalt(job.haltFile);
+      resolveRun({ code, timedOut, halt, output });
+    };
+    // A halted pi is done when it exits: a leftover grandchild (a bash tool command) may hold the pipes open.
+    child.on("exit", (code) => {
+      if (halt) finish(code);
     });
+    child.on("close", finish);
   });
 }
 
@@ -333,6 +389,8 @@ async function runJob(job: Job, d: Dispatch): Promise<void> {
 
     step("pi");
     const pi = await runPi(job, d);
+    // A halt is the agent's own verdict on the slice: it wins over however pi exited, and any changes are dropped.
+    if (pi.halt) throw new Error(pi.halt);
     if (pi.timedOut) throw new Error(`pi timed out after ${cfg.pi.timeoutMinutes} min`);
     if (pi.code !== 0) throw new Error(`pi exited ${pi.code}: ${pi.output.trim().slice(-400)}`);
     emit("pi.done", `pi finished: ${pi.output.trim().split("\n").pop()?.slice(0, 120) ?? ""}`);
@@ -361,6 +419,7 @@ async function runJob(job: Job, d: Dispatch): Promise<void> {
 
   step("cleanup");
   rmSync(job.workspace, { recursive: true, force: true });
+  rmSync(job.haltFile, { force: true });
   lastJob = { ...job, outcome: result.outcome, endedAt: Date.now() };
   current = null;
   emit("job.end", `job ${job.jobId.slice(0, 8)} ${result.outcome} in ${Math.round((Date.now() - job.startedAt) / 1000)}s`, { outcome: result.outcome });
@@ -376,7 +435,7 @@ function status(): Record<string, unknown> {
     job: current ? { jobId: current.jobId, title: current.title, context: current.context, attempt: current.attempt, step: current.step, startedAt: current.startedAt } : null,
     lastJob: lastJob ? { jobId: lastJob.jobId, title: lastJob.title, outcome: lastJob.outcome, endedAt: lastJob.endedAt } : null,
     capabilities: cfg.capabilities,
-    pi: { command: pi.command, agentDir: pi.agentDir, provider: pi.provider, model: pi.model, thinking: pi.thinking, args: pi.args },
+    pi: { command: pi.command, agentDir: pi.agentDir, ...livePiSettings(pi), args: pi.args },
     workspaceDir: resolve(cfg.workspaceDir),
     pid: process.pid,
   };
@@ -420,6 +479,7 @@ const server = createServer(async (req, res) => {
       step: "accepted",
       workspace: join(wsRoot, jobId),
       logFile: join(wsRoot, "logs", `${jobId}.log`),
+      haltFile: join(wsRoot, "logs", `${jobId}.halt.json`),
     };
     writeFileSync(job.logFile, `job ${jobId}: ${v.d.task.context}/${v.d.task.title} attempt ${v.d.task.attempt}, base ${v.d.repo.base}\n`);
     current = job;

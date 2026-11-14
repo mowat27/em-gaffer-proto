@@ -52,6 +52,16 @@ export function BuilderView() {
     .map((m) => ({ value: m.id, label: m.name === m.id ? m.id : `${m.name} (${m.id})` }))
     .sort((a, b) => a.label.localeCompare(b.label));
 
+  const syncPiRuntime = async (changes: Record<string, Json>): Promise<void> => {
+    const map: Record<string, string> = { pi_provider: "defaultProvider", pi_model: "defaultModel", pi_thinking: "defaultThinkingLevel" };
+    const updates = Object.entries(changes).filter(([key, value]) => map[key] && typeof value === "string");
+    if (!updates.length) return;
+    const current = await api.builderAgent.read("settings.json");
+    const config = JSON.parse(current.content) as Record<string, unknown>;
+    for (const [key, value] of updates) config[map[key]] = value;
+    await api.builderAgent.write("settings.json", `${JSON.stringify(config, null, 2)}\n`);
+  };
+
   const refreshModels = (): void => {
     setRefreshing(true);
     api.models
@@ -191,6 +201,9 @@ export function BuilderView() {
               { key: "pi_args", label: "Flags", mono: true, wide: true, help: "Shell-style; placed before -p" },
             ]}
             saveLabel="Save agent"
+            onSaved={(_changed, changes) => {
+              void syncPiRuntime(changes).catch((err) => setNote(`Pi settings were saved but could not be synchronised: ${errorMessage(err)}`));
+            }}
           />
           <p className="tsf-fx-muted" style={{ marginTop: "var(--pw-sp-3)" }}>
             Instructions, prompts, extensions and skills are real files in <code>builder/pi-agent/</code>, read directly by Pi for each job. Open <button type="button" className="tsf-link-button" onClick={() => setView("pi-agent")}>Pi agent</button> to browse their current contents.
