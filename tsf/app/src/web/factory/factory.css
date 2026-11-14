@@ -696,8 +696,10 @@
 
 .tsf-topbar .tsf-navbar-global {
   /* Never shrunk below its content: the pipeline strip (.tsf-fxbar) yields space first, it already hides its own
-     less essential parts (commit subject, then commit) at smaller widths. */
+     less essential parts (commit subject, then commit) at smaller widths. Items wrap onto more rows when needed. */
   flex: 0 0 auto;
+  flex-wrap: wrap;
+  overflow: visible;
 }
 
 .tsf-topbar .tsf-navbar-global:empty {
@@ -710,7 +712,8 @@
   align-items: center;
   gap: var(--pw-sp-4);
   min-width: 0;
-  overflow: hidden;
+  flex-wrap: wrap;
+  row-gap: var(--pw-sp-1);
   margin-left: var(--pw-sp-4);
   font-size: var(--pw-fs-xs);
   color: var(--pw-text-2);
@@ -773,6 +776,8 @@
 
 .tsf-fxbar-actions {
   display: flex;
+  flex-wrap: wrap;
+  row-gap: var(--pw-sp-1);
   align-items: center;
   gap: var(--pw-sp-3);
   padding-left: var(--pw-sp-4);

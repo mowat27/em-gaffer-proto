@@ -12,7 +12,7 @@
  *
  * Runs on Node 24 type stripping: only erasable TypeScript syntax is used.
  */
-import { appendFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
@@ -32,6 +32,8 @@ interface GafferConfig {
   gate?: string;
   turnTimeoutMinutes: number;
   eventsFile?: string;
+  /** When set, the full slice sent to the builder is also written here as `<title>-slice.json` (for reference). */
+  sliceDumpDir?: string;
 }
 
 interface Task {
@@ -62,6 +64,7 @@ function loadConfig(): GafferConfig {
     gate: raw.gate ?? "",
     turnTimeoutMinutes: Number(raw.turnTimeoutMinutes ?? 60),
     eventsFile: raw.eventsFile,
+    sliceDumpDir: raw.sliceDumpDir,
   };
 }
 
@@ -122,6 +125,65 @@ function findSlice(sliceId: string): { file: string; slice: unknown } | null {
     return { file, slice: JSON.parse(readFileSync(file, "utf8")) };
   }
   return null;
+}
+
+interface BoardConfig {
+  token: string;
+  organizationId: string;
+  boardId: string;
+  baseUrl: string;
+}
+
+/** Board credentials from the clone's `.eventmodelers/config.json`; `EVENTMODELERS_TOKEN` wins over the file. */
+function loadBoardConfig(): BoardConfig {
+  const file = join(cwd, ".eventmodelers", "config.json");
+  const raw = JSON.parse(readFileSync(file, "utf8")) as Partial<BoardConfig>;
+  const token = process.env.EVENTMODELERS_TOKEN || raw.token;
+  if (!token || !raw.organizationId || !raw.boardId || !raw.baseUrl) {
+    throw new Error(`${file} must hold token (or EVENTMODELERS_TOKEN), organizationId, boardId and baseUrl`);
+  }
+  return { token, organizationId: raw.organizationId, boardId: raw.boardId, baseUrl: raw.baseUrl.replace(/\/+$/, "") };
+}
+
+async function boardGet(board: BoardConfig, path: string, query: Record<string, string> = {}): Promise<Record<string, unknown>> {
+  const url = `${board.baseUrl}/api/org/${board.organizationId}/boards/${board.boardId}${path}?${new URLSearchParams(query)}`;
+  const headers: Record<string, string> = { "x-token": board.token };
+  if (process.env.EVENTMODELERS_AGENT_ID) headers["x-agent-id"] = process.env.EVENTMODELERS_AGENT_ID;
+  const res = await fetch(url, { headers, signal: AbortSignal.timeout(30_000) });
+  if (!res.ok) throw new Error(`board GET ${path} answered HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  return (await res.json()) as Record<string, unknown>;
+}
+
+type BoardSlice = { id?: string; title?: string; contextName?: string; contextId?: string; [k: string]: unknown };
+
+/**
+ * load-slice, run by the gaffer over REST: the full definition of one slice from the board, never the summary stub.
+ * One summary call finds the slice's chapter (the stub on disk may lack `contextId`), then one full fetch by
+ * `contextId` (exact) with `contextName` as the fallback. Chapters can share a title and a name resolves to the first
+ * match only, so the id is preferred. Throws when the slice cannot be fetched in full.
+ */
+async function loadFullSlice(t: Task, stub: BoardSlice): Promise<BoardSlice> {
+  const board = loadBoardConfig();
+  const listed = ((await boardGet(board, "/slicedata/slices")).slices ?? []) as BoardSlice[];
+  const entry = listed.find((s) => s.id === t.sliceId);
+  if (!entry) throw new Error(`slice ${t.sliceId} is not on the board`);
+  const contextId = entry.contextId ?? stub.contextId;
+  const contextName = entry.contextName ?? stub.contextName ?? t.context;
+
+  const attempts: Record<string, string>[] = [];
+  if (contextId) attempts.push({ contextId, sliceId: t.sliceId });
+  if (contextName) attempts.push({ contextName, sliceId: t.sliceId });
+  let lastError = "no chapter id or name to fetch the slice with";
+  for (const query of attempts) {
+    try {
+      const full = (((await boardGet(board, "/slicedata", query)).slices ?? []) as BoardSlice[]).find((s) => s.id === t.sliceId);
+      if (full) return full;
+      lastError = `slice not returned for ${Object.keys(query)[0]}`;
+    } catch (err) {
+      lastError = (err as Error).message;
+    }
+  }
+  throw new Error(`could not load the full slice ${t.sliceId} from the board: ${lastError}`);
 }
 
 /** `git@github.com:org/app.git` or `https://github.com/org/app.git` -> `github.com/org/app`. */
@@ -239,6 +301,28 @@ async function buildTurn(t: Task): Promise<number> {
     return 1;
   }
 
+  // The slice.json on disk is a summary stub. The builder gets the full definition from the board.
+  let fullSlice: BoardSlice;
+  try {
+    fullSlice = await loadFullSlice(t, found.slice as BoardSlice);
+  } catch (err) {
+    const reason = (err as Error).message;
+    emit("turn.fail", reason);
+    note(`gaffer: ${reason}`);
+    return 1;
+  }
+  emit("slice.loaded", `full slice loaded from the board (${Object.keys(fullSlice).length} fields)`, { fields: Object.keys(fullSlice) });
+  if (cfg.sliceDumpDir) {
+    const file = join(cfg.sliceDumpDir, `${slug(t.title)}-slice.json`);
+    try {
+      mkdirSync(cfg.sliceDumpDir, { recursive: true });
+      writeFileSync(file, JSON.stringify(fullSlice, null, 2) + "\n");
+      emit("slice.dumped", `full slice written to ${file}`, { file });
+    } catch (err) {
+      emit("slice.dump.fail", `could not write ${file}: ${(err as Error).message}`);
+    }
+  }
+
   // 1. base = HEAD of main, pushed so the builder can fetch it.
   git(["checkout", "-q", "main"]);
   const base = git(["rev-parse", "HEAD"]);
@@ -254,7 +338,7 @@ async function buildTurn(t: Task): Promise<number> {
     requires,
     repo: { url: cfg.repoUrl || git(["remote", "get-url", "origin"]), base },
     task: { sliceId: t.sliceId, title: t.title, context: t.context, handover: t.handover, attempt },
-    slice: found.slice,
+    slice: fullSlice,
     callback,
   };
 

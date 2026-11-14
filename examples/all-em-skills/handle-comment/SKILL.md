@@ -1,0 +1,121 @@
+---
+name: handle-comment
+description: >-
+  Place, resolve, or delete a comment on an eventmodelers board node. Action is determined by the first argument: place (default), resolve, or delete.
+---
+
+# Handle Comment
+
+> **Before doing anything else**, invoke the `connect` skill — if not already connected — to resolve `TOKEN`, `BOARD_ID`, `ORG_ID`, and `BASE_URL`. Do not proceed until the connect skill has completed.
+
+Prefer `mcp__eventmodelers__*` tools when available (registered by the `connect` skill) — the curl blocks below are the fallback for sessions without MCP connected.
+
+---
+
+## Step 1 — Parse arguments
+
+From `$ARGUMENTS` or the calling skill's context, extract:
+
+| Field | How to find it | Default |
+|-------|---------------|---------|
+| `action` | First word: `place`, `resolve`, or `delete` | `place` |
+| `nodeId` | UUID of the target node | **required** |
+| `text` | Comment text (place) or substring to match (resolve/delete) | required for `place`; used to look up comment when `commentId` is absent |
+| `commentId` | UUID of the comment to resolve/delete | preferred over `text` for resolve/delete |
+| `type` | `COMMENT` or `TASK` | `COMMENT` (place only) |
+| `author` | Author identifier string | `agent-$CLAUDE_CODE_SESSION_ID` (place only) |
+| `boardId` | Board UUID | from `connect` skill (`BOARD_ID`) |
+
+Use the session env var, not the literal string `agent` — `CLAUDE_CODE_SESSION_ID` is set by the
+host for every session, so two agents working the same board at once post under distinguishable
+authors instead of an identical one. If the env var is unset (non-Claude-Code host), fall back to
+the literal `agent`.
+
+There is no `QUESTION` type at the API level — a question is just a `COMMENT` whose text happens
+to be phrased as a question. Callers that want to flag something as a question should word the
+`text` accordingly, not pass a special `type`.
+
+Route to the matching section below based on `action`.
+
+---
+
+## Action: place
+
+**Prefer MCP** — one call, `type` (`COMMENT`/`TASK`) passed straight through:
+
+```
+mcp__eventmodelers__add_comment { "boardId": "$BOARD_ID", "comments": [{ "nodeId": "$NODE_ID", "text": "<text>", "type": "<COMMENT|TASK>", "author": "<author>" }] }
+```
+
+**Fallback (no MCP):** see `references/api-fallback.md` — "Action: place".
+
+**Batching (when called in bulk, e.g. from `wdyt`):** send them all in one request instead of one per comment — each entry names its own node:
+
+```bash
+curl -s -X POST "$BASE_URL/api/org/$ORG_ID/boards/$BOARD_ID/comments" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '[{"nodeId":"<id>","text":"<text>","type":"QUESTION","author":"wdyt"},
+       {"nodeId":"<id2>","text":"<text2>","type":"QUESTION","author":"wdyt"}]'
+```
+
+Response: `201 {"results":[{"nodeId":"<id>","id":"<commentId>"}, …]}` in request order — an entry whose node doesn't exist reports `error` there without dropping the rest. Over MCP this is the `add_comment` tool's `comments` array.
+
+**Report:**
+```
+Comment posted on node <nodeId>
+Type: <type> | Author: <author>
+"<text>"
+```
+
+---
+
+## Action: resolve
+
+**Step A — Resolve comment ID** (skip if `commentId` was provided directly):
+
+**Prefer MCP:**
+```
+mcp__eventmodelers__get_node_comments { "boardId": "$BOARD_ID", "nodeId": "$NODE_ID" }
+```
+
+**Fallback (no MCP):** see `references/api-fallback.md` — "Action: resolve — Step A (resolve comment ID)".
+
+Find the comment whose `text` contains the `text` argument (case-insensitive). If multiple match, list them and ask the user to confirm. If none match, stop: "No comment found matching '<text>' on node `<nodeId>`."
+
+**Step B — Resolve:**
+
+**Prefer MCP:**
+```
+mcp__eventmodelers__update_comment { "boardId": "$BOARD_ID", "nodeId": "$NODE_ID", "commentId": "$COMMENT_ID", "action": "resolve" }
+```
+
+**Fallback (no MCP):** see `references/api-fallback.md` — "Action: resolve — Step B (resolve)".
+
+**Report:** `Resolved comment <commentId> on node <nodeId>`
+
+---
+
+## Action: delete
+
+**Step A — Resolve comment ID** (same lookup as resolve; skip if `commentId` was provided directly).
+
+**Step B — Confirm before deleting:**
+```
+About to delete comment on node <nodeId>:
+"<comment text>"
+
+Confirm? (yes / no)
+```
+Wait for an explicit "yes". On any other response, stop: "Deletion cancelled."
+
+**Step C — Delete:**
+
+**Prefer MCP:**
+```
+mcp__eventmodelers__update_comment { "boardId": "$BOARD_ID", "nodeId": "$NODE_ID", "commentId": "$COMMENT_ID", "action": "delete" }
+```
+
+**Fallback (no MCP):** see `references/api-fallback.md` — "Action: delete — Step C (delete)".
+
+**Report:** `Deleted comment <commentId> from node <nodeId>`

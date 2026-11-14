@@ -1,0 +1,311 @@
+---
+name: analyze-code-base
+description: Uncover the business process behind an existing code base and build it on the board as an interview, iteratively — all chapters at high level first, then one chapter per pass, the person choosing which. Reads the code and its documentation (README, docs, ADRs, API specs, diagrams, feature files) for hypotheses, asks one question at a time, draws as answers land. Use for "analyze this code base", "analyze this existing system", "reverse-engineer the model from the code", "model the legacy app".
+---
+
+# Analyze a Code Base
+
+You are the **orchestrator** of an interview. The code and its documentation give you hypotheses; the person gives you the truth. **The board is the deliverable** — never hand over a JSON model, `config.json` or `high-level-analysis.json`.
+
+This skill owns only what is specific to legacy code: reading the sources (code **and** documentation), mapping them to elements, the layering of passes, and recording decisions with code references. Every modeling rule (naming, element types, chaptering, ordering, screens, scenarios, interviewing) lives in the skill named at each step — **read and follow that skill, don't restate or re-implement it here**.
+
+---
+
+## Step 0 — Is there a code base?
+
+Resolve the directory to analyse: `$EVENTMODELERS_CODE_DIR` if set (treat it as the repository root for every step below), otherwise the current directory. It must contain source code (`src/`, `pom.xml`, `build.gradle*`, `package.json`, `*.csproj`, …). Documentation alongside it (`README*`, `docs/`, ADRs, specs) is read too, but documentation alone is not a code base — without source code, stop as below.
+
+If it does not (an empty folder, a modeling-only workspace holding just `.claude/`, `.eventmodelers/` or `.agent-modeling-kit/`), **stop and answer in one or two plain sentences** — "There is no legacy code here to analyse; run this in the code base" — and do nothing else.
+
+Then invoke `connect` (if not already connected). Prefer `mcp__eventmodelers__*` tools; if the MCP server is not connected, say so and continue over REST (see `learn-eventmodelers-api`) — never silently fall back to writing files.
+
+**Ask before sharing on the board.** The analysis publishes what was read from the code — chapter names, flows, field names, file paths and code references — onto a board that others may be able to open. Before the first board write of this run, ask once: *"Shall I put this analysis on board `<name or id>`? It will contain code references (file paths, class names) from this repository."* Offer a different board as the alternative, and a board that already holds unrelated chapters is a reason to say so in the question. Wait for the answer — this is the one question in this skill that **is** a gate. "No" (and no other board named) → stop, write nothing to any board and do not fall back to files. Skip the question only when the request already names the board and says to put the analysis there. Remember the answer for the rest of the run, and for later passes on the same board. In chat mode this is a pick, so post it as a snippet (see *Chat mode*).
+
+**One agent, one identity on the board.** The canvas shows one robot avatar per agent id, and a write without a valid `x-agent-id` is shown as a *second*, anonymous robot. So every board write of this run must carry the agent id `connect` resolved (`AGENT_ID`): MCP calls get it from `.mcp.json`, but every `curl` fallback, upload script (e.g. screenshots) and Playwright helper must send `x-agent-id` too, and any subagent that writes to the board must be handed `agent=<AGENT_ID>` inline (a subagent is a fresh session and resolves nothing). Do the board writes yourself where you can; use subagents only for reading code.
+
+## Step 0b — Was this analysed before? Only read what changed
+
+> **Vibe coding.** If the code root or a parent holds a `.vibe/` directory (`init --vibe-coding`), the analysis log is a **file**, not the board note: `.vibe/baseline/<chapter>.json`, one per chapter. It — not the `Legacy Sources` note — is where Step 0b reads the baseline from, and where every pass below writes. Without `.vibe/` everything in this skill works as written, the board note being the log.
+> - **Read**: `npx @eventmodelers/cli vibe baseline show --drift` prints every chapter's last row, folders, and the files that are not what that row says (committed since, or edited and not synced). A chapter with no drift is up to date; for one with drift re-analyse only those files. No file for a chapter = never analysed here — analyse it fully, whatever the board's note says.
+> - **Write**: see *The analysis log* — the file first, the note rendered from it.
+
+Read the board's chapters and look for their `Legacy Sources — <Chapter>` notes (column 0 of each chapter, see *The analysis log*). Every chapter keeps its own history, so check each one separately: take the commit of the **last row** of its *Analysis history*. If the code root is a git repository (`git rev-parse --is-inside-work-tree`):
+
+```bash
+git cat-file -e <hash>^{commit}                   # still reachable? (rebased/squashed history → no)
+git log --oneline <hash>..HEAD -- <chapter folders> # which commits touched this chapter
+git diff --stat <hash>..HEAD -- <chapter folders>   # folders from the note's "Where this flow lives"
+git status --porcelain -- <chapter folders>         # uncommitted changes count too
+```
+
+- **Nothing changed** for a chapter → leave it alone; report it as *up to date since `<hash>` (<date>)*.
+- **Something changed** → re-analyse **only the changed files** through the lenses below, update the elements and decision rows they touch (refresh line numbers in references to those files), and ask about what the diff can't explain. Files changed outside every chapter's folders are candidates for a new chapter or for a chapter's `Where this flow lives` — ask.
+- **Hash not reachable**, `+dirty`, `no git`, or no history yet → say so and analyse the chapter fully (a `+dirty` row: at least the files the diff names plus those listed as dirty then).
+
+Either way, append a row to the chapter's *Analysis history* (see *The analysis log*), also for *no changes*. With no notes on the board at all, this is a fresh analysis — continue with Step 1.
+
+## Step 1 — Is there a running UI? (once, when the analysis starts)
+
+Ask once, when starting fresh (no chapters from this analysis yet): *"Is there a running instance I can inspect? URL, and a login or test account if needed."* The question is **optional, not a gate**: post it at the start, then **continue straight away** with the code analysis (Pass 0) without waiting for the answer. Until an answer arrives, work from the code alone and record `running UI: not answered yet` in each chapter's `Legacy Sources` note. Skip the question when the request already answers it.
+
+When the answer arrives later: a URL (and login) → start the UI analysis then — walk it via `discover-storyboard` (see the *UI* lens), add its screens as evidence and use its click path to confirm or correct the order already derived from the code; "no running UI" → nothing to do. Either way, update the `Legacy Sources` note with the answer and reuse it on later passes.
+
+Ask again mid-way only when it helps — typically when the order isn't clear from the code: *"I can't tell the order of these steps from the code. Is there a running UI I can use to check? Otherwise, here are my questions: …"*
+
+---
+
+## Principles specific to legacy code
+
+Naming, what to model and the anti-patterns are in `eventmodeling-core-rules` (read it once per session); how to ask is in `eventmodeling-interview-protocol` and `/timeline` (*Facilitator principles*). On top of that:
+
+- **Evidence, not elements.** Controllers, tables and services show a business step exists — they are not the step. Code names go in `description`, never in titles. A model must serve business readers (titles, order) and AI readers (fields, edges, descriptions with the code reference) alike.
+- **Build what the code shows; ask only what it can't tell you** — the **order** (code rarely shows it; see `eventmodeling-plotting-events`) and **unclear business requirements**. Propose first: *"From `VisitController` the owner picks a pet and then books a visit — is that the real sequence?"* One question at a time.
+- **Never place at a guessed position.** Where neither code, UI nor person settles the order, ask (see *Step 1*) or leave a QUESTION comment.
+- **The user outranks the code.** Model what the person says; record what the code does as a decision row (see *Recording decisions*).
+- **Never invent to fill a gap**, and **stop when they say stop**, at any depth.
+
+---
+
+## Reading the sources — five lenses
+
+Every pass reads the code and its documentation through the same five lenses; each produces *hypotheses* to put to the person, never elements on its own. Read only as deep as the current layer needs.
+
+1. **API** (look hardest here) — REST controllers, routes, handlers, message listeners, scheduled jobs, outbound clients. Each entry point is a candidate **screen + command** (a person writes), **screen + read model** (a person reads) or **automation** (jobs, listeners, calls to other systems). Request/response payloads hint at fields; the caller hints at who triggers it.
+2. **Tests** — test names, fixtures, assertions. Names reveal the business vocabulary; arrange/act/assert is a *hint* for Given/When/Then, not its shape — which element goes into Given, When and Then is decided by `eventmodeling-elaborating-scenarios`, never by the test's structure (see *Scenarios* below); error cases reveal the rules that matter. Fixtures are the source of realistic example values.
+3. **Persistence** (look hardest here, too — *what gets saved*) — entities, tables, migrations, repositories. Every write is a candidate **event**. Writes show which state changes exist (→ events); relations show aggregate boundaries; status/enum columns show lifecycles; derived or joined queries show read models. Tables are evidence, never elements.
+4. **UI** — templates, views, components, forms, navigation. Forms and buttons are where a person triggers a command; list and detail pages are read models; the page order is the flow; visible labels are the business words. Whether a running UI exists is asked in **Step 1** — without waiting for the answer. Until there is a URL, rely on the other three lenses and ask where the order stays unclear.
+
+   **With a URL, walk it via `discover-storyboard`** (URL already known — don't ask again; pass the flow as guidance and ask for screenshots). Its click path is the *proposed* order and its screens go into the chapter as evidence; confirm both against the API and persistence lenses. Submit forms only against a local or test system, or after the person agrees.
+
+   **Screens: HTML, except real screenshots.** A plain `SCREEN` node is used for exactly one thing — a screenshot Playwright took of the running UI (`contentType: "image"`). Every other screen — built from the templates, views and controllers, or for a step the running UI didn't show — is an `HTML_SCREEN` via `/html-screen` (`create_screen` with `contentType: "html"` and real pages: the template's labels, fields and buttons). Never a sketch, never a plain `SCREEN` without a screenshot on it.
+
+If the code is a generic engine (templates, schemas, configurable entities), model one real case it handles, not the engine (see *Concrete Over Generic* in `eventmodeling-core-rules`).
+
+5. **Documentation & other artifacts** — everything that explains the system without being executable. Look for it in the code root and its parents' obvious places: `README*`, `docs/`, `doc/`, `wiki/`, `adr/` / `docs/decisions/` (architecture decision records), `CHANGELOG*` / release notes, `CONTRIBUTING*`, API specs (OpenAPI/Swagger, AsyncAPI, GraphQL schemas, Postman collections, `.http` files), diagrams (PlantUML, Mermaid, draw.io, C4, images in `docs/`), BDD/acceptance material (`*.feature` Gherkin files, acceptance criteria), requirements, user stories and specs (Markdown, `.docx`/PDF exports), runbooks, DB documentation, and in-repo ticket or issue exports. Also read what configures behaviour: CI/CD pipelines, infra (Docker, Helm, Terraform), feature-flag and environment config — they show integrations and jobs the code alone hides.
+   - **No fixed list of file types.** Anything that could plausibly carry business meaning is a candidate: Markdown, text, PDFs, Word/Excel/PowerPoint, CSV and spreadsheets (reference data, rate tables, code lists), JSON/YAML/XML samples and fixtures, HTML pages, images and diagrams, email or chat exports, notebooks. The lists above are examples, not a filter. Judge by what the file may tell you, and treat the unclear ones through the relevance question below.
+   - **Find it by what is committed, not only by name.** List the tracked documents (`git ls-files` filtered to everything that is not source code, lock files or build output; without git, find them) and skim titles and file names. Any committed Markdown, text or PDF file can hold requirements, specs, notes or a glossary — but also changelogs of dependencies, licences, generated output or stale scratch notes.
+   - **In doubt, ask whether a document is relevant** — one question, listing the candidates: *"I found `docs/visits.md`, `NOTES.txt` and `design/old-flow.md`. Which of these describe the business and should I use? Anything to ignore?"* Like the Step 1 question this is **not a gate**: post it, carry on with the code, and use only the unambiguous documents (README, `docs/`, ADRs, API specs) until the answer arrives. Record the answer (relevant / ignored) in the chapter's `Legacy Sources` note and reuse it on later passes. Never read a document as authoritative just because it is committed.
+   - **What it gives you**: the **vocabulary** and the *intent* — glossary terms, personas and roles, the stated purpose of a flow, the rules in prose, the order in user stories and sequence diagrams, the systems around this one, and the *why* behind decisions (ADRs). Often the quickest source for the order and for the business term behind a code name.
+   - **Trust it least on "what the system does today".** Documentation goes stale; code and tests show behaviour, docs show intent. Where a document and the code disagree, that is a question for the person (see below) — and the date, version or commit of the document is part of the evidence. A document is also a *summary*: a flow it describes still has to be found in the code, or marked as documented-only.
+   - **PDFs** (specs, requirement documents, manuals, exported wiki pages) are read like any other document: with the Read tool page by page (`pages`, max 20 per request), starting with the table of contents and the pages relevant to the current chapter. They are subject to the same relevance question as `.md`/`.txt` files.
+   - Documents too large or too binary to read fully (very long PDFs, Word files, a diagram image): skim headings and the parts for the current chapter, and for a whole document to be modelled use `summarize` instead of re-implementing it here.
+
+Where the lenses disagree (a route nobody calls, a table never written, a test for removed behaviour, a screen with no backend, a document describing a flow the code no longer has, or code doing something the documentation never mentions), that is a question for the person — not something to model.
+
+---
+
+## From code to elements — the mapping rules
+
+Start with the **API** and **persistence** lenses; they carry the most signal. Tests, UI and documentation then confirm, name and order what they found — documentation is the first place to look for the business word and the sequence.
+
+| In the code | On the board |
+|-------------|--------------|
+| **Persistence write** — an insert/update/delete, a `save()`, a status change: *what gets saved* | an **EVENT**, past tense, in business words (`Visit Booked`, not `visits row inserted`). Every persisted change is a candidate event; the saved fields are the event's fields. Several writes in one call = one decision with possibly several events — ask. |
+| **Inbound API call a person triggers** — a REST controller behind a form, button or page | a **SCREEN** that fires a **COMMAND** (write) or shows a **READMODEL** (read). The controller is evidence; the person's decision is the command. |
+| **Inbound API call nobody types in** — a webhook, a message/queue listener, a scheduled job, a call from another system | an **AUTOMATION** (+ its COMMAND). A webhook or message from another system goes through the translation chain: external EVENT → todo-list READMODEL → translation AUTOMATION → internal EVENT. |
+| **Outbound call to another system** — HTTP client, SDK, mail/SMS/payment/queue publish | an **AUTOMATION**: it reacts to an event (via its todo-list READMODEL), makes the call, and its COMMAND records the outcome as an EVENT (`Confirmation Mail Sent`, `Payment Failed`). |
+| **Read endpoint / query / join** | a **READMODEL**, fed by the events behind the tables it reads. |
+| **Documentation** — a user story, sequence diagram, ADR, glossary entry, API spec, `.feature` file | no element on its own: it **names** (glossary → titles), **orders** (stories, sequence diagrams → column order), **explains** (ADRs, rules in prose → decision rows, scenario candidates) and **corroborates** the elements derived from code. An API spec lists entry points and payloads like the *API* lens; a documented step with no counterpart in the code is documented-only — ask. |
+
+Rules of thumb: every API call is either a screen-driven command/read or an automation that does something; reaching out to other systems is typically an automation; a row that is only ever read, never written by this system, is reference data from outside — ask where it comes from instead of inventing an event. Class, table and endpoint names go in `description`, not titles.
+
+---
+
+## Progressive elaboration — all chapters first, then one chapter per pass
+
+### Pass 0 — all chapters, high level
+1. Read the sources broadly through the five lenses — start with the README and `docs/` for the overview and vocabulary — to spot the business workflows — don't wait for the Step 1 answer; walk the running UI via `discover-storyboard` once a URL has been given (also when it arrives after Pass 0).
+2. Group them into chapters and create them as `eventmodeling-brainstorming-events` (§ *Group events by workflow* / *Create one chapter per group*) does — a chapter is a user journey, never one endpoint, controller or CRUD operation. Code is split by operation (`OwnerController#initCreationForm`, `#processFindForm`, `#showOwner`, `#processUpdateOwnerForm`); the story is not — registering, finding, viewing and updating an owner are **one** chapter. Order the chapters per `eventmodeling-plotting-events`; ask where it is unclear. Add the **Decisions** lane, put the `Legacy Sources` note into **column 0** (see *The analysis log*), then sketch only the milestones (titles only) **from column 1 on**.
+3. Report the chapters and **ask which chapter to start with**. Never pick for them.
+
+### Pass N — detail the chosen chapter
+1. Work **in the chapter the person picked**, reusing what is already there. Model the **whole workflow**, not its first slice, by running the step skills on it in order:
+   - `eventmodeling-plotting-events` — the events in business order, start to outcome;
+   - `eventmodeling-storyboarding-events` — what the person sees after each event (e.g. *Owner Registered* → owner details page → add a pet). Every screen it places is an `HTML_SCREEN` (see *Screens* in the *UI* lens): skip its interview (the code answers it) and never take its sketch path;
+   - `eventmodeling-identifying-inputs` / `eventmodeling-identifying-outputs` — commands and read models;
+   - `eventmodeling-designing-automation-chains` / `eventmodeling-translating-external-events` — jobs, listeners, webhooks, outbound calls;
+   - `eventmodeling-elaborating-scenarios` — rules from the tests (layer 1+ only), built exactly as that skill says (see *Scenarios* below).
+   Feed each skill what the lenses and the mapping table give you; ask only where the code stops (see *Step 1* when the order is unclear).
+   **Screens and scenarios are part of the pass — never skip them.** A chapter with only events, commands and read models is not detailed yet. Every command and read model a person uses gets its `HTML_SCREEN` (storyboarding step), and every command gets at least its happy-path scenario from `eventmodeling-elaborating-scenarios`. Never report "not done: screens, scenarios, tests, UI" and ask for the next chapter; run those steps first. If a step truly can't be done (e.g. no tests to mine for a rule), say why in the chapter's decision rows, but still place the screens and the happy-path scenario.
+2. Stay within the layer's detail budget (below). Every placement batch carries its decision rows (see *Recording decisions*).
+3. Re-space the chapters (see *Keeping chapters apart*) after every batch.
+4. Append this pass's row to the chapter's *Analysis history*.
+5. Report, name the sub-flows found inside this chapter, and ask: which chapter next, go deeper here, or stop?
+
+Repeat until the person says stop. Chapters not chosen stay at high level.
+
+### Detail budget per layer
+
+| Layer | Elements | Fields | Examples | Scenarios | Screens |
+|-------|----------|--------|----------|-----------|---------|
+| **0 — High level** | one chapter per flow, business milestones as slices | none | none | none | none |
+| **1 — Flow** | real command / event / read model sequence of one flow | only identifying and business-critical | one per key element | happy path + the one or two rules that matter | only where a person decides |
+| **2+ — Deeper** | sub-flows, alternate paths, automations | full business field set incl. optional/list | realistic values from tests and fixtures | error cases and edge rules from the tests | HTML screens where a decision needs them (screenshots only from the running UI) |
+
+Never add detail that belongs to a deeper layer. Every element must trace to sources you read or an answer the person gave. **Deeper never means more technical** — it means more business: decisions, rules, failure modes.
+
+---
+
+## Keeping chapters apart
+
+A chapter is sized when it is created, so detailing it later makes it overlap the chapter below. After every batch: read `get_chapter_bounds`, and wherever the next chapter starts above `y + height + 600`, move it **and every chapter below it** down by the missing distance (`update_chapter` `move` operation), keeping their order. A pass isn't done while two chapters overlap.
+
+---
+
+## Recording decisions — the feedback lane
+
+Every decision you make while turning code into the model is recorded **on the timeline, where it applies**, with a reference back to the code it came from. A later reader (the person, a colleague, an agent generating code) must be able to ask "why is this here, and where in the legacy code is it?" and find the answer on the board, not in your chat history.
+
+**What counts as a decision** — record every one of these, never only the hard ones:
+
+| Decision | Example |
+|----------|---------|
+| Code construct → element | `VisitController#processNewVisitForm` + `visits` insert → *Book Visit* / *Visit Booked* |
+| Order | *Owner Registered* before *Pet Added* — from the UI click path or `docs/user-stories.md`, confirmed by the person |
+| Code vs. documentation conflict | `docs/visits.md` says visits can be cancelled, the code has no cancel path → asked; recorded as the person answered |
+| Code term → business term | `PetType` → *Species*, the person's word |
+| Person overrides the code | Code allows cancelling a visit; the person says it never happens → not modeled |
+| Merged / split | Two writes in `OwnerService#save` → one event; one endpoint → two commands |
+| Deliberately not modeled | `AuditLog` table, `CacheConfig` — technical, no business decision |
+| Reference data | `specialties` is only read, never written → external, asked where it comes from |
+| Assumption | No test covers the failure path; assumed the booking is rejected, marked *assumed* |
+
+**Where it goes**:
+
+1. Every chapter gets a `feedback` lane labelled **Decisions**. In Pass 0 pass it with the chapter's lanes when you create it (`lanes` on `/timeline`), otherwise add it with `add_lane { boardId, timelineId, lanes: [{ type: "feedback", label: "Decisions" }] }` (check `meta.timelineData.rows` for `type === "feedback"` first and reuse it).
+2. **Column 0: the chapter note** — the analysis log, where the flow lives and the chapter-wide decisions; see *The analysis log* below.
+3. **Every other column with a decision: one column note**, titled `Decisions — <column / step name>`. If a column already has one, **append** a row (`node:changed` on its `meta.description`) instead of adding a second note. Columns without a decision get no note.
+
+Create notes with `submit_node_events` (`node:created`, `meta.type: "MARKDOWN"`, `cellId = "<feedbackLaneId>-<columnId>"`, markdown body in **`meta.description`**, not `meta.content`). Batch all notes of one placement round into one call. The REST fallback is in `eventmodeling-orchestrating-event-modeling/references/api-fallback.md` (Step 11).
+
+**Write it as you go**: record the decision in the same batch as the elements it explains, not in a write-up at the end. An answer from the person is a decision too, so record it when you apply it.
+
+**Use tables, not prose.** Each note is mostly markdown tables. Prose is allowed only for a one-line intro, never for something that fits in a row.
+
+**Link elements, don't just name them.** Wherever a note mentions an element on the board, write `ref:<nodeId>`. It renders as the element's current title, and a click zooms the canvas to it (see `/learn-eventmodelers-api` *Linking to elements in markdown*). Use `[label](ref:<nodeId>)` only when the wording must differ. Take the id from your `node:created` or from a read. An element that isn't placed yet keeps its plain *italic* name until it is, and then the row is updated.
+
+**References must be precise and resolvable.** Paths are relative to the analysed code root, with a line number where one exists: `src/main/java/org/acme/visit/VisitController.java:57`, plus the class and method (`VisitController#processNewVisitForm`), table, endpoint (`POST /owners/{id}/pets/{petId}/visits/new`), test (`VisitControllerTests#testProcessNewVisitFormSuccess`) or template (`templates/pets/createOrUpdateVisitForm.html`). Use folders and packages for anything bigger than one class. Never "the visit code". A line number is valid for the commit of the *Analysis history* row that wrote it; when a later pass re-reads a changed file, it updates the references into that file.
+
+### The analysis log — column 0 of every chapter
+
+> **With `.vibe/` present, the file drives the note — never the reverse.** At the end of each pass, record it first:
+> `npx @eventmodelers/cli vibe baseline write --chapter "<Chapter>" --pass "<1 — flow>" --scope "<folders/files>" --result "<what came of it>" --json '{"depth":1,"folders":{"api":[{"path":"src/visit/","key":"VisitController"}],"persistence":[…],"tests":[…],"ui":[…]},"notModeled":["src/config/"],"decisions":[{"decision":"…","why":"…","source":"`VisitController.java:57`","confirmedBy":"code"}],"runningUi":"…"}'`
+> (only the fields that changed; the CLI appends the history row with the commit and the changed files' hashes itself — you do not compute them). Then render the note from the file and put the result into the `Legacy Sources — <Chapter>` node's `meta.description`: `npx @eventmodelers/cli vibe baseline render --chapter "<Chapter>"`. Never edit the note's tables by hand and never parse them back. The decision rows in the **column notes** stay on the board as described below — they are for readers, not for the gate. A chapter at Pass 0 is written with `depth: 0` and no folders; the first detailed pass sets `depth` ≥ 1 and the folders, which is what makes its code governed.
+
+Column 0 of every chapter holds **only** the chapter note, titled `Legacy Sources — <Chapter Name>`, in the **Decisions** lane — no slice, no element, no screen, in any lane. It records when the chapter was analysed, against which commit, how deep, where the flow lives in the code, and the decisions that affect the whole chapter (where it starts and ends, its order relative to other chapters, what was left out). The next run starts from it (*Step 0b*).
+
+- **New chapter**: place the note first (`cellId = "<feedbackLaneId>-<firstColumnId>"`), then every element with `columnIndex ≥ 1`. If a skill or `/timeline` put an element into column 0 anyway, insert an empty column with `update_chapter` `add_column { index: 0 }` and place the note there.
+- **Existing chapter without the note, or whose column 0 holds elements**: `update_chapter` `add_column { index: 0 }` and place the note there; move a `Legacy Sources` note found elsewhere into it (`place_element` `action: "move"`).
+- **Every pass appends one row** to *Analysis history* (`node:changed` on `meta.description`) — never edit or drop earlier rows; the history is the record of what was analysed when. A Step 0b check that found nothing new gets a row too.
+- **Commit** (if git is available): `git rev-parse --short HEAD` in the code root; if `git status --porcelain` lists changes in the chapter's folders, write `<hash>+dirty`. Without git, write `no git` — the date is then the only marker, and the next run analyses the chapter fully.
+
+**Chapter note** (column 0):
+
+```markdown
+Code root `petclinic/` · running UI: http://localhost:8080 (test account `george`)
+
+## Analysis history
+| # | Date | Commit | Pass | Scope | Result |
+|---|------|--------|------|-------|--------|
+| 1 | 2026-09-28 | `a1b2c3d` | 0 — high level | whole code base | 4 milestones |
+| 2 | 2026-10-01 | `a1b2c3d` | 1 — flow | `visit/`, `pet/` | 9 elements, 2 questions open |
+| 3 | 2026-10-03 | `f4e5d6c` | diff since `a1b2c3d` | `VisitController.java`, `schema.sql` | *Visit Cancelled* added, refs updated |
+
+## Where this flow lives
+| Area | Folder / package | Key classes |
+|------|------------------|-------------|
+| API | `src/main/java/org/acme/visit/` | `VisitController` |
+| Persistence | `src/main/resources/db/schema.sql` | `visits` table, `VisitRepository` |
+| Tests | `src/test/java/org/acme/visit/` | `VisitControllerTests` |
+| Docs | `docs/visits.md`, `docs/adr/0007-visit-scheduling.md` | user story *Book a Visit*, ADR 7 |
+| UI | `src/main/resources/templates/pets/` | `createOrUpdateVisitForm.html` |
+
+## Chapter decisions
+| # | Decision | Why | Source | Confirmed by |
+|---|----------|-----|--------|--------------|
+| 1 | Flow starts at ref:<petAddedId> | A visit needs a pet (`Visit.petId` not null) | `Visit.java:34` | person |
+
+## Not modeled
+| Code | Reason |
+|------|--------|
+| `CacheConfiguration` | technical, no business decision |
+```
+
+**Column note** (each column with a decision):
+
+```markdown
+| # | Decision | Element(s) | Why | Source | Confirmed by |
+|---|----------|------------|-----|--------|--------------|
+| 1 | Insert into `visits` → event | ref:<visitBookedId> | the only write of the booking | `VisitController.java:57` `#processNewVisitForm` | code |
+| 2 | Title *Book Visit*, not *New Visit Form* | ref:<bookVisitId> | the business word | person, 2nd answer | person |
+
+## Code vs. business terms
+| Code | Board |
+|------|-------|
+| `description` (Visit) | *Reason for Visit* |
+```
+
+The `Confirmed by` column shows how far to trust a decision: `code` (derived from the sources), `docs` (taken from documentation only, not seen in the code — say which document), `person` (they said so) or `assumed` (neither, still open). An `assumed` row whose question can't be settled from the model also gets a QUESTION comment on the node (see *Principles*); the row records the assumption, the comment asks the question.
+
+Element `description`s still carry their own short code reference. The feedback notes add the *why* and the decisions that span several elements.
+
+---
+
+## Chat mode — snippets only for real questions
+
+**When this run has a chat** (`CHAT_SESSION_ID` is set — the request came from the board's chat), a question the person answers with a pick is a **snippet** (`post_chat_message` with `snippet`; shapes in `/learn-eventmodelers-api` § 16 *Chat snippets*); an open question stays text. Without a chat, ask in prose.
+
+This overrides the `tasks`-snippet chat mode of `/timeline`. **Snippets are not a confirmation gate.** Never post a `tasks` snippet to let the person tick what you derived from the code — you build that directly (see *Principles*). Use a snippet only when you genuinely need the person (the Step 1 question about a running UI comes first, as plain text, when the analysis starts — then continue with the code analysis without waiting for the answer):
+
+1. **Order** — *"Which comes first?"* → a `poll` with the candidate orders; *"I'd put A before B — right?"* → a `confirm`.
+2. **Unclear business requirement** — the code leaves it open or contradicts itself (*"Can a visit be cancelled?"*, *"Is the specialty optional?"*) → a `confirm` or `poll` with your hypothesis; an open answer stays text.
+3. **Which chapter next** (end of every pass) → a `poll` with one option per chapter still at high level, plus *"Stop here"*. The pick arrives as the next chat message.
+
+One question per message, with the best hypothesis attached. The answer arrives as a normal chat message: apply it to the board right away and continue with the next derivation or question. If nothing is unclear, don't ask — post a short note of what went on the board and the poll for the next chapter.
+
+---
+
+## Delegate — which skill does what
+
+| Intent | Skill |
+|--------|-------|
+| Group workflows into chapters | `eventmodeling-brainstorming-events` |
+| Order events / chapters | `eventmodeling-plotting-events` |
+| What the person sees after each event | `eventmodeling-storyboarding-events` |
+| Walk a running UI | `discover-storyboard` |
+| Build / adjust the timeline (chapters, milestones, flow sequence) live | `/timeline` |
+| Place a single COMMAND / READMODEL / EVENT / SCREEN / AUTOMATION | `/place-element` |
+| Make a timeline element's slice explicit | `/eventmodeling-slicing-event-models` |
+| Command / read-model / automation design rules | `/eventmodeling-identifying-inputs`, `/eventmodeling-identifying-outputs`, `/eventmodeling-designing-automation-chains` |
+| Given/When/Then scenarios from the tests | `/eventmodeling-elaborating-scenarios` |
+| Add or rename attributes along a chain | `/attributes` |
+| Realistic example data from tests and fixtures | `/examples` |
+| A screen where a person decides | `/html-screen` — always HTML; a plain SCREEN only for a Playwright screenshot of the running UI (see *UI* lens), never `/storyboard-screen` |
+| Set a slice's status | `/update-slice-status` |
+| Record a decision with its code reference | *Recording decisions* (MARKDOWN note in the **Decisions** feedback lane) |
+| Open questions, unresolved code-vs-user conflicts | `/wdyt`, `/handle-comment` |
+| Inspect what is already modelled | `/analyze-existing-model` |
+| Validate before reporting completion | `/eventmodeling-validating-event-models-checklist` |
+| Any endpoint or element type not covered above | `/learn-eventmodelers-api` |
+
+### Scenarios
+
+*Which* rules to write is specific to legacy code: only business rules found in tests and comments — not simple validations ("must be a number"). Only create a storyline when the person explicitly asks.
+
+*How* to write them is not — read `eventmodeling-elaborating-scenarios` before the first scenario and follow it; a test translated line by line is how wrong scenarios end up on the board. In particular:
+
+- **What goes into Given, When and Then** — per command and per read model: § *1. Command Scenarios*, § *2. Command Scenarios - State Validation*, § *3. View Scenarios*, § *3b. List-type Read Model Scenarios*, § *4. Error Path Scenarios* (worked examples in its `references/examples.md`).
+- **Which elements may appear in a step** — only those `get_spec_info` returns for the timeline: § *Post Scenarios to Board* → *Step 2 — Load valid step elements* and *Step 3 — Resolve step IDs*. A test's mocks, repositories or setup calls are never steps.
+- **Rejections** — § *Step 4c — Error/rejection scenarios*.
+- **Before reporting** — its § *Quality Checklist*.
+
+---
+
+## End every pass the same way
+
+Re-read the board (do not trust your memory) and run `eventmodeling-validating-event-models-checklist` on the chapter. On top of it, check what is specific to this skill: the chapter tells its workflow from trigger to outcome (not a single slice), layer discipline held, no chapters overlap, descriptions carry the code reference, every decision of this pass is a row in the **Decisions** lane, column 0 holds only the `Legacy Sources` note and its *Analysis history* has this pass's row. Then report:
+
+1. what you put on the board — titles, node IDs, chapter;
+2. what is still open or unanswered;
+3. the sub-flows you found;
+4. the question — **which one next, or stop?**

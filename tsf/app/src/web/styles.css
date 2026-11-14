@@ -25,11 +25,14 @@ body.tsf-resizing {
   height: 100vh;
   height: 100dvh;
   display: grid;
-  grid-template-rows: var(--pw-topbar-h) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .tsf-topbar {
   position: relative;
+  /* Grows when the bar stacks onto more rows (see the media query below). */
+  height: auto;
+  min-height: var(--pw-topbar-h);
 }
 
 /* The failed-rebuild banner floats over the top bar's right half; the app grid is not changed. */
@@ -52,7 +55,37 @@ body.tsf-resizing {
 
 .tsf-topbar .pw-topbar-inner {
   max-width: none;
-  padding: 0 var(--pw-sp-4);
+  height: auto;
+  min-height: var(--pw-topbar-h);
+  box-sizing: border-box;
+  padding: var(--pw-sp-1) var(--pw-sp-4);
+  flex-wrap: wrap;
+  row-gap: var(--pw-sp-1);
+}
+
+.tsf-topbar .pw-topbar-actions {
+  margin-left: auto;
+}
+
+/* Below 1700px the factory strip and the navbar each take a row of their own under the brand and the settings
+   controls, so nothing is pushed past the right edge. */
+@media (max-width: 1700px) {
+  .tsf-topbar .tsf-topbar-title {
+    order: 0;
+  }
+  .tsf-topbar .pw-topbar-actions {
+    order: 1;
+  }
+  .tsf-topbar .tsf-fxbar {
+    order: 2;
+    flex: 1 1 100%;
+    margin-left: 0;
+  }
+  .tsf-topbar .pw-topbar-inner > .tsf-navbar-global {
+    order: 3;
+    flex: 1 1 100%;
+    padding: 0;
+  }
 }
 
 /* --- Workbench: left pane, left handle, centre, right handle, right pane ------------------------------------- */
@@ -66,6 +99,10 @@ body.tsf-resizing {
   grid-template-rows: minmax(0, 1fr);
   min-height: 0;
   min-width: 0;
+  /* Grid children must never make the application wider than the viewport. */
+  overflow: hidden;
+  /* The chat popover and the narrow-screen pages drawer are positioned inside the workbench. */
+  position: relative;
 }
 
 .tsf-pane-left,
@@ -236,6 +273,95 @@ body.tsf-resizing .tsf-resize::after {
 .tsf-gap-left,
 .tsf-gap-right {
   width: 0;
+}
+
+/* Up to 1800px the agent is a popover: a floating card (or, collapsed, a round button) at the bottom right of the
+   workbench. It floats over the page instead of taking a column, so the centre pane keeps the full width. The
+   resize handle is hidden: the popover is a fixed size capped by the viewport. A maximised agent keeps its grid
+   columns, so it is left alone here. */
+@media (max-width: 1800px) {
+  .tsf-workbench:not(.tsf-workbench-max) {
+    grid-template-columns: var(--tsf-left-w, 280px) auto minmax(0, 1fr);
+  }
+
+  .tsf-workbench:not(.tsf-workbench-max) .tsf-resize-right,
+  .tsf-workbench:not(.tsf-workbench-max) .tsf-gap-right {
+    display: none;
+  }
+
+  .tsf-workbench:not(.tsf-workbench-max) .tsf-pane-right {
+    grid-area: auto;
+    position: absolute;
+    right: var(--pw-sp-3);
+    bottom: var(--pw-sp-3);
+    z-index: 30;
+    box-sizing: border-box;
+    width: min(var(--tsf-right-w, 440px), calc(100% - 2 * var(--pw-sp-3)));
+    height: min(720px, calc(100% - 2 * var(--pw-sp-3)));
+    border: 1px solid var(--pw-glass-line, var(--pw-border-subtle));
+    border-radius: var(--pw-r-md);
+    background: var(--pw-surface);
+    box-shadow: 0 12px 32px color-mix(in srgb, var(--pw-text) 22%, transparent);
+  }
+
+  .tsf-workbench:not(.tsf-workbench-max) .tsf-rail-right {
+    grid-area: auto;
+    position: absolute;
+    right: var(--pw-sp-3);
+    bottom: var(--pw-sp-3);
+    z-index: 30;
+    box-sizing: border-box;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    justify-content: center;
+    border: 1px solid var(--pw-glass-line, var(--pw-border-subtle));
+    border-radius: 50%;
+    background: var(--pw-surface);
+    box-shadow: 0 6px 18px color-mix(in srgb, var(--pw-text) 22%, transparent);
+  }
+
+  .tsf-workbench:not(.tsf-workbench-max) .tsf-rail-right .tsf-rail-state {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+  }
+}
+
+/* Up to 900px the pages pane is a drawer over the centre pane (open) or a 32px rail (closed), so the centre pane
+   always has the whole width. The agent, when maximised, spans the same single column. */
+@media (max-width: 900px) {
+  .tsf-workbench,
+  .tsf-workbench:not(.tsf-workbench-max) {
+    grid-template-columns: 0 0 minmax(0, 1fr);
+  }
+
+  .tsf-workbench[data-left="closed"],
+  .tsf-workbench[data-left="closed"]:not(.tsf-workbench-max) {
+    grid-template-columns: var(--tsf-rail-w) 0 minmax(0, 1fr);
+  }
+
+  .tsf-workbench .tsf-resize-left,
+  .tsf-workbench .tsf-resize-right {
+    display: none;
+  }
+
+  .tsf-workbench .tsf-pane-left {
+    grid-area: auto;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 25;
+    box-sizing: border-box;
+    width: min(var(--tsf-left-w, 280px), calc(100% - var(--tsf-rail-w)));
+    background: var(--pw-surface);
+    box-shadow: 12px 0 28px color-mix(in srgb, var(--pw-text) 18%, transparent);
+  }
+
+  .tsf-workbench-max .tsf-pane-right {
+    grid-column: 3;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

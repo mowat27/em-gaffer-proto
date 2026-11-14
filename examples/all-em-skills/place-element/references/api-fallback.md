@@ -1,0 +1,198 @@
+# Place Element — curl Fallback Calls
+
+Only needed when MCP is not connected. Every call below has an MCP equivalent in the main SKILL.md — always prefer that.
+
+## Step 2 — Discover chapters
+
+```bash
+curl -s "$BASE_URL/api/org/$ORG_ID/boards/$BOARD_ID/nodes?type=CHAPTER&projection=line"
+```
+
+## Step 3 — Fetch the chapter node (columns + cells)
+
+```bash
+curl -s "$BASE_URL/api/org/$ORG_ID/boards/$BOARD_ID/nodes/$TIMELINE_ID?projection=cells"
+```
+
+Returns `{rows, columns, cells}` directly (not wrapped in `meta.timelineData`).
+
+## Step 4a — SCENARIO: append scenarios via the spec endpoint
+
+```bash
+curl -s -X POST "$BASE_URL/api/org/$ORG_ID/boards/$BOARD_ID/timelines/$TL/columns/$COL/scenarios" \
+  -H "x-token: $TOKEN" -H "Content-Type: application/json" \
+  -d '[
+    {
+      "id": "<scenario-uuid>",
+      "title": "Happy path",
+      "given": [{"id":"<eventNodeId>","title":"OrderPlaced","type":"EVENT"}],
+      "when":  [{"id":"<commandNodeId>","title":"PlaceOrder","type":"COMMAND"}],
+      "then":  [{"id":"<eventNodeId2>","title":"OrderConfirmed","type":"EVENT"}]
+    },
+    {
+      "id": "<scenario-uuid>",
+      "title": "Insufficient stock",
+      "given": [{"id":"<eventNodeId>","title":"OrderPlaced","type":"EVENT"}],
+      "when":  [{"id":"<commandNodeId>","title":"PlaceOrder","type":"COMMAND"}],
+      "then":  [],
+      "expectError": true,
+      "errorDescription": "Stock below requested quantity"
+    }
+  ]'
+# → 201 { specNodeId, scenarios (all), added (count), isNewNode }
+```
+
+## Step 5 — Create a column when appending
+
+```bash
+curl -s -X POST "$BASE_URL/api/org/$ORG_ID/boards/$BOARD_ID/timelines/$TIMELINE_ID/columns" \
+  -H "x-token: $TOKEN" \
+  -H "x-user-id: agent" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+Response: `{ "columnId": "<uuid>", "index": <n>, "totalColumns": <n> }`
+
+## Step 6 — Check cell occupancy
+
+`GET /nodes` takes `cellId` **or** `colId`, both requiring `timelineId` — no need to re-fetch and parse the whole chapter node just for this:
+
+```bash
+# Same-cell occupancy — [] if empty, [nodeRecord] if occupied
+curl -s "$BASE_URL/api/org/$ORG_ID/boards/$BOARD_ID/nodes?cellId=$CELL_ID&timelineId=$TIMELINE_ID"
+
+# Same-column occupancy, across every row of the timeline — add &type=<elementType> to narrow
+# (the server enforces one COMMAND/READMODEL/SCREEN/HTML_SCREEN/AUTOMATION per column even when
+# the target cell itself is empty — see SKILL.md)
+curl -s "$BASE_URL/api/org/$ORG_ID/boards/$BOARD_ID/nodes?colId=$COLUMN_ID&timelineId=$TIMELINE_ID"
+```
+
+If you already have a fresh grid loaded from Step 3, reading its `cells` array directly (sparse — an entry only exists once something has been placed there) avoids the extra round-trip; use the calls above otherwise, or when the grid might be stale (e.g. a column was just created).
+
+## Step 6 — Insert a column at a specific index (conflict resolution)
+
+No relative-insertion equivalent over REST (unlike MCP's `afterNodeId`) — compute the index by hand:
+
+```bash
+curl -s -X POST "$BASE_URL/api/org/$ORG_ID/boards/$BOARD_ID/timelines/$TIMELINE_ID/columns" \
+  -H "x-token: $TOKEN" -H "x-user-id: agent" \
+  -H "Content-Type: application/json" \
+  -d '{"index": <currentColumnIndex + 1>}'
+```
+
+## Step 6a — Link a node to an origin on a different timeline
+
+`POST .../nodes/:nodeId/link` with `{ "targetNodeId": "<newly-placed-node-id>" }` — see `learn-eventmodelers-api` §3.
+
+## Step 7a — SCREEN: create and render (HTML path)
+
+```bash
+curl -s -X POST "$BASE_URL/api/org/$ORG_ID/boards/$BOARD_ID/html-screen-nodes/<node-uuid>" \
+  -H "x-token: $TOKEN" \
+  -H "x-user-id: agent" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "chapterId": "<TIMELINE_ID>",
+    "cellId": "<CELL_ID>",
+    "title": "<title>",
+    "pages": ["<div>...</div>"]
+  }'
+```
+
+## Step 7a — SCREEN: create and render (sketch path, explicit request only)
+
+```bash
+curl -s -X POST "$BASE_URL/api/org/$ORG_ID/boards/$BOARD_ID/image-nodes/<node-uuid>/sketch" \
+  -H "x-token: $TOKEN" \
+  -H "x-user-id: agent" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "chapterId": "<TIMELINE_ID>",
+    "cellId": "<CELL_ID>",
+    "title": "<title>",
+    "description": {"elements": [...]},
+    "semanticDescription": "<title — what this screen shows>"
+  }'
+```
+
+## Step 7b — Create any other node type (normal path, `cellId`)
+
+Include `x-token` and `x-user-id: agent` on every call to `/nodes/events`.
+
+```bash
+curl -s -X POST "$BASE_URL/api/org/$ORG_ID/boards/$BOARD_ID/nodes/events" \
+  -H "x-token: $TOKEN" \
+  -H "x-user-id: agent" \
+  -H "Content-Type: application/json" \
+  -d '[{
+    "id": "<event-uuid>",
+    "eventType": "node:created",
+    "nodeId": "<node-uuid>",
+    "chapterId": "<TIMELINE_ID>",
+    "cellId": "<CELL_ID>",
+    "meta": {
+      "type": "<ELEMENT_TYPE>",
+      "title": "<title>"
+    },
+    "node": { "data": { "title": "<title>" } }
+  }]'
+```
+
+## Step 7b — Create any other node type (fast path, `cellName`)
+
+Same as above, but `cellName` replaces `cellId` — nothing else in the payload changes:
+
+```bash
+curl -s -X POST "$BASE_URL/api/org/$ORG_ID/boards/$BOARD_ID/nodes/events" \
+  -H "x-token: $TOKEN" \
+  -H "x-user-id: agent" \
+  -H "Content-Type: application/json" \
+  -d '[{
+    "id": "<event-uuid>",
+    "eventType": "node:created",
+    "nodeId": "<node-uuid>",
+    "chapterId": "<TIMELINE_ID>",
+    "cellName": "<CELL_NAME>",
+    "meta": {
+      "type": "<ELEMENT_TYPE>",
+      "title": "<title>"
+    },
+    "node": { "data": { "title": "<title>" } }
+  }]'
+```
+
+Response: `{ "hashes": { "<event-id>": "<hash>" } }` — keyed by the `id` you sent on each event, which is how you match a hash back to the event that produced it.
+
+## Full worked example — place an EVENT via curl, start to finish
+
+With MCP connected, the same result is one call: `mcp__eventmodelers__place_element { "boardId": "<BOARD_ID>", "timelineId": "<TIMELINE_ID>", "elements": [{ "elementType": "EVENT", "title": "Order Placed" }] }`.
+
+Placing an EVENT called "Order Placed" at the end of a timeline, over curl:
+
+```bash
+# 1. Add a column (append at end)
+curl -s -X POST "$BASE_URL/api/org/$ORG_ID/boards/$BOARD_ID/timelines/<TIMELINE_ID>/columns" \
+  -H "x-token: $TOKEN" -H "Content-Type: application/json" \
+  -d '{}'
+
+# 2. Fetch chapter to find the target lane cell for the new column
+curl -s -H "x-token: $TOKEN" -H "x-user-id: place-element-skill" \
+  "$BASE_URL/api/org/$ORG_ID/boards/$BOARD_ID/nodes/<TIMELINE_ID>?projection=cells"
+
+# 3. Create the EVENT node — do not skip the x-user-id header
+curl -s -X POST "$BASE_URL/api/org/$ORG_ID/boards/$BOARD_ID/nodes/events" \
+  -H "x-token: $TOKEN" -H "Content-Type: application/json" \
+  -H "x-user-id: place-element-skill" \
+  -d '[{
+    "id": "<event-uuid>",
+    "eventType": "node:created",
+    "nodeId": "<node-uuid>",
+    "chapterId": "<TIMELINE_ID>",
+    "cellId": "<CELL_ID>",
+    "meta": { "type": "EVENT", "title": "Order Placed" },
+    "node": { "id": "<node-uuid>", "data": { "title": "Order Placed" } }
+  }]'
+```
+
+Replace `<TIMELINE_ID>`, `<BOARD_ID>`, `<CELL_ID>`, `<event-uuid>` and `<node-uuid>` with real values — you mint two uuids here: the node's and the event's own `id`, which is required. `boardId`/`timestamp` are omitted on purpose: the server derives both from the request and ignores them if sent.

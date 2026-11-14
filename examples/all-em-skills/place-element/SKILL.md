@@ -1,0 +1,425 @@
+---
+name: place-element
+description: Place a COMMAND, READMODEL, EVENT, SCREEN, AUTOMATION, or SCENARIO spec node onto an existing eventmodelers board timeline at a specific position
+---
+
+# Place Element
+
+> **Before doing anything else**, invoke the `connect` skill — if not already connected — to resolve `TOKEN`, `BOARD_ID`, and `BASE_URL`. Do not proceed until it has completed. Consult `learn-eventmodelers-api` only if you need to look up a specific endpoint or field this file doesn't cover — don't load it eagerly.
+
+Prefer `mcp__eventmodelers__*` tools when available (registered by the `connect` skill) — `references/api-fallback.md` has the curl fallback for every MCP call below, for sessions without MCP connected.
+
+Place a single element — COMMAND, READMODEL, EVENT, SCREEN, AUTOMATION, or SCENARIO spec node — onto an existing timeline on an eventmodelers board. Uses an existing column when a position is given; only creates a new column when appending.
+---
+
+## Step 1 — Parse arguments
+
+From `$ARGUMENTS`, extract:
+
+| Field | How to find it | Default |
+|-------|---------------|---------|
+| `elementType` | `event`, `command`, `readmodel`, `screen`, or `automation` (case-insensitive) | **required** |
+| `title` | the element name, e.g. "Order Placed" | **required** |
+| `boardId` | a board UUID | from `connect` skill (`BOARD_ID`) |
+| `timelineId` | the chapter/timeline UUID | auto-detect (see Step 2) |
+| `position` | column index (0-based number), `"after <title>"`, or omitted | append at end |
+| `cellName` | spreadsheet-style cell reference given directly in the prompt — always `<letter(s)><number>`, e.g. `"A2"`, `"AA10"` | none |
+| `baseUrl` | explicit URL override | from `connect` skill (`BASE_URL`) |
+
+Normalise `elementType` to uppercase: `event` → `EVENT`, `command` → `COMMAND`, `readmodel` → `READMODEL`, `screen` → `SCREEN`, `automation` → `AUTOMATION`.
+
+Use `BOARD_ID` and `BASE_URL` from the `connect` skill. If a `boardId` argument is explicitly passed, it overrides `BOARD_ID`.
+
+**Fast path — spreadsheet-style cell reference given directly (e.g. "place a COMMAND in A2"):** don't try to interpret what "A2" means yourself. The `node:created` event accepts a `cellName` field (see `learn-eventmodelers-api`) and the backend resolves it to the actual row/column — the same shortcut `html-screen` already uses. Skip Steps 3–6 entirely: resolve only `timelineId` (Step 2, needed for `chapterId`), then go straight to Step 7 and pass `cellName` instead of `cellId` on the `node:created` payload. Do not fetch columns, do not compute a row/column index, and do not construct `cellId` yourself for this case.
+
+**This still applies when several cell references are given together for one slice** (e.g. "put the screen in C1, the command in C2, the event in C3"). Do not reason about the grid at all — not which column "C" is, not whether C1/C2/C3 land in the same column, not which row is which. That is exactly the interpretation this fast path exists to skip. Treat each cell reference as an opaque string tied to its own element: call Step 7 once per element, passing that element's `cellName` untouched. The backend resolves each independently; the placements only need to be internally consistent with each other insofar as the prompt already told you so — you never need to understand *why*.
+
+---
+
+## Prefer MCP — `place_element` (COMMAND / READMODEL / EVENT only)
+
+**When `elementType` is `COMMAND`, `READMODEL`, or `EVENT` and `position` is either omitted or a plain numeric column index** (not `"after <title>"`, not an explicit `cellName`), skip Steps 2–7b entirely and make one call:
+
+```
+mcp__eventmodelers__place_element {
+  "boardId": "<BOARD_ID>",
+  "timelineId": "<TIMELINE_ID>",
+  "elements": [{
+    "elementType": "<COMMAND|READMODEL|EVENT>",
+    "title": "<title>",
+    "columnIndex": <position,
+    if given>,
+    "fields": [{ "name": "orderId", "type": "String", "example": "ord-1" }]
+  }],
+  "compact": true
+}
+```
+
+Pass `fields` whenever the element's attributes are already known — they are written by this same call, so don't follow a placement with a `submit_node_events` just to set them. Every field you pass needs a known source per `eventmodeling-information-completeness`. A field without one is a gap to close upstream, not a field to place as is. Placing **more than one** element is more entries in the same `elements` array, applied in order so each entry sees the columns the previous one added — one call for a whole slice's or column run's worth instead of one per element. **Order the array by narrative, left to right, one slice after another** (screen → command → event → the read model/view screen that event feeds → next slice) — never grouped by `elementType` (all commands, then all read models): by-type order makes every read model land in an inserted column after the fact and breaks the visual story.
+
+This tool finds or creates an empty cell in the correct lane and places the node in one call — it collapses the "resolve timeline → fetch columns → determine lane → check occupancy → create node" sequence (Steps 2–3, 4, 6, 7b below) into a single round trip. A `columnIndex` past the timeline's current column count is handled automatically (columns are added to reach it) — no need to pre-check the column count or catch an out-of-range error yourself. If `timelineId` is unknown, resolve it first via Step 2's MCP call. Pass `compact: true` for a smaller `{nodeId, cellName, columnIndex}` response (plus `connectedCount` if auto-connect wired an edge) when you don't need the full `lane`/`elementType`/`title`/`autoConnected` detail back. Go straight to Step 8 once it returns.
+
+**This does not cover**: `SCREEN`/`AUTOMATION`/`SCENARIO` (see their dedicated steps below), the `"after <title>"` position form, or an explicit `cellName` fast path (Step 1) — `place_element` has no way to express either. For those cases, or when MCP isn't connected, fall through to the manual steps below.
+
+---
+
+## Step 2 — Resolve the timeline
+
+**Prefer MCP** — ids and titles are all this step needs, so use `projection: "line"` (without it every chapter's full grid comes back):
+
+```
+mcp__eventmodelers__get_nodes { "boardId": "<BOARD_ID>", "type": "CHAPTER", "projection": "line" }
+```
+
+**Fallback (no MCP):** see `references/api-fallback.md` — "Step 2 — Discover chapters". If `timelineId` is not provided, this discovers chapters on the board.
+
+- **Exactly one chapter** → use it automatically, tell the user which one was selected.
+- **Multiple chapters** → list them by name/ID and ask the user which to target.
+- **No chapters** → stop and tell the user to create a chapter first (e.g. via the `/timeline` skill).
+
+---
+
+## Step 3 — Fetch existing columns and resolve position
+
+Always fetch the chapter node first to get the current timeline state — `projection: "cells"` returns just `{rows, columns, cells}`, not the whole chapter node.
+
+**Prefer MCP:**
+
+```
+mcp__eventmodelers__get_node { "boardId": "<BOARD_ID>", "nodeId": "<TIMELINE_ID>", "projection": "cells" }
+```
+
+**Fallback (no MCP):** see `references/api-fallback.md` — "Step 3 — Fetch the chapter node".
+
+Read `columns` (ordered array of column objects with `id` and `index`) and `cells` (directly from the result — MCP and the REST fallback's `?projection=cells` return the same `{rows, columns, cells}` shape).
+
+Then resolve `position`:
+
+| Input | Behaviour |
+|-------|-----------|
+| A number (e.g. `2`) | Find the existing column whose `index === 2`. Save its `id` as `columnId`. **Do NOT create a new column.** |
+| `"after <title>"` | Cross-reference node titles to find the named column, then target the column at position + 1. If that next column already exists use it; if not, create one at that index. |
+| Omitted | No existing column is targeted → create a new column at the end (Step 5). |
+
+If `position` is a number and no column exists at that index, stop and tell the user: "No column at index `<n>` — did you mean to append instead?"
+
+---
+
+## Step 4 — Determine the target lane
+
+| `elementType` | Target lane `type` |
+|---------------|--------------------|
+| `EVENT`       | `swimlane`         |
+| `COMMAND`     | `interaction`      |
+| `READMODEL`   | `interaction`      |
+| `SCREEN`      | `actor`            |
+| `AUTOMATION`  | `actor`            |
+| `SCENARIO`    | `spec`             |
+
+---
+
+## Step 4a — SCENARIO only: append scenarios via the spec endpoint
+
+**Only applies when `elementType === "SCENARIO"`.**
+
+The `/scenarios` endpoint creates the SCENARIO spec node automatically if the spec cell is empty, then appends all provided scenarios in one call. Do **not** use `/nodes/events` to create the spec node or write scenarios manually.
+
+After resolving `columnId` (from step 3, or from step 5 if a new column was just created), call:
+
+**Prefer MCP:**
+
+> **Original only:** if the target COMMAND/READMODEL has `meta.linkedTo` it is a copy — resolve to the origin (no `linkedTo`) and use the origin's `timelineId`/`columnId`; never put a spec on a copy's column. Same for `add_storyline`. See `eventmodeling-core-rules`.
+
+```
+mcp__eventmodelers__add_scenario {
+  "boardId": "<BOARD_ID>",
+  "timelineId": "<TL>",
+  "columnId": "<COL>",
+  "scenarios": [ /* same scenario objects as the curl body below */ ],
+  "compact": true
+}
+```
+
+Same rules apply (context=READMODELs only, given=EVENTs only, when=at most one COMMAND or QUERY, then=EVENTs only or exactly one READMODEL, `expectError`+`errorDescription` for error cases). The values essential to the scenario — what the rule decides on, the ids linking the steps, the asserted outcome — go into each step's `fields: [{name, example}]`; every other field stays empty so it is clear which data is relevant — see `eventmodeling-elaborating-scenarios` "Fill the values essential to the scenario". This auto-creates the spec node if the cell is empty, same as the curl endpoint.
+
+**Fallback (no MCP):** see `references/api-fallback.md` — "Step 4a — SCENARIO: append scenarios via the spec endpoint" for the full curl call and example payload.
+
+**Scenario object shapes:**
+
+| Scenario type | Shape |
+|---|---|
+| Happy path | `{ id, title, given[], when[], then[] }` |
+| Error case | `{ id, title, given[], when[], then: [], expectError: true, errorDescription: "..." }` |
+
+**Step item format** — each item in `given`, `when`, `then`:
+```json
+{ "id": "<board-node-uuid>", "title": "OrderPlaced", "type": "EVENT", "fields": [], "specRow": 0 }
+```
+`id` is required (board node UUID). `title` and `type` are informational.
+
+| Step | Allowed types |
+|------|--------------|
+| `given` | `EVENT` only |
+| `when`  | at most one `COMMAND`; empty when `then` has a READMODEL |
+| `then` (happy path) | `EVENT` or `READMODEL` — not mixed |
+| `then` (error case) | leave empty, use `expectError: true` |
+
+**Mapping config IDs to board node IDs** — if working from a slice config file, build a lookup first:
+```
+config_command_id → board COMMAND node ID  (from chapter cells for that column)
+config_event_id   → board EVENT node ID    (from chapter cells for that column)
+config_rm_id      → board READMODEL node ID
+```
+
+Once `/scenarios` returns `201`, proceed directly to **Step 8** — report back to the user.
+
+---
+
+## Step 5 — Create a column only when appending
+
+**Skip this step entirely** when `columnId` was already resolved in Step 3 (i.e. the user targeted an existing column).
+
+Only run this when position was omitted (append mode).
+
+**Prefer MCP:**
+
+```
+mcp__eventmodelers__update_chapter { "boardId": "<BOARD_ID>", "timelineId": "<TIMELINE_ID>", "operations": [{ "op": "add_column" }] }
+```
+
+**Fallback (no MCP):** see `references/api-fallback.md` — "Step 5 — Create a column when appending".
+
+Save `columnId` from the response.
+
+---
+
+## Step 6 — Compute the target cell ID and check availability
+
+Using the `{rows, columns, cells}` grid already fetched in Step 3 (re-fetch if a column was just created):
+
+- Find the row in `rows` whose `type` matches the target lane (`swimlane`, `interaction`, or `actor`).
+- Compute the cell ID directly: **`CELL_ID = targetRow.id + "-" + columnId`**
+
+Cell IDs are always `<rowId>-<columnId>` — no cell array search needed.
+
+**One EVENT per column (hard rule).** A column represents a single moment in the timeline. When `elementType` is `EVENT`, an occupied column means occupied *at all* — even if the existing EVENT sits in a different swimlane row (e.g. a different system under Conway's Law). Never place two EVENT nodes in the same column just because they're in different swimlanes. Before treating the column as available, check `cells` for **every** row whose `type === "swimlane"`, not only `targetRow` — if any of those cells already holds an EVENT node, treat the column as occupied and insert a new column immediately after (see the table below), not the target column itself.
+
+**Same swimlane for events emitted by the same command.** When one command emits more than one event, each event still gets its own column (per the hard rule above), but all of them belong in the *same* swimlane row, placed in adjacent columns immediately after the command. Do not scatter a command's sibling events across different swimlane rows — one command producing multiple events is one system doing multiple things in sequence, not several systems reacting independently.
+
+**One COMMAND / READMODEL / SCREEN / AUTOMATION per column — server-enforced, not just a heuristic.** Unlike the EVENT rule above (which this skill has to check for itself), the server itself rejects a second `COMMAND`, `READMODEL`, `SCREEN`/`HTML_SCREEN`, or `AUTOMATION` landing in a column that already has one of that type — across *every* row of the relevant lane (`interaction` for COMMAND/READMODEL, `actor` for SCREEN/AUTOMATION), not only the exact target cell. A board can have several separate `interaction` or `actor` rows, so the target cell itself can be empty and the placement will still fail with a `ValidationError` ("Column already has a … node … — only one … is allowed per column"). Treat that rejection exactly like a same-cell conflict in the table below — insert a new column rather than retrying the same one.
+
+**Check if the cell is already occupied.**
+
+**Fastest path**: use the `cells` array you already fetched in Step 3 via `get_node` (`projection: "cells"`) on the chapter/timeline node — `cells` is a sparse array, so a `nodeId` absent from the entry for `CELL_ID` means the cell is empty. Also scan it for the column-wide conflict from the rule above: any entry with `colId === columnId` and `nodeType === elementType` (for COMMAND/READMODEL/SCREEN/AUTOMATION) means the column is occupied even though `CELL_ID` itself is free. This avoids an extra round-trip, but can be stale if a column was just created in Step 5 — re-fetch first in that case.
+
+**No direct MCP equivalent** for querying by cell/column: `get_nodes` filters by `type`, `name`, `chapterId` and `nodeIds`, but has no `cellId`/`colId` filter. The REST API does support it directly though — `GET /nodes` takes `cellId` **or** `colId`, both requiring `timelineId`:
+
+```bash
+# Same-cell occupancy — returns [] if empty, or [nodeRecord] if occupied
+curl -s "$BASE_URL/api/org/$ORG_ID/boards/$BOARD_ID/nodes?cellId=$CELL_ID&timelineId=$TIMELINE_ID"
+
+# Column-wide occupancy (any row) — optionally add &type=READMODEL to narrow to one element type
+curl -s "$BASE_URL/api/org/$ORG_ID/boards/$BOARD_ID/nodes?colId=$COLUMN_ID&timelineId=$TIMELINE_ID"
+```
+
+Use this REST call (see the curl fallback below) when you don't already have a fresh grid loaded, instead of re-fetching the chapter just to check occupancy.
+
+**Fallback (no MCP):** see `references/api-fallback.md` — "Step 6 — Check cell occupancy".
+
+**If the cell is occupied**, the behaviour depends on the element type being placed:
+
+| Element type | Occupant type in same cell | Action |
+|---|---|---|
+| `READMODEL` | `COMMAND` (state-change slice already owns this column) | Insert a **new column immediately after** the current column (not at the end) and use that new column as the target. This row covers positioning the read model relative to its **source EVENT's** column. If instead you're placing the read model to share a column with an **already-placed view SCREEN** it feeds (`eventmodeling-identifying-outputs`'s Step 5g scenario) and that column is unavailable, do the opposite: insert the new column immediately **before** the screen — the screen's own position must never move to resolve this. |
+| `SCREEN` (view/output screen) | any | Insert immediately after (this is placing a brand-new screen, not repositioning one relative to an existing read model). |
+| `EVENT` | `EVENT` in **any other swimlane row of the same column** | Insert a new column immediately after — an EVENT never shares a column with another EVENT, even across different swimlanes. |
+| Any | Same element type | Stop and tell the user — true conflict, no safe default. |
+| Any | Different type but not a known pairing | Stop and tell the user. |
+
+**A later EVENT that needs to update a READMODEL already feeding a SCREEN is not a Step 6 occupancy case — it's a backward-connection trap.** Do not `set_connection` that EVENT into the existing READMODEL, even if the existing READMODEL's column is reachable. See `eventmodeling-core-rules`'s "Updating a Read Model That Already Feeds a Screen": place a **new** READMODEL in a new column immediately after the event's column instead, link it to the existing READMODEL as a `linkedTo` copy (Step 6a below — it's the same read model, not an unrelated new one), connect the event forward into the linked copy, and give it a matching SCREEN in the same column (a plain node, not linked — SCREEN isn't a linkable type).
+
+**Insert immediately after** means: create the new column right after the current one, not by appending to the end. This keeps the read model visually adjacent to the event that drives it.
+
+**Prefer MCP** — pass `afterNodeId` set to the occupying node's id (found in Step 6's cell-occupancy check) and let the tool resolve the index itself, instead of computing `currentColumnIndex + 1` by hand:
+
+```
+mcp__eventmodelers__update_chapter { "boardId": "<BOARD_ID>", "timelineId": "<TIMELINE_ID>", "operations": [{ "op": "add_column", "afterNodeId": "<occupyingNodeId>" }] }
+```
+
+**Fallback (no MCP):** see `references/api-fallback.md` — "Step 6 — Insert a column at a specific index" (no relative-insertion equivalent over REST; the index is computed by hand).
+
+If no matching row is found, stop and report the error — the timeline may be missing the required lane type.
+
+---
+
+## Step 6a — Referencing a node on a different timeline
+
+**Connections only ever pair nodes on the same timeline** — a node in Chapter A can never be wired directly to a node in Chapter B, even for an otherwise-valid type pair (e.g. `EVENT → READMODEL`). If the element you're placing needs to connect to something that lives on a *different* timeline, do not place it and then attempt `set_connection`/auto-connect across timelines — it will fail.
+
+Instead, create a **linked copy**. `link_element` places it for you — pass the timeline (and optionally the column/lane) instead of an already-placed `targetNodeId`, and it creates the copy with the origin's type and title and links it in the same call:
+
+```
+mcp__eventmodelers__link_element { "boardId": "<BOARD_ID>", "nodeId": "<origin-node-id>", "timelineId": "<TIMELINE_ID>", "columnIndex": 4 }
+```
+
+(If the copy already exists — e.g. it was placed by an earlier step — pass `targetNodeId: "<existing-node-id>"` instead.)
+
+(REST fallback: see `references/api-fallback.md` — "Step 6a — Link a node to an origin on a different timeline".) This replaces the new node's meta with a full copy of the origin's, sets `meta.linkedTo`, and only works for COMMAND/EVENT/READMODEL. Once linked, wire the local copy to its neighbors with normal same-timeline `set_connection`/auto-connect calls. `eventmodeling-checking-completeness` treats any `linkedTo`-marked node it finds as this intentional pattern, never a duplicate to flag.
+
+---
+
+## Step 7 — Create the node
+
+### Step 7a — SCREEN only: create and render in one atomic call
+
+**Only applies when `elementType === "SCREEN"`.** Do not create the node via `/nodes/events` first and render its content onto it in a second call — that leaves a window where the node exists with no image (an empty "Board Image" placeholder if anything interrupts between the two calls). Send a single call that creates the node, places it, and renders it together.
+
+**Default — HTML (`contentType: "html"`, HTML_SCREEN node):** design the page(s) as real HTML/CSS (see the `html-screen` skill's page-design guidance).
+
+**Prefer MCP:**
+
+```
+mcp__eventmodelers__create_screen {
+  "boardId": "<BOARD_ID>",
+  "screens": [{
+    "contentType": "html",
+    "nodeId": "<node-uuid>",
+    "chapterId": "<TIMELINE_ID>",
+    "cellName": "<CELL_NAME>",
+    "title": "<title>",
+    "pages": ["<div>...</div>"],
+    "description": "<title — what this screen shows>"
+  }]
+}
+```
+
+**Fallback (no MCP):** see `references/api-fallback.md` — "Step 7a — SCREEN: create and render (HTML path)".
+
+**Sketch path (explicit request only) — `contentType: "sketch"`, plain SCREEN node:** only use this when the user explicitly asked for a "sketch"/"wireframe"/"low-fidelity mockup". Design the sketch elements first (same grid language as `storyboard-screen`):
+
+**Prefer MCP:**
+
+```
+mcp__eventmodelers__create_screen {
+  "boardId": "<BOARD_ID>",
+  "screens": [{
+    "contentType": "sketch",
+    "nodeId": "<node-uuid>",
+    "chapterId": "<TIMELINE_ID>",
+    "cellName": "<CELL_NAME>",
+    "title": "<title>",
+    "elements": [...],
+    "description": "<title — what this screen shows>"
+  }]
+}
+```
+
+**Fallback (no MCP):** see `references/api-fallback.md` — "Step 7a — SCREEN: create and render (sketch path, explicit request only)".
+
+MCP `create_screen` takes only `cellName`: pass `CELL_NAME` from Step 1's fast path as-is, or, on the normal path, don't convert Step 6's `CELL_ID` from array positions — read it from `get_board_outline` for that chapter (call it once if you don't already hold it): the column letter is the target column's `letter` there, the row number is the target lane's 1-based position in its `lanes` list (lanes are listed top to bottom, so the first lane is row 1) (e.g. column `letter: "C"`, the target lane second in `lanes` → `C2`). The curl fallback still accepts `cellId`. Expect success (MCP: `created: true`; curl: `204`). On failure, read the validation error, fix the payload, and retry once. Then skip the rest of Step 7 and go to Step 8.
+
+### Step 7b — All other element types
+
+Include `x-token` and `x-user-id: agent` on every call to `/nodes/events`.
+
+This step applies to `SCREEN` (view/output conflict case), `AUTOMATION`, `SCENARIO`-adjacent cleanup, and to `COMMAND`/`READMODEL`/`EVENT` whenever the "Prefer MCP — `place_element`" fast path above doesn't apply (explicit `cellName`, `"after <title>"` positioning, or conflict-insertion cases resolved manually in Step 6).
+
+**Normal path** (position/lane resolved manually in Steps 3–6) — use `cellId`:
+
+**Prefer MCP:**
+
+```
+mcp__eventmodelers__submit_node_events {
+  "boardId": "<BOARD_ID>",
+  "events": [{
+    "id": "<event-uuid>",
+    "eventType": "node:created",
+    "nodeId": "<node-uuid>",
+    "chapterId": "<TIMELINE_ID>",
+    "cellId": "<CELL_ID>",
+    "meta": { "type": "<ELEMENT_TYPE>", "title": "<title>" },
+    "node": { "data": { "title": "<title>" } }
+  }],
+  "compact": true
+}
+```
+
+**Fallback (no MCP):** see `references/api-fallback.md` — "Step 7b — Create any other node type (normal path, `cellId`)".
+
+**Fast path** (`cellName` given directly, e.g. `"A2"` — see the Step 1 shortcut) — pass `cellName` instead of `cellId` and let the backend resolve it; nothing else in the payload changes:
+
+**Prefer MCP:**
+
+```
+mcp__eventmodelers__submit_node_events {
+  "boardId": "<BOARD_ID>",
+  "events": [{
+    "id": "<event-uuid>",
+    "eventType": "node:created",
+    "nodeId": "<node-uuid>",
+    "chapterId": "<TIMELINE_ID>",
+    "cellName": "<CELL_NAME>",
+    "meta": { "type": "<ELEMENT_TYPE>", "title": "<title>" },
+    "node": { "data": { "title": "<title>" } }
+  }],
+  "compact": true
+}
+```
+
+**Fallback (no MCP):** see `references/api-fallback.md` — "Step 7b — Create any other node type (fast path, `cellName`)".
+
+Response: `{ "hashes": { "<event-id>": "<hash>" } }` — keyed by the `id` you sent on each event, which is how you match a hash back to the event that produced it.
+
+> **`node:created` with `cellId`/`cellName` IS the placement** — do NOT also call the `drop` endpoint afterwards. The `drop` endpoint adds a second cell reference without removing the first, causing the node to appear in two columns simultaneously. Use `node:created` with `cellId` or `cellName` for all initial placements.
+
+---
+
+## Step 7c — Verify the command has exactly one issuer
+
+**A command is never issued by more than one thing.** The server's fire-and-forget auto-connect (`learn-eventmodelers-api` §3) already enforces this — it skips wiring the previous column's SCREEN/AUTOMATION into a COMMAND that already has an inbound trigger, whether that trigger came from the COMMAND's own column or from a pre-existing edge in the DB. Still, run this check whenever `elementType` is `SCREEN`, `AUTOMATION`, or `COMMAND` as a sanity check — e.g. a manual `set_connection` call, or an edge created before this guard existed, can still leave a COMMAND with two issuers.
+
+After placing, resolve the relevant COMMAND node (the one just placed, or the one in the same/adjacent column as the SCREEN/AUTOMATION just placed) and inspect its edges — only its connections are needed, so use `projection: "edges"` (the full node record carries no edges):
+
+**Prefer MCP:**
+```
+mcp__eventmodelers__get_node { "boardId": "<BOARD_ID>", "nodeId": "<COMMAND_NODE_ID>", "projection": "edges" }
+```
+
+Take the inbound edges (`target === COMMAND_NODE_ID`) and resolve their source types in one call — only `type` is needed, so `get_nodes { "boardId": "<BOARD_ID>", "nodeIds": [<every inbound source id>], "projection": "line" }`. Count the inbound edges whose source node is type `SCREEN`, `HTML_SCREEN` or `AUTOMATION`.
+
+- **0 or 1 such edge** → fine, nothing to do.
+- **2 or more** → keep the edge whose source sits in the COMMAND's own column (the deliberate, same-slice issuer) and remove every other one:
+
+```
+mcp__eventmodelers__set_connection { "boardId": "<BOARD_ID>", "connections": [{ "source": "<extra-issuer-node-id>", "target": "<COMMAND_NODE_ID>", "action": "remove" }], "compact": true }
+```
+
+If it's not clear which edge is the deliberate one (e.g. neither source sits in the COMMAND's own column), do not guess — leave both edges and post a comment on the COMMAND node via `handle-comment` instead, describing the ambiguity.
+
+**Fallback (no MCP)**: there is no documented single-purpose REST endpoint for edge removal outside `/nodes/events`. Connect MCP via the `connect` skill first; if that's genuinely not possible, skip the auto-fix and post a comment on the COMMAND node flagging the double issuer for manual resolution instead of fabricating a payload.
+
+---
+
+## Step 8 — Report back
+
+Tell the user:
+
+- **What was placed**: element type and title
+- **Where**: column index on the timeline
+- **Node ID**: the UUID of the placed element
+- **Cell ID**: the cell it was placed into
+- **Any errors**: raw API message if something failed
+
+Example success output:
+```
+Placed: EVENT "Order Placed" at column 3
+Node ID: a1b2c3d4-…
+Cell ID: e5f6g7h8-…
+Timeline: <timelineId>
+```
+
+---
+
+## Example — place an EVENT via curl
+
+A full worked example (add column → fetch chapter → create node) placing an EVENT called "Order Placed" at the end of a timeline lives in `references/api-fallback.md`'s "Full worked example" section. With MCP connected, the same result is one call: `mcp__eventmodelers__place_element { "boardId": "<BOARD_ID>", "timelineId": "<TIMELINE_ID>", "elements": [{ "elementType": "EVENT", "title": "Order Placed" }], "compact": true }` (see "Prefer MCP" above).

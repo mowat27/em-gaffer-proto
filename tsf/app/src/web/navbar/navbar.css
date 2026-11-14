@@ -10,9 +10,8 @@
 
 .tsf-navbar-global {
   flex: 1 1 auto;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   padding: 0 var(--pw-sp-2);
-  overflow: hidden;
 }
 
 .tsf-navbar-item {

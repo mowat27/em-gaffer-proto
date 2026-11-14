@@ -129,7 +129,9 @@ test("collapsing the agent leaves a rail; it stays collapsed after a reload and 
   await expect(page.getByTestId("pane-right")).toBeHidden();
   const rail = page.getByTestId("rail-right");
   await expect(rail).toBeVisible();
-  expect(await widthOf(rail)).toBe(32);
+  // A 32px rail above 1800px; at 1800px and below the collapsed agent is a 48px popover button.
+  const wide = (page.viewportSize()?.width ?? 0) > 1800;
+  expect(await widthOf(rail)).toBe(wide ? 32 : 48);
   await expect(page.getByTestId("resize-right")).toHaveCount(0);
 
   await page.reload();

@@ -1,0 +1,208 @@
+---
+name: analyze-existing-model
+description: Analyze the existing event model on a board — summarizes contexts, slices, element counts, status breakdown, spec coverage, and structural gaps. Read-only, no board modifications.
+---
+
+# Analyze Existing Model
+
+> **Before doing anything else**, invoke the `connect` skill — if not already connected — to resolve `TOKEN`, `BOARD_ID`, `ORG_ID`, and `BASE_URL`. Do not proceed until the connect skill has completed.
+
+Prefer `mcp__eventmodelers__*` tools when available (registered by the `connect` skill) — the curl blocks below are the fallback for sessions without MCP connected.
+
+Read the full event model from a board and produce a structured analysis: what contexts exist, how many slices are in each state, which slices have GWT specs, and where the visible gaps are. This skill is read-only — it never posts comments or modifies the board.
+
+---
+
+## Step 1 — Parse arguments
+
+From `$ARGUMENTS`, extract:
+
+| Field | How to find it | Default |
+|-------|---------------|---------|
+| `contextName` | bounded context to focus on, e.g. `Ordering` | all contexts |
+| `boardId` | a board UUID | from `connect` skill (`BOARD_ID`) |
+
+If `boardId` is explicitly passed it overrides `BOARD_ID` from `connect`.
+
+---
+
+## Step 2 — List all slices
+
+**Prefer MCP:**
+```
+mcp__eventmodelers__list_slices { "boardId": "$BOARD_ID" }
+```
+
+**Fallback (no MCP):** see `references/api-fallback.md` — "Step 2 — List all slices".
+
+Save the full slice list. Count total slices and group by status:
+
+| Status values |
+|---------------|
+| `Created`, `Planned`, `InProgress`, `Review`, `Done`, `Blocked`, `Assigned`, `Informational` |
+
+---
+
+## Step 3 — Discover contexts
+
+Fetch all `MODEL_CONTEXT` nodes to identify bounded contexts on the board:
+
+**Prefer MCP:**
+```
+mcp__eventmodelers__get_nodes { "boardId": "$BOARD_ID", "type": "MODEL_CONTEXT" }
+```
+
+**Fallback (no MCP):** see `references/api-fallback.md` — "Step 3 — Discover contexts".
+
+- If a `contextName` argument was given, filter to that single context and skip others.
+- If no `MODEL_CONTEXT` nodes exist, continue with a single unnamed context scope.
+- Record each context's `id` and `title`.
+
+---
+
+## Step 4 — Fetch slice data per context
+
+For each resolved context, fetch the full element graph:
+
+**Prefer MCP:**
+```
+mcp__eventmodelers__get_slice_data { "boardId": "$BOARD_ID", "contextName": "<CONTEXT_NAME>" }
+```
+
+**Fallback (no MCP):** see `references/api-fallback.md` — "Step 4 — Fetch slice data per context".
+
+Fetch all contexts in parallel if there are multiple. Merge results, keyed by context name.
+
+---
+
+## Step 5 — Analyse the model
+
+Work through the collected data and compute the following for each context:
+
+### 5a — Element inventory
+
+Count elements by type across all slices in the context:
+
+| Element type | Count |
+|-------------|-------|
+| EVENT | |
+| COMMAND | |
+| READMODEL | |
+| SCREEN | |
+| AUTOMATION | |
+
+### 5b — Slice status breakdown
+
+Group slices by status. Report counts per status. Flag any status that suggests blocked or stalled work (`Blocked`, `Created` with no changes).
+
+### 5c — Spec coverage
+
+For each slice, check whether `specs` is non-empty. Calculate:
+- Slices **with** at least one GWT scenario
+- Slices **without** any scenarios (grouped by slice type if detectable)
+
+### 5d — Structural gaps per slice
+
+For a fast structural read per chapter, call `validate_model` (`{boardId, chapterId}`) — it returns unplaced nodes, backward arrows, zero/multi-issuer commands, sourceless read models, screen-per-column collisions and missing scenarios in one compact response, which covers most of the gaps this section looks for without walking every slice by hand. For a plain "what is where and how is it wired" dump (no field bodies or screen HTML), `get_board_outline` (`{boardId, chapterId}`) is the cheap fetch. Use the per-slice table below for anything those two don't answer.
+
+For every slice, determine its type from the elements present and check for common structural issues:
+
+| Slice type | Expect | Flag if missing |
+|-----------|--------|-----------------|
+| Command slice | SCREEN + COMMAND + EVENT | Any of the three absent |
+| State-view slice | SCREEN + READMODEL | Either absent |
+| Automation slice | AUTOMATION + EVENT | Either absent |
+
+Do not flag gaps that are clearly intentional (e.g. a slice named "Internal" with no SCREEN). Use judgement — only surface gaps that look unintentional given the slice title.
+
+### 5e — Orphaned elements
+
+Check whether any EVENT, COMMAND, or READMODEL appears in zero slices (present on the board but not wired into any slice boundary). If the slicedata API does not expose this directly, skip this check and note it.
+
+### 5f — Structural shapes
+
+Check the element graph gathered in Step 4 against the four shapes defined in `eventmodeling-core-rules`'s **Structural Shapes** section (the bed, left chair, right chair, shelf) — read that section for the full definitions and thresholds; this step only covers how to report them here.
+
+- **The bed** is a real anti-pattern — always report every instance found (a SCREEN wired to more than one COMMAND), by slice/screen name.
+- **The left chair, right chair, and shelf** are candidates — only report an instance if, after reasoning about the actual events/fields/scenarios involved, the count still looks like it's doing more than one job in this domain. Don't report a raw count crossing the threshold on its own.
+
+This is a read-only structural read like the rest of Step 5 — report findings, never fix them here.
+
+---
+
+## Step 6 — Report to the user
+
+Output a structured report. Never post anything to the board.
+
+### Report format
+
+```
+## Model Analysis — <BOARD_ID>
+Analysed: <ISO timestamp>
+
+### Contexts (<n> found)
+- <ContextName>: <n> slices
+
+---
+
+### Slice Status
+| Status     | Count |
+|------------|-------|
+| Done       | x     |
+| InProgress | x     |
+| Planned    | x     |
+| Created    | x     |
+| Blocked    | x     |
+| ...        | ...   |
+Total: <n> slices
+
+---
+
+### Element Inventory  [per context]
+| Type        | Count |
+|-------------|-------|
+| EVENT       | x     |
+| COMMAND     | x     |
+| READMODEL   | x     |
+| SCREEN      | x     |
+| AUTOMATION  | x     |
+
+---
+
+### Spec Coverage
+- <n> of <total> slices have at least one GWT scenario (<pct>%)
+- Slices without specs: <list titles, max 10, then "and N more">
+
+---
+
+### Structural Gaps
+<list only genuine gaps — slice title + what's missing>
+(none) if everything looks complete
+
+---
+
+### Structural Shapes
+<always list every "the bed" instance found — screen name + the commands it fans into>
+<list a left chair/right chair/shelf instance only if it held up after reasoning about the domain>
+(none) if nothing found
+
+---
+
+### Summary
+<2–4 sentences: overall model maturity, the most important gap or risk, one concrete suggestion>
+```
+
+If a context was specified but not found, tell the user clearly and list the contexts that do exist.
+
+---
+
+## Example — full board analysis
+
+**Prefer MCP:**
+```
+mcp__eventmodelers__list_slices { "boardId": "$BOARD_ID" }
+mcp__eventmodelers__get_nodes { "boardId": "$BOARD_ID", "type": "MODEL_CONTEXT" }
+mcp__eventmodelers__get_slice_data { "boardId": "$BOARD_ID", "contextName": "Ordering" }
+```
+
+**Fallback (no MCP):** see `references/api-fallback.md` — "Example — full board analysis".

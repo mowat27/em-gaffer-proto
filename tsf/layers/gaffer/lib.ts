@@ -182,6 +182,7 @@ export class GafferLayer {
       gate: s.gate,
       turnTimeoutMinutes: s.turnTimeoutMinutes,
       eventsFile: this.eventsFile,
+      sliceDumpDir: join(this.ctx.paths.projectRoot, "examples"),
     };
     writeFileSync(join(home, "gaffer.json"), JSON.stringify(config, null, 2));
   }

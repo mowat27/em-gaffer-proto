@@ -56,7 +56,7 @@ Record a new one using the `CAPTURE-LEARNING` command.
 
 
 1. Read the slice definition from `SLICE_FILE`.
-   **If `slice.json` is missing, or has no `commands`, `events`, `readmodels`, `screens` or `processors` (only id/title/status/sliceType/contextName), it is a summary stub, not an empty slice — never conclude "nothing to build" from it.** Run `/load-slice` with the slice's `sliceId` to pull the full definition from the board and re-read `slice.json`. Only a slice that is still empty after that full fetch is genuinely empty.
+   If `slice.json` is missing, or has no `commands`, `events`, `readmodels`, `screens` or `processors` then `HALT` with an explanation of what was missing.
 2. Determine the slice type:
    - **Webhook** — `sliceType === "WEBHOOK"` → invoke `/build-webhook`
    - **Translation** — `sliceType === "TRANSLATION"` → read `description` and `notes` from slice.json; use `/build-webhook` if notes describe an HTTP endpoint, otherwise default to `/build-automation`
