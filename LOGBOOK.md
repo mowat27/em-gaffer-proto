@@ -22,3 +22,4 @@ One entry per build, newest last.
 - 2026-11-14T14:33:12.945Z | invoicing/Clients | attempt 1 | slice_type: STATE_VIEW status: PASS |
 - 2026-11-14T14:38:21.512Z | invoicing/CreateClient | attempt 1 | slice_type: STATE_CHANGE status: PASS |
 - 2026-11-14T14:52:03.611Z | invoicing/Invoices | attempt 1 | slice_type: STATE_VIEW status: PASS |
+- 2026-11-14T15:03:41.286Z | invoicing/CreateInvoice | attempt 1 | slice_type: STATE_CHANGE status: PASS |

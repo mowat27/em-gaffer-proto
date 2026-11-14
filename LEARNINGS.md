@@ -12,3 +12,6 @@
 
 ## invoices-slice
 - Invoices slice: table 'invoices' PK invoice_id; private invoices_client_names lookup (client_id→client_name) fed by ClientCreated; InvoiceCreated assumed payload {invoiceId, clientId, date, amount} with status hardcoded 'Created'.
+
+## createinvoice-slice
+- CreateInvoice slice: state tracks knownClientIds (Set) fed by ClientCreated in evolve; throws unknown_client ("Client does not exist") and zero_amount ("Amount must be greater than zero") mapped to 409; invoiceId is generated so it comes from the path id.

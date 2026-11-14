@@ -13,4 +13,11 @@ export type ClientCreated = Event<'ClientCreated', {
     contactEmail: string;
 }, CommonMeta>;
 
-export type InvoicingEvents = ClientCreated;
+export type InvoiceCreated = Event<'InvoiceCreated', {
+    invoiceId: string;
+    clientId: string;
+    amount: number;
+    date: string;
+}, CommonMeta>;
+
+export type InvoicingEvents = ClientCreated | InvoiceCreated;
