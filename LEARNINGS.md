@@ -9,3 +9,6 @@
 
 ## createclient-slice
 - CreateClient slice: no create-once guard per board decision; throws codes empty_name/invalid_contact_email mapped to 409 in routes.ts; clientId is generated so it comes from the path id, not the request body.
+
+## invoices-slice
+- Invoices slice: table 'invoices' PK invoice_id; private invoices_client_names lookup (client_id→client_name) fed by ClientCreated; InvoiceCreated assumed payload {invoiceId, clientId, date, amount} with status hardcoded 'Created'.
