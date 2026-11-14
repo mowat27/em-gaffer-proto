@@ -1,0 +1,255 @@
+{
+  "id": "faef84b4-d768-4213-a5ea-9c5969511ba5",
+  "title": "Clients",
+  "status": "InProgress",
+  "sliceType": "STATE_VIEW",
+  "contextName": "Invoicing",
+  "chapterId": "53369ac2-3c36-4f32-bc00-7af8c5cbf6f8",
+  "chapterTitle": "Invoicing",
+  "ticketNumber": null,
+  "assignee": null,
+  "features": null,
+  "chapter": "Invoicing",
+  "context": "Invoicing",
+  "commands": [],
+  "events": [],
+  "readmodels": [
+    {
+      "id": "2607e949-c925-4d54-973e-de4a4d1f9554",
+      "title": "Clients",
+      "type": "READMODEL",
+      "fields": [
+        {
+          "name": "clientId",
+          "optional": false,
+          "showAttributes": false,
+          "technicalAttribute": false,
+          "query": false,
+          "generated": false,
+          "edited": false,
+          "idAttribute": true,
+          "tag": false,
+          "type": "UUID",
+          "cardinality": "Single",
+          "subfields": []
+        },
+        {
+          "name": "name",
+          "optional": false,
+          "showAttributes": false,
+          "technicalAttribute": false,
+          "query": false,
+          "generated": false,
+          "edited": false,
+          "idAttribute": false,
+          "tag": false,
+          "type": "String",
+          "cardinality": "Single",
+          "subfields": []
+        },
+        {
+          "name": "contactEmail",
+          "optional": false,
+          "showAttributes": false,
+          "technicalAttribute": false,
+          "query": false,
+          "generated": false,
+          "edited": false,
+          "idAttribute": false,
+          "tag": false,
+          "type": "String",
+          "cardinality": "Single",
+          "subfields": []
+        }
+      ],
+      "dependencies": [
+        {
+          "id": "0baee68e-6348-48a2-9bc2-beb05ed1f1e1",
+          "type": "OUTBOUND",
+          "title": "Clients",
+          "elementType": "HTML_SCREEN"
+        },
+        {
+          "id": "b7d70795-13b3-4527-9fa2-255c5cbbde09",
+          "type": "INBOUND",
+          "title": "ClientCreated",
+          "elementType": "EVENT"
+        },
+        {
+          "id": "af5a8eba-4385-47b3-b89f-05973f4e7e21",
+          "type": "OUTBOUND",
+          "title": "New Invoice",
+          "elementType": "HTML_SCREEN"
+        }
+      ],
+      "modelContext": "Invoicing",
+      "lane": "Interaction",
+      "aggregate": "default",
+      "aggregateDependencies": [],
+      "triggers": [],
+      "tags": [],
+      "slice": "Clients",
+      "description": "",
+      "context": "INTERNAL",
+      "elementContext": "INTERNAL",
+      "listElement": false,
+      "todoList": false,
+      "createsAggregate": false,
+      "elementCopy": false,
+      "linkedId": "2607e949-c925-4d54-973e-de4a4d1f9554",
+      "sketched": false,
+      "comments": []
+    }
+  ],
+  "screens": [
+    {
+      "id": "0baee68e-6348-48a2-9bc2-beb05ed1f1e1",
+      "title": "Clients",
+      "type": "HTML_SCREEN",
+      "fields": [
+        {
+          "name": "name",
+          "optional": false,
+          "showAttributes": false,
+          "technicalAttribute": false,
+          "query": false,
+          "generated": false,
+          "edited": false,
+          "idAttribute": false,
+          "tag": false,
+          "type": "String",
+          "cardinality": "Single",
+          "subfields": [],
+          "mapping": "name"
+        },
+        {
+          "name": "contactEmail",
+          "optional": false,
+          "showAttributes": false,
+          "technicalAttribute": false,
+          "query": false,
+          "generated": false,
+          "edited": false,
+          "idAttribute": false,
+          "tag": false,
+          "type": "String",
+          "cardinality": "Single",
+          "subfields": [],
+          "mapping": "contactEmail"
+        }
+      ],
+      "dependencies": [
+        {
+          "id": "2607e949-c925-4d54-973e-de4a4d1f9554",
+          "type": "INBOUND",
+          "title": "Clients",
+          "elementType": "READMODEL"
+        }
+      ],
+      "modelContext": "Invoicing",
+      "lane": "Actor",
+      "aggregate": "default",
+      "aggregateDependencies": [],
+      "triggers": [],
+      "tags": [],
+      "slice": "Clients",
+      "description": "",
+      "context": "INTERNAL",
+      "elementContext": "INTERNAL",
+      "listElement": false,
+      "todoList": false,
+      "createsAggregate": false,
+      "elementCopy": false,
+      "linkedId": "0baee68e-6348-48a2-9bc2-beb05ed1f1e1",
+      "sketched": false,
+      "comments": []
+    }
+  ],
+  "processors": [],
+  "tables": [],
+  "specifications": [
+    {
+      "id": "cf1e597e-b145-4c36-bbe0-d743f34be281",
+      "title": "List both clients",
+      "chapter": "Invoicing",
+      "sliceName": "Clients",
+      "vertical": false,
+      "expectEmptyList": false,
+      "examples": [
+        {
+          "name": "Great Glen Ltd",
+          "clientId": "c1a2b3c4-0000-4000-8000-000000000001",
+          "contactEmail": "accounts@great-glen.example"
+        },
+        {
+          "name": "The Lochside Lodge",
+          "clientId": "c1a2b3c4-0000-4000-8000-000000000002",
+          "contactEmail": "ellen@lochside.example"
+        }
+      ],
+      "given": [
+        {
+          "id": "b7d70795-13b3-4527-9fa2-255c5cbbde09",
+          "title": "ClientCreated",
+          "tags": [],
+          "index": 0,
+          "specRow": 0,
+          "type": "EVENT",
+          "fields": []
+        },
+        {
+          "id": "b7d70795-13b3-4527-9fa2-255c5cbbde09",
+          "title": "ClientCreated",
+          "tags": [],
+          "index": 0,
+          "specRow": 0,
+          "type": "EVENT",
+          "fields": []
+        }
+      ],
+      "when": [],
+      "then": [
+        {
+          "id": "2607e949-c925-4d54-973e-de4a4d1f9554",
+          "title": "Clients",
+          "tags": [],
+          "index": 0,
+          "specRow": 0,
+          "type": "READMODEL",
+          "fields": []
+        }
+      ]
+    },
+    {
+      "id": "eb37cee1-0c64-43d8-af5d-1cd9c8b375ab",
+      "title": "No clients gives an empty list",
+      "chapter": "Invoicing",
+      "sliceName": "Clients",
+      "vertical": false,
+      "expectEmptyList": true,
+      "examples": [],
+      "given": [],
+      "when": [],
+      "then": [
+        {
+          "id": "2607e949-c925-4d54-973e-de4a4d1f9554",
+          "title": "Clients",
+          "tags": [],
+          "index": 0,
+          "specRow": 0,
+          "type": "READMODEL",
+          "fields": [],
+          "expectEmptyList": true
+        }
+      ]
+    }
+  ],
+  "actors": [],
+  "aggregates": [],
+  "screenImages": [],
+  "comments": [
+    "[decision] No apiEndpoint on the Clients read model; used table 'clients' from backend migration V1__clients.sql instead of blocking. 'Create invoice' links to /new-invoice?clientId=.",
+    "[limitation] test-analyzer skill not installed, so no code-slice.json was produced for Clients.",
+    "Slice \"Clients\" was auto-blocked by the Ralph loop. Ralph loop picked up this slice 5 times in a row without its status ever leaving \"Planned\" — the build agent kept declining to build it, or kept building it but its own status change kept getting reverted (e.g. a failed check). Auto-blocked to stop the loop from retrying it forever."
+  ]
+}
