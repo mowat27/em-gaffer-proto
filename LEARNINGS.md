@@ -6,3 +6,6 @@
 
 ## clients-slice
 - Clients slice: table 'clients', PK column client_id maps slice field clientId; ClientCreated payload assumed {clientId, name, contactEmail}; upsert onConflict('client_id').
+
+## createclient-slice
+- CreateClient slice: no create-once guard per board decision; throws codes empty_name/invalid_contact_email mapped to 409 in routes.ts; clientId is generated so it comes from the path id, not the request body.

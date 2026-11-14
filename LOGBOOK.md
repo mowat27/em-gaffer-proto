@@ -20,3 +20,4 @@ One entry per build, newest last.
 - 2026-11-14T12:46:44.991Z | invoicing/Invoices | attempt 1 | built by pi stub (z-ai/glm-5.3)
 - 2026-11-14T13:40:28.427Z | invoicing/Invoices | attempt 1 | slice_type: STATE_VIEW status: PASS |
 - 2026-11-14T14:33:12.945Z | invoicing/Clients | attempt 1 | slice_type: STATE_VIEW status: PASS |
+- 2026-11-14T14:38:21.512Z | invoicing/CreateClient | attempt 1 | slice_type: STATE_CHANGE status: PASS |
