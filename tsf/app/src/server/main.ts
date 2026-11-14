@@ -20,6 +20,7 @@ import { createService, type ServiceDeps } from "../core/service.ts";
 import type { FactoryService } from "../core/service-api.ts";
 import { createApp, type WebMode } from "./app.ts";
 import { SseHub } from "./sse.ts";
+import { attachPiTerminal } from "./pi-terminal.ts";
 import { WebHost } from "./web-host.ts";
 
 export interface RunServerOptions {
@@ -274,7 +275,7 @@ export async function runServer(
   const { host, port: wantedPort } = resolveListen(opts);
 
   // 13. HTTP.
-  let server: Server;
+  let server!: Server;
   let port: number;
   try {
     port = await new Promise<number>((resolveListening, reject) => {
@@ -286,6 +287,7 @@ export async function runServer(
     const code = (err as NodeJS.ErrnoException).code;
     throw new Error(code === "EADDRINUSE" ? `port ${wantedPort} on ${host} is already in use` : `could not listen: ${String(err)}`);
   }
+  const closePiTerminal = attachPiTerminal(server);
   url = urlFor(host, port);
   log.info("startup.listen", { host, port });
 
@@ -310,6 +312,7 @@ export async function runServer(
     closing ??= (async () => {
       for (const sig of signals) process.off(sig, onSignal);
       factory.hub.closeAll();
+      closePiTerminal();
       server.closeAllConnections();
       await new Promise<void>((r) => server.close(() => r()));
       await factory.close();

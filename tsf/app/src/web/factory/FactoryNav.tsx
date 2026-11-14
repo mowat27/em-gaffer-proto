@@ -1,5 +1,5 @@
 /** The left pane's factory section: Overview, Gaffer and Builder with live status dots, above the page tree. */
-import { Hammer, LayoutDashboard, Radio } from "lucide-react";
+import { Hammer, LayoutDashboard, Radio, TerminalSquare } from "lucide-react";
 import { useLayerQuery } from "./useLayer.ts";
 import { setView, useView, type View } from "./viewStore.ts";
 
@@ -40,6 +40,7 @@ export function FactoryNav() {
     { id: "overview", label: "Overview", icon: LayoutDashboard },
     { id: "gaffer", label: "Gaffer", icon: Radio, dot: gafferDot(gaffer.data) },
     { id: "builder", label: "Builder", icon: Hammer, dot: builderDot(builder.data, !!health.data?.busy) },
+    { id: "pi-terminal", label: "Pi terminal", icon: TerminalSquare }, 
   ];
   return (
     <nav className="tsf-fx-nav" aria-label="Factory">

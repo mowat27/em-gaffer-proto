@@ -23,17 +23,8 @@ export interface BuilderSettings {
   pi_model: string;
   pi_thinking: string;
   pi_args: string;
-  pi_extensions: string;
-  pi_prompt: string;
   pi_timeoutMinutes: number;
 }
-
-export const DEFAULT_PROMPT = [
-  "You are a stub build agent. The repository in the current directory is the target application.",
-  'Your only job: append exactly one line to the file {{logbook}} in the form "- {{now}} | {{context}}/{{title}} | attempt {{attempt}} | built by pi stub ({{model}})".',
-  "Keep every existing line as it is. Do not create, change or delete any other file. Do not run git commands. Do not ask questions.",
-  "When the line is appended, reply with the single word DONE.",
-].join("\n");
 
 export const DEFAULTS: BuilderSettings = {
   host: "127.0.0.1",
@@ -48,9 +39,9 @@ export const DEFAULTS: BuilderSettings = {
   pi_provider: "openrouter",
   pi_model: "anthropic/claude-sonnet-5.5",
   pi_thinking: "low",
-  pi_args: "--no-session --no-extensions --no-skills --no-prompt-templates --no-context-files --no-mcp --no-themes",
-  pi_extensions: "",
-  pi_prompt: DEFAULT_PROMPT,
+  // Context files, prompt templates, extensions and skills stay on: they are what AGENTS.md, prompts/build.md
+  // and anything dropped into the agent dir's extensions/skills folders depend on.
+  pi_args: "--no-session --no-mcp --no-themes",
   pi_timeoutMinutes: 10,
 };
 
@@ -112,8 +103,7 @@ export class BuilderLayer {
       v = Number(value);
       if (!Number.isFinite(v as number)) throw new Error(`${key} must be a number`);
     } else {
-      v = String(value ?? "");
-      if (k !== "pi_prompt") v = (v as string).trim();
+      v = String(value ?? "").trim();
     }
     this.settings = { ...this.settings, [k]: v };
     writeFileSync(this.settingsFile, JSON.stringify(this.settings, null, 2));
@@ -151,8 +141,6 @@ export class BuilderLayer {
         model: s.pi_model,
         thinking: s.pi_thinking,
         args: s.pi_args,
-        extensions: s.pi_extensions,
-        prompt: s.pi_prompt,
         timeoutMinutes: s.pi_timeoutMinutes,
       },
     };
@@ -281,7 +269,7 @@ export class BuilderLayer {
       pid,
       url: this.url(),
       capabilities: s.capabilities,
-      pi: { command: s.pi_command, agentDir: s.pi_agentDir, provider: s.pi_provider, model: s.pi_model, thinking: s.pi_thinking, args: s.pi_args, extensions: s.pi_extensions },
+      pi: { command: s.pi_command, agentDir: s.pi_agentDir, provider: s.pi_provider, model: s.pi_model, thinking: s.pi_thinking, args: s.pi_args },
       workspaceDir: resolve(this.ctx.paths.projectRoot, s.workspaceDir),
       summary: `Builder ${pid ? "running" : "stopped"}${last ? ` · ${last.kind}` : ""}`,
       lastEvent: last ?? null,
@@ -311,18 +299,13 @@ export class BuilderLayer {
       "| Setting | Value |",
       "|---|---|",
       `| Command | \`${s.pi_command}\` |`,
-      `| Agent dir | ${s.pi_agentDir ? `\`${s.pi_agentDir}\` (models.json, settings.json)` : "pi default (~/.pi/agent)"} |`,
+      `| Agent dir | ${s.pi_agentDir ? `\`${s.pi_agentDir}\` (settings.json, AGENTS.md, prompts/, extensions/, skills/)` : "pi default (~/.pi/agent)"} |`,
       `| Provider / model | ${s.pi_provider} / ${s.pi_model} |`,
       `| Thinking | ${s.pi_thinking || "(pi default)"} |`,
       `| Flags | \`${s.pi_args}\` |`,
-      `| Extensions | ${s.pi_extensions ? `\`${s.pi_extensions}\`` : "(none)"} |`,
       `| Timeout | ${s.pi_timeoutMinutes} min |`,
       "",
-      "Prompt template:",
-      "",
-      "```",
-      s.pi_prompt,
-      "```",
+      "Standing instructions (`builder/pi-agent/AGENTS.md`) and the per-job prompt (`builder/pi-agent/prompts/build.md`) are Pi files, copied fresh from the Builder/Agent pages before every job; edit the pages, not a setting. `builder/pi-agent/extensions/` and `skills/` are plain Pi folders: drop files in and they load.",
       "",
       "Controls: Settings (S) > Advanced > Builder, or ask the agent (builder_start, builder_stop, builder_set_setting ...). Changes apply to the next job.",
       "",

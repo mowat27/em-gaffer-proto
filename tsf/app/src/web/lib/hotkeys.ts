@@ -8,7 +8,7 @@ import { useEffect } from "react";
 /** True for the elements a person types into; their keystrokes are never hotkeys. */
 export function isTextTarget(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
-  if (target.closest("input, textarea, select, [contenteditable]:not([contenteditable='false'])")) return true;
+  if (target.closest("input, textarea, select, [contenteditable]:not([contenteditable='false']), .tsf-terminal")) return true;
   return false;
 }
 

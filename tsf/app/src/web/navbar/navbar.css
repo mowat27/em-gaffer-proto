@@ -157,3 +157,38 @@
   color: var(--pw-error);
   font-size: var(--pw-fs-sm);
 }
+
+/* A layer control used as a navbar widget: one row, not a stacked form field. */
+.tsf-navbar-item .tsf-layer-control {
+  display: flex;
+  align-items: center;
+  gap: var(--pw-sp-1);
+}
+
+.tsf-navbar-item .pw-field {
+  display: flex;
+  align-items: center;
+  gap: var(--pw-sp-1);
+}
+
+.tsf-navbar-item .pw-field-label {
+  font-size: var(--pw-fs-xs);
+  font-weight: var(--pw-fw-regular);
+  color: var(--pw-text-2);
+  white-space: nowrap;
+}
+
+.tsf-navbar-item .pw-field-help,
+.tsf-navbar-item .pw-field-foot,
+.tsf-navbar-item .pw-field-msg {
+  display: none;
+}
+
+.tsf-navbar-item .pw-select,
+.tsf-navbar-item .pw-input {
+  width: auto;
+  max-width: 160px;
+  min-height: calc(var(--pw-ctl-h) - 6px);
+  font-size: var(--pw-fs-sm);
+  padding: 0 var(--pw-sp-2);
+}

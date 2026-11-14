@@ -138,6 +138,17 @@ export const api = {
       return get<EarlierPage>(`/api/chat/earlier?before=${encodeURIComponent(String(before))}&limit=${limit}`);
     },
   },
+  builderAgent: {
+    files(): Promise<{ root: string; files: { path: string; size: number }[] }> {
+      return get("/api/builder-agent/files");
+    },
+    read(path: string): Promise<{ path: string; content: string; size: number }> {
+      return get(`/api/builder-agent/read?path=${encodeURIComponent(path)}`);
+    },
+    write(path: string, content: string): Promise<{ path: string; content: string; size: number }> {
+      return post("/api/builder-agent/write", { path, content });
+    },
+  },
   pages: {
     read(path: PagePath): Promise<Page> {
       return get<Page>(`/api/pages/read?path=${encodeURIComponent(path)}`);

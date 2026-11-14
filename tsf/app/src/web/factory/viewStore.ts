@@ -6,9 +6,9 @@
 import { useSyncExternalStore } from "react";
 import { onDelta } from "../state/store.ts";
 
-export type View = "page" | "overview" | "gaffer" | "builder";
+export type View = "page" | "overview" | "gaffer" | "builder" | "pi-agent" | "pi-terminal";
 const KEY = "tsf.factory.view";
-const VIEWS: View[] = ["page", "overview", "gaffer", "builder"];
+const VIEWS: View[] = ["page", "overview", "gaffer", "builder", "pi-agent", "pi-terminal"];
 
 /** `?view=gaffer` in the URL wins (a deep link, the screenshot tool); else the remembered screen; else the overview. */
 function load(): View {

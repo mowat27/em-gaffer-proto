@@ -14,6 +14,7 @@ import { FactoryCenter } from "./factory/FactoryCenter.tsx";
 import { FactoryNav } from "./factory/FactoryNav.tsx";
 import { useHotkeys } from "./lib/hotkeys.ts";
 import { PageTree } from "./pages/PageTree.tsx";
+import { PiAgentTree } from "./pages/PiAgentTree.tsx";
 import { SettingsModal } from "./settings/SettingsModal.tsx";
 import { acceptUiConfig, getFactoryState, onDelta, useFactory } from "./state/store.ts";
 
@@ -138,7 +139,11 @@ export function App() {
         left={
           <>
             <FactoryNav />
-            <PageTree />
+            <PiAgentTree />
+            <section className="tsf-files-tree" aria-label="Files">
+              <h3>Files</h3>
+              <PageTree />
+            </section>
           </>
         }
         center={<FactoryCenter />}

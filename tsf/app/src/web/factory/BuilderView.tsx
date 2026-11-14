@@ -7,6 +7,7 @@ import { api, errorMessage } from "../api/client.ts";
 import { useModels } from "../state/queries.ts";
 import { Pre, RecentEvents, ScreenTabs, SettingsForm, StatusChip, Timeline, ago, type FactoryEvent, type ScreenTab } from "./common.tsx";
 import { useLayerAction, useLayerQuery } from "./useLayer.ts";
+import { setView } from "./viewStore.ts";
 
 interface BuilderStatus {
   running: boolean;
@@ -170,7 +171,7 @@ export function BuilderView() {
 
         <Card
           title="pi agent"
-          description="The whole invocation. Saved values apply to the next job; no restart needed."
+          description="The CLI invocation. Saved values apply to the next job; no restart needed."
           actions={
             <Button size="sm" variant="ghost" icon={RefreshCw} loading={refreshing} onClick={refreshModels}>
               Refresh models
@@ -186,13 +187,14 @@ export function BuilderView() {
               { key: "pi_thinking", label: "Thinking", kind: { select: THINKING } },
               { key: "pi_timeoutMinutes", label: "Timeout (minutes)", kind: "number" },
               { key: "pi_command", label: "pi command", mono: true, help: "The pi binary; the factory already runs under the vault" },
-              { key: "pi_agentDir", label: "Agent dir", mono: true, help: "PI_CODING_AGENT_DIR: models.json and settings.json; empty = ~/.pi/agent" },
+              { key: "pi_agentDir", label: "Agent dir", mono: true, help: "PI_CODING_AGENT_DIR: settings.json, AGENTS.md, prompts/, extensions/, skills/; empty = ~/.pi/agent" },
               { key: "pi_args", label: "Flags", mono: true, wide: true, help: "Shell-style; placed before -p" },
-              { key: "pi_extensions", label: "Extensions", mono: true, wide: true, help: "Each becomes -e <path or builtin:name>; comma-separated" },
-              { key: "pi_prompt", label: "Prompt template", kind: "textarea", mono: true, help: "{{title}} {{context}} {{sliceId}} {{attempt}} {{logbook}} {{base}} {{model}} {{now}} {{sliceJson}}" },
             ]}
             saveLabel="Save agent"
           />
+          <p className="tsf-fx-muted" style={{ marginTop: "var(--pw-sp-3)" }}>
+            Instructions, prompts, extensions and skills are real files in <code>builder/pi-agent/</code>, read directly by Pi for each job. Open <button type="button" className="tsf-link-button" onClick={() => setView("pi-agent")}>Pi agent</button> to browse their current contents.
+          </p>
         </Card>
 
         <RecentEvents events={events.data?.events ?? []} onMore={() => setTab("timeline")} />

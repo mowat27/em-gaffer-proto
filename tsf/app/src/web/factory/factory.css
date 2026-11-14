@@ -202,6 +202,128 @@
   font-family: var(--pw-font-mono, monospace);
 }
 
+/* --- Pi terminal and agent files --- */
+
+/* The view fills the centre pane (a flex column) and owns the padding. The xterm host has none, because the fit
+   addon sizes the terminal from the host's height and does not subtract the host's padding. */
+.tsf-terminal-view { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; box-sizing: border-box; padding: var(--pw-sp-3); background: #080b0c; }
+.tsf-terminal-restart { position: absolute; z-index: 2; top: var(--pw-sp-3); right: var(--pw-sp-3); opacity: 0.78; }
+.tsf-terminal-restart:hover, .tsf-terminal-restart:focus-visible { opacity: 1; }
+.tsf-terminal { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.tsf-terminal .xterm { height: 100%; }
+
+/* --- Pi agent files --- */
+
+.tsf-pi-tree,
+.tsf-files-tree {
+  padding: var(--pw-sp-2) var(--pw-sp-2) var(--pw-sp-1);
+  border-bottom: 1px solid var(--pw-glass-line, var(--pw-border-subtle));
+}
+
+.tsf-pi-tree-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--pw-sp-2);
+}
+
+.tsf-pi-tree-head h3,
+.tsf-files-tree > h3 {
+  margin: 0;
+  font-size: var(--pw-fs-xs);
+  font-weight: var(--pw-fw-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pw-text-3);
+}
+
+.tsf-pi-tree .tsf-tree-list,
+.tsf-files-tree .tsf-tree-list {
+  margin-top: var(--pw-sp-1);
+}
+
+.tsf-pi-tree-folder,
+.tsf-pi-tree-file {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--pw-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.tsf-pi-tree-file[aria-current="page"] {
+  border-radius: var(--pw-r-sm);
+  background: var(--pw-surface-selected);
+  color: var(--pw-brand-text);
+}
+
+.tsf-agent-files-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.7fr) minmax(0, 1.7fr);
+  gap: var(--pw-sp-4);
+  min-height: 0;
+}
+
+.tsf-agent-file-list {
+  display: flex;
+  flex-direction: column;
+  margin: calc(-1 * var(--pw-sp-2));
+}
+
+.tsf-agent-file {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--pw-sp-2);
+  align-items: center;
+  width: 100%;
+  padding: var(--pw-sp-2);
+  border: 0;
+  border-radius: var(--pw-r-sm);
+  background: transparent;
+  color: var(--pw-text);
+  font: inherit;
+  font-family: var(--pw-font-mono, monospace);
+  font-size: var(--pw-fs-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.tsf-agent-file:hover,
+.tsf-agent-file[aria-current="page"] {
+  background: var(--pw-surface-selected);
+  color: var(--pw-brand-text);
+}
+
+.tsf-agent-file svg {
+  width: var(--pw-icon-sm);
+  height: var(--pw-icon-sm);
+}
+
+.tsf-agent-file span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tsf-agent-file small {
+  color: var(--pw-text-3);
+  font-family: var(--pw-font-sans);
+}
+
+.tsf-agent-file-content {
+  max-height: none;
+  min-height: 28rem;
+}
+
+@container (max-width: 700px) {
+  .tsf-agent-files-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .tsf-fx-pre {
   margin: 0;
   max-height: 22rem;
@@ -555,4 +677,145 @@
 
 .tsf-fx-tabs {
   margin-top: calc(-1 * var(--pw-sp-2));
+}
+
+/* --- Top bar: title, stage summary, latest commit, quick actions ---------------------------------------------- */
+
+.tsf-topbar-title {
+  font-weight: 600;
+  font-size: var(--pw-fs-md, 1rem);
+  color: var(--pw-text-1);
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+.tsf-topbar .tsf-navbar-global {
+  /* Never shrunk below its content: the pipeline strip (.tsf-fxbar) yields space first, it already hides its own
+     less essential parts (commit subject, then commit) at smaller widths. */
+  flex: 0 0 auto;
+}
+
+.tsf-topbar .tsf-navbar-global:empty {
+  display: none;
+}
+
+.tsf-fxbar {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--pw-sp-4);
+  min-width: 0;
+  overflow: hidden;
+  margin-left: var(--pw-sp-4);
+  font-size: var(--pw-fs-xs);
+  color: var(--pw-text-2);
+}
+
+.tsf-fxbar-stages {
+  display: flex;
+  align-items: center;
+  gap: var(--pw-sp-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tsf-fxbar-stage {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pw-sp-1);
+  padding: 2px var(--pw-sp-2);
+  border: 1px solid transparent;
+  border-radius: var(--pw-r-sm);
+  background: transparent;
+  color: var(--pw-text-2);
+  font: inherit;
+  cursor: pointer;
+}
+
+.tsf-fxbar-stage:hover {
+  border-color: var(--pw-border-subtle);
+  color: var(--pw-text-1);
+}
+
+.tsf-fxbar-commit {
+  display: flex;
+  align-items: center;
+  gap: var(--pw-sp-2);
+  min-width: 0;
+  padding-left: var(--pw-sp-4);
+  border-left: 1px solid var(--pw-border-subtle);
+}
+
+.tsf-fxbar-commit code {
+  color: var(--pw-accent);
+  font-family: var(--pw-font-mono, monospace);
+}
+
+.tsf-fxbar-subject {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 28ch;
+  color: var(--pw-text-1);
+}
+
+.tsf-fxbar-commit em {
+  font-style: normal;
+  color: var(--pw-text-3);
+  white-space: nowrap;
+}
+
+.tsf-fxbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--pw-sp-3);
+  padding-left: var(--pw-sp-4);
+  border-left: 1px solid var(--pw-border-subtle);
+}
+
+.tsf-fxbar-field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pw-sp-1);
+  white-space: nowrap;
+}
+
+.tsf-fxbar-field > span {
+  color: var(--pw-text-3);
+}
+
+.tsf-fxbar-field .tsf-fx-mini-select {
+  max-width: 16ch;
+}
+
+.tsf-fxbar-error {
+  color: var(--pw-error);
+}
+
+@media (max-width: 1500px) {
+  .tsf-fxbar-subject {
+    display: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  .tsf-fxbar-commit {
+    display: none;
+  }
+}
+
+.tsf-link-button {
+  display: inline;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--pw-link, var(--pw-accent));
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+}
+
+.tsf-link-button:hover {
+  text-decoration: none;
 }

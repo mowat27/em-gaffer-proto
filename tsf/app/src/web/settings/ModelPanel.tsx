@@ -29,7 +29,7 @@ export function ModelPanel() {
   const provider = picked ?? current?.provider ?? providers[0] ?? "";
   const ofProvider = list.filter((m) => m.provider === provider);
   const needle = filter.trim().toLowerCase();
-  const matching = needle === "" ? ofProvider : ofProvider.filter((m) => `${m.id} ${m.name}`.toLowerCase().includes(needle));
+  const matching = (needle === "" ? ofProvider : ofProvider.filter((m) => `${m.id} ${m.name}`.toLowerCase().includes(needle))).slice().sort((a, b) => a.name.localeCompare(b.name));
   const shown = matching.slice(0, SHOWN);
   const active: ModelInfo | undefined = current ? list.find((m) => m.provider === current.provider && m.id === current.modelId) : undefined;
   // Keep the chosen model in the list even when the filter hides it.

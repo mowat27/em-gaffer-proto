@@ -1,5 +1,14 @@
 {
+  "$schema": "https://pi.dev/schemas/settings.schema.json",
   "quietStartup": true,
   "defaultProvider": "openrouter",
-  "defaultModel": "anthropic/claude-sonnet-5.5"
+  "defaultModel": "anthropic/claude-sonnet-5.5",
+  "defaultThinkingLevel": "low",
+  "defaultTools": [
+    "read",
+    "write",
+    "edit"
+  ],
+  "defaultProjectTrust": "never",
+  "lastChangelogVersion": "1.5.2"
 }

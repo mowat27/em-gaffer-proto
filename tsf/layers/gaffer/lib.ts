@@ -443,6 +443,17 @@ export class GafferLayer {
 
   // --- status and the page --------------------------------------------------------------------------------------
 
+  /** The latest commit on main in the gaffer's clone (the merged, pushed state), or null when there is no clone. */
+  head(): { sha: string; subject: string; author: string; date: string } | null {
+    if (!existsSync(join(this.repoDir(), ".git"))) return null;
+    try {
+      const [sha, subject, author, date] = this.run("git", ["log", "-1", "--format=%h%x1f%s%x1f%an%x1f%cI", "main"], this.repoDir()).split("\x1f");
+      return { sha, subject, author, date };
+    } catch {
+      return null;
+    }
+  }
+
   status(): Json {
     const pid = this.pid();
     const s = this.settings;
@@ -452,6 +463,7 @@ export class GafferLayer {
       running: pid !== null,
       pid,
       ready,
+      head: this.head(),
       tokenPresent: this.hasToken(),
       tokenMasked: this.hasToken() ? "••••••••" : "",
       home: this.home(),

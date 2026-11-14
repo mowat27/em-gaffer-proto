@@ -13,6 +13,73 @@
   min-width: 0;
 }
 
+/*
+ * pw-ui's .pw-msg-text (the grid item wrapping a message's content) has no min-width: 0, so a <pre> inside it (which
+ * cannot wrap by design) pushes that grid item, and the whole bubble, past the pane edge instead of scrolling inside
+ * the code block. Letting it shrink lets .tsf-markdown pre's own overflow-x below do its job.
+ */
+.pw-msg-text {
+  min-width: 0;
+}
+
+/* Overlay editor: the textarea handles input while the pre beneath it supplies syntax colour. */
+.tsf-code-editor {
+  position: relative;
+  height: max(28rem, calc(100vh - 13rem));
+  border: 1px solid var(--pw-border-subtle);
+  border-radius: var(--pw-r-sm);
+  background: var(--pw-surface-sunken);
+  overflow: hidden;
+  font-family: var(--pw-font-mono, monospace);
+  font-size: var(--pw-fs-sm);
+  line-height: 1.5;
+}
+
+.tsf-code-editor pre,
+.tsf-code-editor textarea {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: var(--pw-sp-3) var(--pw-sp-4);
+  border: 0;
+  font: inherit;
+  line-height: inherit;
+  letter-spacing: normal;
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+}
+
+.tsf-code-editor pre {
+  pointer-events: none;
+  overflow: hidden;
+  color: var(--pw-text);
+}
+
+.tsf-code-editor textarea {
+  position: absolute;
+  inset: 0;
+  resize: none;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--pw-text);
+  outline: none;
+}
+
+.tsf-code-editor textarea::selection {
+  background: color-mix(in srgb, var(--pw-accent) 45%, transparent);
+}
+
+.tsf-code-comment { color: var(--pw-text-3); font-style: italic; }
+.tsf-code-string { color: var(--pw-success); }
+.tsf-code-number { color: var(--pw-accent); }
+.tsf-code-keyword { color: var(--pw-brand-text); font-weight: var(--pw-fw-semibold); }
+.tsf-code-heading { color: var(--pw-brand-text); font-weight: var(--pw-fw-semibold); }
+.tsf-code-link { color: var(--pw-accent); text-decoration: underline; }
+.tsf-code-markup { color: var(--pw-text-2); }
+
 .tsf-markdown h1,
 .tsf-markdown h2,
 .tsf-markdown h3,
@@ -84,6 +151,7 @@
   background: var(--pw-surface-sunken);
   border: 1px solid var(--pw-border-subtle);
   border-radius: var(--pw-r-sm);
+  max-width: 100%;
   overflow-x: auto;
 }
 .tsf-markdown pre code {

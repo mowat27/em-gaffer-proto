@@ -5,8 +5,9 @@
  * Status is an icon and a word.
  */
 import { CircleCheck, LoaderCircle, RotateCw, Settings, WifiOff } from "lucide-react";
-import { Badge, Brand, IconButton, TopBar as PwTopBar } from "@pw/ui/react";
+import { Badge, IconButton, TopBar as PwTopBar } from "@pw/ui/react";
 import { api } from "../api/client.ts";
+import { FactoryBar } from "../factory/FactoryBar.tsx";
 import { Navbar } from "../navbar/Navbar.tsx";
 import type { Connection } from "../state/store.ts";
 import { useFactory } from "../state/store.ts";
@@ -25,8 +26,13 @@ export function TopBar() {
   return (
     <PwTopBar
       className="tsf-topbar"
-      brand={<Brand href="/" name="Tiny Software Factory" />}
-      nav={<Navbar id="global" className="tsf-navbar-global" />}
+      brand={<span className="tsf-topbar-title">Gaffer Prototype</span>}
+      nav={
+        <>
+          <FactoryBar />
+          <Navbar id="global" className="tsf-navbar-global" />
+        </>
+      }
       actions={
         <>
           <Badge tone={c.tone} icon={c.icon} title={c.title} data-testid="connection" data-state={connection} role="status">

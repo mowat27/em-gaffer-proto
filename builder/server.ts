@@ -22,7 +22,11 @@ import { join, resolve } from "node:path";
 export interface PiConfig {
   /** The pi executable ("pi", or an absolute path). */
   command: string;
-  /** pi's agent directory (PI_CODING_AGENT_DIR: models.json, settings.json); empty = pi's default ~/.pi/agent. */
+  /**
+   * pi's agent directory (PI_CODING_AGENT_DIR): settings.json, AGENTS.md, prompts/, extensions/, skills/.
+   * Empty = pi's default ~/.pi/agent. Standing instructions and the prompt template live as plain files in this
+   * directory, edited directly (read/edit/write) like any other project file: no settings blob, no page copy.
+   */
   agentDir: string;
   provider: string;
   model: string;
@@ -30,10 +34,6 @@ export interface PiConfig {
   thinking: string;
   /** Extra flags, shell-style (quotes respected), placed before -p. */
   args: string;
-  /** Extension files or builtin:<name>, one per line or comma-separated; each becomes -e <ext>. */
-  extensions: string;
-  /** The prompt template; placeholders {{title}} {{context}} {{sliceId}} {{attempt}} {{logbook}} {{sliceJson}} {{base}}. */
-  prompt: string;
   timeoutMinutes: number;
 }
 
@@ -70,13 +70,6 @@ interface Job {
   logFile: string;
 }
 
-export const DEFAULT_PROMPT = [
-  "You are a stub build agent. The repository in the current directory is the target application.",
-  'Your only job: append exactly one line to the file {{logbook}} in the form "- {{now}} | {{context}}/{{title}} | attempt {{attempt}} | built by pi stub ({{model}})".',
-  "Keep every existing line as it is. Do not create, change or delete any other file. Do not run git commands. Do not ask questions.",
-  "When the line is appended, reply with the single word DONE.",
-].join("\n");
-
 export function defaultConfig(): BuilderConfig {
   return {
     host: "127.0.0.1",
@@ -96,9 +89,9 @@ export function defaultConfig(): BuilderConfig {
       provider: "openrouter",
       model: "anthropic/claude-sonnet-5.5",
       thinking: "low",
-      args: "--no-session --no-extensions --no-skills --no-prompt-templates --no-context-files --no-mcp --no-themes",
-      extensions: "",
-      prompt: DEFAULT_PROMPT,
+      // Context files, prompt templates, extensions and skills stay on: AGENTS.md, prompts/build.md and
+      // anything dropped into extensions/ or skills/ in the agent dir are meant to load.
+      args: "--no-session --no-mcp --no-themes",
       timeoutMinutes: 10,
     },
   };
@@ -217,41 +210,37 @@ function git(cwd: string, args: string[]): string {
   return (res.stdout || "").trim();
 }
 
-function render(template: string, vars: Record<string, string>): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (_m, k: string) => (k in vars ? vars[k] : `{{${k}}}`));
+/** Shell-like quoting for a `/build` argument: pi's prompt-template parser respects quotes the same way a shell does. */
+function quoteArg(s: string): string {
+  return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
+
+/** Name of the full slice spec file written into the job workspace, relative to it (pi's cwd), for the agent to read. */
+const SLICE_FILE = ".slice.json";
 
 function runPi(job: Job, d: Dispatch): Promise<{ code: number | null; timedOut: boolean; output: string }> {
   const pi = cfg.pi;
-  const vars = {
-    title: d.task.title,
-    context: d.task.context,
-    sliceId: d.task.sliceId,
-    attempt: String(d.task.attempt),
-    logbook: cfg.logbookFile,
-    base: d.repo.base,
-    model: pi.model,
-    now: new Date().toISOString(),
-    sliceJson: JSON.stringify(d.slice ?? null, null, 2),
-  };
-  const prompt = render(pi.prompt, vars);
-  const exts = pi.extensions
-    .split(/[\n,]/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const args = [
-    ...splitArgs(pi.args),
-    "--provider",
-    pi.provider,
-    "--model",
-    pi.model,
-    ...(pi.thinking ? ["--thinking", pi.thinking] : []),
-    ...exts.flatMap((e) => ["-e", e]),
-    "-p",
-    "--",
-    prompt,
-  ];
-  emit("pi.start", `pi ${pi.provider}/${pi.model}${pi.thinking ? ` (thinking ${pi.thinking})` : ""}${exts.length ? `, ${exts.length} extension(s)` : ""}`, {
+  const command = pi.command.replace(/^~(?=\/|$)/, process.env.HOME ?? "~");
+  const agentDir = pi.agentDir ? resolve(pi.agentDir.replace(/^~(?=\/|$)/, process.env.HOME ?? "~")) : "";
+  // The full slice spec (commands, events, readmodels, screens, specifications) as sent by the gaffer: written next
+  // to the clone so the agent can read it with a plain relative path (pi's cwd is job.workspace).
+  writeFileSync(join(job.workspace, SLICE_FILE), JSON.stringify(d.slice ?? null, null, 2));
+  // The `/build` prompt template (builder/pi-agent/prompts/build.md, a real file, edited directly) expands $1..
+  // itself; this is the same `/name arg1 arg2` a human types in an interactive pi session.
+  const prompt = [
+    "/build",
+    quoteArg(d.task.title),
+    quoteArg(d.task.context),
+    quoteArg(d.task.sliceId),
+    quoteArg(String(d.task.attempt)),
+    quoteArg(cfg.logbookFile),
+    quoteArg(d.repo.base),
+    quoteArg(pi.model),
+    quoteArg(new Date().toISOString()),
+    quoteArg(SLICE_FILE),
+  ].join(" ");
+  const args = [...splitArgs(pi.args), "--provider", pi.provider, "--model", pi.model, ...(pi.thinking ? ["--thinking", pi.thinking] : []), "-p", "--", prompt];
+  emit("pi.start", `pi ${pi.provider}/${pi.model}${pi.thinking ? ` (thinking ${pi.thinking})` : ""}`, {
     command: pi.command,
     args: args.slice(0, -1),
   });
@@ -259,8 +248,6 @@ function runPi(job: Job, d: Dispatch): Promise<{ code: number | null; timedOut: 
   return new Promise((resolveRun) => {
     let output = "";
     let timedOut = false;
-    const command = pi.command.replace(/^~(?=\/|$)/, process.env.HOME ?? "~");
-    const agentDir = pi.agentDir ? resolve(pi.agentDir.replace(/^~(?=\/|$)/, process.env.HOME ?? "~")) : "";
     const child = spawn(command, args, {
       cwd: job.workspace,
       env: { ...process.env, PI_NO_UPDATE_CHECK: "1", ...(agentDir ? { PI_CODING_AGENT_DIR: agentDir } : {}) },
@@ -389,7 +376,7 @@ function status(): Record<string, unknown> {
     job: current ? { jobId: current.jobId, title: current.title, context: current.context, attempt: current.attempt, step: current.step, startedAt: current.startedAt } : null,
     lastJob: lastJob ? { jobId: lastJob.jobId, title: lastJob.title, outcome: lastJob.outcome, endedAt: lastJob.endedAt } : null,
     capabilities: cfg.capabilities,
-    pi: { command: pi.command, agentDir: pi.agentDir, provider: pi.provider, model: pi.model, thinking: pi.thinking, args: pi.args, extensions: pi.extensions },
+    pi: { command: pi.command, agentDir: pi.agentDir, provider: pi.provider, model: pi.model, thinking: pi.thinking, args: pi.args },
     workspaceDir: resolve(cfg.workspaceDir),
     pid: process.pid,
   };

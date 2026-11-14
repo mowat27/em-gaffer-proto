@@ -25,10 +25,13 @@
     "@earendil-works/pi-schema": "1.5.0",
     "@hono/node-server": "2.1.6",
     "@pw/ui": "file:vendor/precision-weave-ui-0.6.0.tgz",
+    "@xterm/addon-fit": "0.10.0",
+    "@xterm/xterm": "5.5.0",
     "@vitejs/plugin-react": "6.2.1",
     "croner": "11.0.0",
     "hono": "4.13.16",
     "lucide-react": "1.66.0",
+    "node-pty": "1.1.0",
     "playwright": "1.64.1",
     "radix-ui": "1.8.1",
     "react": "19.3.1",
@@ -43,6 +46,7 @@
     "@types/node": "24.19.2",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "@types/ws": "8.18.2",
     "typescript": "7.0.2",
     "vitest": "5.1.0"
   }

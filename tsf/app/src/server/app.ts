@@ -10,6 +10,7 @@ import type { FactoryService } from "../core/service-api.ts";
 import { chatRoutes } from "./routes/chat.ts";
 import { core4Routes } from "./routes/core4.ts";
 import { cronRoutes } from "./routes/cron.ts";
+import { builderAgentRoutes } from "./routes/builder-agent.ts";
 import { factoryRoutes } from "./routes/factory.ts";
 import { jevRoutes } from "./routes/jev.ts";
 import { layerHandlerRoutes } from "./routes/layer-handlers.ts";
@@ -88,6 +89,7 @@ export function createApp(deps: { service: FactoryService; hub: SseHub; log: Log
   api.route("/", layerAuthoringRoutes(service));
   api.route("/", runRoutes(service));
   api.route("/pages", pageRoutes(service));
+  api.route("/", builderAgentRoutes());
   api.route("/ui-config", uiConfigRoutes(service));
   api.route("/widgets", widgetRoutes(service));
   api.route("/hotkeys", hotkeyRoutes(service));

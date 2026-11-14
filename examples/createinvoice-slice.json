@@ -1,0 +1,12 @@
+{
+  "id": "4fb1f806-1f50-4f14-8d43-9df3a58bd51f",
+  "title": "CreateInvoice",
+  "status": "Done",
+  "sliceType": "STATE_CHANGE",
+  "contextName": "Invoicing",
+  "chapterId": "53369ac2-3c36-4f32-bc00-7af8c5cbf6f8",
+  "chapterTitle": "Invoicing",
+  "ticketNumber": null,
+  "assignee": null,
+  "features": null
+}
