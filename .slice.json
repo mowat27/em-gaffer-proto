@@ -1,26 +1,20 @@
 {
-  "id": "faef84b4-d768-4213-a5ea-9c5969511ba5",
-  "title": "Clients",
+  "id": "12716304-460b-4bb2-b5f4-7cc60bab1df0",
+  "title": "Invoices",
   "status": "InProgress",
   "sliceType": "STATE_VIEW",
-  "contextName": "Invoicing",
-  "chapterId": "53369ac2-3c36-4f32-bc00-7af8c5cbf6f8",
-  "chapterTitle": "Invoicing",
-  "ticketNumber": null,
-  "assignee": null,
-  "features": null,
   "chapter": "Invoicing",
   "context": "Invoicing",
   "commands": [],
   "events": [],
   "readmodels": [
     {
-      "id": "2607e949-c925-4d54-973e-de4a4d1f9554",
-      "title": "Clients",
+      "id": "66725644-b2c6-4639-b7f4-e11631c13e98",
+      "title": "Invoices",
       "type": "READMODEL",
       "fields": [
         {
-          "name": "clientId",
+          "name": "invoiceId",
           "optional": false,
           "showAttributes": false,
           "technicalAttribute": false,
@@ -34,7 +28,7 @@
           "subfields": []
         },
         {
-          "name": "name",
+          "name": "clientName",
           "optional": false,
           "showAttributes": false,
           "technicalAttribute": false,
@@ -48,7 +42,35 @@
           "subfields": []
         },
         {
-          "name": "contactEmail",
+          "name": "date",
+          "optional": false,
+          "showAttributes": false,
+          "technicalAttribute": false,
+          "query": false,
+          "generated": false,
+          "edited": false,
+          "idAttribute": false,
+          "tag": false,
+          "type": "Date",
+          "cardinality": "Single",
+          "subfields": []
+        },
+        {
+          "name": "amount",
+          "optional": false,
+          "showAttributes": false,
+          "technicalAttribute": false,
+          "query": false,
+          "generated": false,
+          "edited": false,
+          "idAttribute": false,
+          "tag": false,
+          "type": "Decimal",
+          "cardinality": "Single",
+          "subfields": []
+        },
+        {
+          "name": "status",
           "optional": false,
           "showAttributes": false,
           "technicalAttribute": false,
@@ -64,22 +86,22 @@
       ],
       "dependencies": [
         {
-          "id": "0baee68e-6348-48a2-9bc2-beb05ed1f1e1",
-          "type": "OUTBOUND",
-          "title": "Clients",
-          "elementType": "HTML_SCREEN"
-        },
-        {
           "id": "b7d70795-13b3-4527-9fa2-255c5cbbde09",
           "type": "INBOUND",
           "title": "ClientCreated",
           "elementType": "EVENT"
         },
         {
-          "id": "af5a8eba-4385-47b3-b89f-05973f4e7e21",
+          "id": "4b868c67-0cee-4727-b0a0-d59041497b6a",
           "type": "OUTBOUND",
-          "title": "New Invoice",
+          "title": "Invoices",
           "elementType": "HTML_SCREEN"
+        },
+        {
+          "id": "f314dad1-f3d6-4d2b-b06b-e09fa365af72",
+          "type": "INBOUND",
+          "title": "InvoiceCreated",
+          "elementType": "EVENT"
         }
       ],
       "modelContext": "Invoicing",
@@ -88,7 +110,7 @@
       "aggregateDependencies": [],
       "triggers": [],
       "tags": [],
-      "slice": "Clients",
+      "slice": "Invoices",
       "description": "",
       "context": "INTERNAL",
       "elementContext": "INTERNAL",
@@ -96,19 +118,19 @@
       "todoList": false,
       "createsAggregate": false,
       "elementCopy": false,
-      "linkedId": "2607e949-c925-4d54-973e-de4a4d1f9554",
+      "linkedId": "66725644-b2c6-4639-b7f4-e11631c13e98",
       "sketched": false,
       "comments": []
     }
   ],
   "screens": [
     {
-      "id": "0baee68e-6348-48a2-9bc2-beb05ed1f1e1",
-      "title": "Clients",
+      "id": "4b868c67-0cee-4727-b0a0-d59041497b6a",
+      "title": "Invoices",
       "type": "HTML_SCREEN",
       "fields": [
         {
-          "name": "name",
+          "name": "clientName",
           "optional": false,
           "showAttributes": false,
           "technicalAttribute": false,
@@ -120,10 +142,40 @@
           "type": "String",
           "cardinality": "Single",
           "subfields": [],
-          "mapping": "name"
+          "mapping": "clientName"
         },
         {
-          "name": "contactEmail",
+          "name": "date",
+          "optional": false,
+          "showAttributes": false,
+          "technicalAttribute": false,
+          "query": false,
+          "generated": false,
+          "edited": false,
+          "idAttribute": false,
+          "tag": false,
+          "type": "Date",
+          "cardinality": "Single",
+          "subfields": [],
+          "mapping": "date"
+        },
+        {
+          "name": "amount",
+          "optional": false,
+          "showAttributes": false,
+          "technicalAttribute": false,
+          "query": false,
+          "generated": false,
+          "edited": false,
+          "idAttribute": false,
+          "tag": false,
+          "type": "Decimal",
+          "cardinality": "Single",
+          "subfields": [],
+          "mapping": "amount"
+        },
+        {
+          "name": "status",
           "optional": false,
           "showAttributes": false,
           "technicalAttribute": false,
@@ -135,14 +187,14 @@
           "type": "String",
           "cardinality": "Single",
           "subfields": [],
-          "mapping": "contactEmail"
+          "mapping": "status"
         }
       ],
       "dependencies": [
         {
-          "id": "2607e949-c925-4d54-973e-de4a4d1f9554",
+          "id": "66725644-b2c6-4639-b7f4-e11631c13e98",
           "type": "INBOUND",
-          "title": "Clients",
+          "title": "Invoices",
           "elementType": "READMODEL"
         }
       ],
@@ -152,7 +204,7 @@
       "aggregateDependencies": [],
       "triggers": [],
       "tags": [],
-      "slice": "Clients",
+      "slice": "Invoices",
       "description": "",
       "context": "INTERNAL",
       "elementContext": "INTERNAL",
@@ -160,7 +212,7 @@
       "todoList": false,
       "createsAggregate": false,
       "elementCopy": false,
-      "linkedId": "0baee68e-6348-48a2-9bc2-beb05ed1f1e1",
+      "linkedId": "4b868c67-0cee-4727-b0a0-d59041497b6a",
       "sketched": false,
       "comments": []
     }
@@ -169,24 +221,36 @@
   "tables": [],
   "specifications": [
     {
-      "id": "cf1e597e-b145-4c36-bbe0-d743f34be281",
-      "title": "List both clients",
+      "id": "9f395f95-5aac-4204-a1ed-87b9fe486c99",
+      "title": "List all invoices newest first",
       "chapter": "Invoicing",
-      "sliceName": "Clients",
+      "sliceName": "Invoices",
       "vertical": false,
       "expectEmptyList": false,
       "examples": [
         {
-          "name": "Great Glen Ltd",
-          "clientId": "c1a2b3c4-0000-4000-8000-000000000001",
-          "contactEmail": "accounts@great-glen.example"
+          "date": "2026-11-08",
+          "amount": "1250.00",
+          "status": "Created",
+          "invoiceId": "f9e8d7c6-0000-4000-8000-000000000101",
+          "clientName": "Great Glen Ltd"
         },
         {
-          "name": "The Lochside Lodge",
-          "clientId": "c1a2b3c4-0000-4000-8000-000000000002",
-          "contactEmail": "ellen@lochside.example"
+          "date": "2026-11-05",
+          "amount": "300.00",
+          "status": "Created",
+          "invoiceId": "f9e8d7c6-0000-4000-8000-000000000102",
+          "clientName": "The Lochside Lodge"
+        },
+        {
+          "date": "2026-10-02",
+          "amount": "480.00",
+          "status": "Created",
+          "invoiceId": "f9e8d7c6-0000-4000-8000-000000000103",
+          "clientName": "Great Glen Ltd"
         }
       ],
+      "contextNote": "Given both clients and invoices ...0101, ...0102, ...0103 exist. Client name is looked up from ClientCreated by clientId.",
       "given": [
         {
           "id": "b7d70795-13b3-4527-9fa2-255c5cbbde09",
@@ -198,8 +262,8 @@
           "fields": []
         },
         {
-          "id": "b7d70795-13b3-4527-9fa2-255c5cbbde09",
-          "title": "ClientCreated",
+          "id": "f314dad1-f3d6-4d2b-b06b-e09fa365af72",
+          "title": "InvoiceCreated",
           "tags": [],
           "index": 0,
           "specRow": 0,
@@ -210,8 +274,8 @@
       "when": [],
       "then": [
         {
-          "id": "2607e949-c925-4d54-973e-de4a4d1f9554",
-          "title": "Clients",
+          "id": "66725644-b2c6-4639-b7f4-e11631c13e98",
+          "title": "Invoices",
           "tags": [],
           "index": 0,
           "specRow": 0,
@@ -221,19 +285,30 @@
       ]
     },
     {
-      "id": "eb37cee1-0c64-43d8-af5d-1cd9c8b375ab",
-      "title": "No clients gives an empty list",
+      "id": "a47d3c4d-bf56-4db4-bbf2-559967305167",
+      "title": "No invoices gives an empty list",
       "chapter": "Invoicing",
-      "sliceName": "Clients",
+      "sliceName": "Invoices",
       "vertical": false,
       "expectEmptyList": true,
       "examples": [],
-      "given": [],
+      "given": [
+        {
+          "id": "b7d70795-13b3-4527-9fa2-255c5cbbde09",
+          "title": "ClientCreated",
+          "tags": [],
+          "index": 0,
+          "specRow": 0,
+          "type": "EVENT",
+          "fields": [],
+          "expectEmptyList": true
+        }
+      ],
       "when": [],
       "then": [
         {
-          "id": "2607e949-c925-4d54-973e-de4a4d1f9554",
-          "title": "Clients",
+          "id": "66725644-b2c6-4639-b7f4-e11631c13e98",
+          "title": "Invoices",
           "tags": [],
           "index": 0,
           "specRow": 0,
@@ -248,8 +323,6 @@
   "aggregates": [],
   "screenImages": [],
   "comments": [
-    "[decision] No apiEndpoint on the Clients read model; used table 'clients' from backend migration V1__clients.sql instead of blocking. 'Create invoice' links to /new-invoice?clientId=.",
-    "[limitation] test-analyzer skill not installed, so no code-slice.json was produced for Clients.",
-    "Slice \"Clients\" was auto-blocked by the Ralph loop. Ralph loop picked up this slice 5 times in a row without its status ever leaving \"Planned\" — the build agent kept declining to build it, or kept building it but its own status change kept getting reverted (e.g. a failed check). Auto-blocked to stop the loop from retrying it forever."
+    "[decision] Assumption: InvoiceCreated carries no status, so the Invoices projection sets status 'Created' (per spec examples). clientName comes from a private clientId-&gt;name lookup fed by ClientCreated."
   ]
 }
