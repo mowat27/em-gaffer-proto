@@ -480,7 +480,7 @@ function applyAndMerge(t: Task, base: string, patch: string): number {
       if (res.status !== 0) throw new Error(`gate failed (exit ${res.status}): ${out}`);
       emit("gate.ok", "gate passed");
     } else {
-      emit("gate.ok", "no gate configured (stub build): passing");
+      emit("gate.ok", "no gate configured: passing");
     }
 
     git(["checkout", "-q", cfg.branch]);

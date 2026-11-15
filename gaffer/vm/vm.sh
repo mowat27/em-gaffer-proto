@@ -8,8 +8,8 @@
 #   vm.sh key <vm> <owner/repo>      add the VM's deploy key to the target repository with write access (the gaffer
 #                                    pushes the target branch). Needs gh signed in with admin rights on the repository.
 #   vm.sh token <vm>                 store the board token on the VM through the gaffer's set_token action: from
-#                                    $EVENTMODELERS_TOKEN, else this folder's tsf/data/layers/gaffer/board-token, else
-#                                    the old single TSF's tsf/data/layers/gaffer/board-token.
+#                                    $EVENTMODELERS_TOKEN, else this folder's tsf/data/layers/gaffer/board-token (the
+#                                    local gaffer TSF's).
 #
 # Only this folder goes to the VM, and only the files git tracks or would track (no tsf/data, no node_modules, no
 # tsf/.env). The gaffer and the builder talk over the tailnet by MagicDNS name (<vm>.<tailnet>.ts.net): NO_PROXY in
@@ -101,9 +101,8 @@ cmd_token() {
   check_name "$vm"
   token="${EVENTMODELERS_TOKEN:-}"
   if [ -z "$token" ]; then
-    for file in "$HOST_DIR/tsf/data/layers/gaffer/board-token" "$HOST_DIR/../tsf/data/layers/gaffer/board-token"; do
-      [ -f "$file" ] && { token="$(tr -d '[:space:]' < "$file")"; break; }
-    done
+    file="$HOST_DIR/tsf/data/layers/gaffer/board-token"
+    [ -f "$file" ] && token="$(tr -d '[:space:]' < "$file")"
   fi
   [ -n "$token" ] || die "no board token: set EVENTMODELERS_TOKEN or store one in a local gaffer TSF first"
   printf '%s' "$token" | jq -Rc '{token: .}' | action "$vm" set_token
