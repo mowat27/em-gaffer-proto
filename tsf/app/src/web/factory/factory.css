@@ -1028,3 +1028,17 @@
   color: var(--pw-text-3);
   font-family: var(--pw-font-mono, monospace);
 }
+
+/* Slim clickable session-duration histogram. */
+.tsf-ss-period { width: 10.5rem; }
+@media (max-width: 640px) {
+  .tsf-ss-period { width: 100%; margin-top: var(--pw-sp-2); }
+}
+.tsf-ss-histogram { height: 9rem; display: flex; align-items: end; gap: 2px; padding: var(--pw-sp-2) 0 1.35rem; border-bottom: 1px solid var(--pw-border); overflow-x: auto; }
+.tsf-ss-axis-label { align-self: flex-start; font-size: .7rem; color: var(--pw-text-muted); margin: .1rem .3rem 0 0; white-space: nowrap; }
+.tsf-ss-bar { align-self: stretch; min-width: 1.45rem; flex: 1 0 1.45rem; max-width: 3rem; position: relative; display: flex; align-items: end; justify-content: center; padding: 0; border: 0; border-radius: var(--pw-r-1) var(--pw-r-1) 0 0; background: transparent; cursor: pointer; }
+.tsf-ss-bar-fill { width: 100%; background: var(--pw-accent); opacity: .72; border-radius: inherit; transition: opacity 120ms ease, transform 120ms ease; }
+.tsf-ss-bar:hover .tsf-ss-bar-fill, .tsf-ss-bar[aria-pressed="true"] .tsf-ss-bar-fill { opacity: 1; transform: scaleX(1.08); }
+.tsf-ss-bar[aria-pressed="true"] .tsf-ss-bar-fill { background: var(--pw-brand); }
+.tsf-ss-bar:focus-visible { outline: 2px solid var(--pw-focus); outline-offset: 2px; }
+.tsf-ss-bar-label { position: absolute; top: calc(100% + .2rem); font-size: .65rem; line-height: 1; color: var(--pw-text-muted); white-space: nowrap; }

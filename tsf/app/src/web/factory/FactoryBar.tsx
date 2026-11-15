@@ -4,6 +4,7 @@
  * Everything goes through the same layer queries and actions the screens and the agent use.
  */
 import { useMemo } from "react";
+import { api } from "../api/client.ts";
 import { useModels } from "../state/queries.ts";
 import { ago } from "./common.tsx";
 import { builderDot, gafferDot } from "./FactoryNav.tsx";
@@ -60,7 +61,22 @@ export function FactoryBar() {
   const effort = bSettings.data?.pi_thinking ?? "";
 
   const set = (key: string, value: string): void => {
-    void bAct.run("set_setting", { key, value }).then(() => bSettings.refresh());
+    void (async () => {
+      const saved = await bAct.run("set_setting", { key, value });
+      if (saved === null) return;
+      const piKey: Record<string, string> = {
+        pi_provider: "defaultProvider",
+        pi_model: "defaultModel",
+        pi_thinking: "defaultThinkingLevel",
+      };
+      if (piKey[key]) {
+        const current = await api.builderAgent.read("settings.json");
+        const settings = JSON.parse(current.content) as Record<string, unknown>;
+        settings[piKey[key]] = value;
+        await api.builderAgent.write("settings.json", `${JSON.stringify(settings, null, 2)}\n`);
+      }
+      bSettings.refresh();
+    })();
   };
 
   return (

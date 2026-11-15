@@ -30,6 +30,16 @@ interface SessionInfo {
   name: string | null;
   size: number;
 }
+interface SessionRun extends SessionInfo {
+  durationMs: number;
+}
+
+const PERIODS = [
+  { value: "24h", label: "Last 24 hours", ms: 24 * 60 * 60 * 1000 },
+  { value: "7d", label: "Last 7 days", ms: 7 * 24 * 60 * 60 * 1000 },
+  { value: "30d", label: "Last 30 days", ms: 30 * 24 * 60 * 60 * 1000 },
+  { value: "all", label: "All time", ms: Infinity },
+] as const;
 
 const fmtClock = (ts: number): string => {
   const d = new Date(ts);
@@ -102,6 +112,8 @@ function Raw({ obj }: { obj: Rec }) {
 
 export function SessionsView() {
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
+  const [runs, setRuns] = useState<SessionRun[]>([]);
+  const [period, setPeriod] = useState<(typeof PERIODS)[number]["value"]>("7d");
   const [selected, setSelected] = useState("");
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -139,6 +151,25 @@ export function SessionsView() {
 
   useEffect(refresh, [refresh]);
   useEffect(() => {
+    let cancelled = false;
+    Promise.all(sessions.map(async (session) => {
+      const file = await api.builderAgent.session(session.id);
+      return { ...session, durationMs: metricsOf(parseSession(file.content)).durationMs };
+    })).then((next) => {
+      if (!cancelled) setRuns(next);
+    }).catch((err: unknown) => {
+      if (!cancelled) setError(errorMessage(err));
+    });
+    return () => { cancelled = true; };
+  }, [sessions]);
+  const filteredRuns = useMemo(() => {
+    const active = PERIODS.find((p) => p.value === period) ?? PERIODS[1];
+    return runs.filter((run) => Date.parse(run.started) >= Date.now() - active.ms);
+  }, [runs, period]);
+  useEffect(() => {
+    if (filteredRuns.length && !filteredRuns.some((run) => run.id === selected)) setSelected(filteredRuns[0].id);
+  }, [filteredRuns, selected]);
+  useEffect(() => {
     setKinds(new Set());
     setToolSel(new Set());
   }, [selected]);
@@ -166,6 +197,7 @@ export function SessionsView() {
   };
 
   const label = (s: SessionInfo): string => `${new Date(s.started).toLocaleString()} · ${s.name ?? "manual"} · ${Math.max(1, Math.round(s.size / 1024))} KB`;
+  const maxDuration = Math.max(1, ...filteredRuns.map((run) => run.durationMs));
 
   return (
     <div className="tsf-ss" data-testid="sessions-view">
@@ -176,8 +208,26 @@ export function SessionsView() {
       )}
 
       <Card
+        title="Build duration"
+        description="Each bar is a session: start time on the x-axis and Pi runtime on the y-axis. Select a bar to open its log."
+        actions={<div className="tsf-ss-period"><Select aria-label="Time period" value={period} onChange={(e) => setPeriod(e.target.value as typeof period)}>{PERIODS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</Select></div>}
+      >
+        {filteredRuns.length > 0 ? <div className="tsf-ss-histogram" role="list" aria-label={`Build duration by session start time; maximum duration ${fmtDuration(maxDuration)}`}>
+          <span className="tsf-ss-axis-label">{fmtDuration(maxDuration)}</span>
+          {filteredRuns.slice().reverse().map((run) => {
+            const height = Math.max(8, Math.round((run.durationMs / maxDuration) * 100));
+            const title = `${new Date(run.started).toLocaleString()}: ${fmtDuration(run.durationMs)} · ${run.name ?? "manual"}`;
+            return <button key={run.id} type="button" role="listitem" className="tsf-ss-bar" aria-pressed={selected === run.id} title={title} onClick={() => setSelected(run.id)}>
+              <span className="tsf-ss-bar-fill" style={{ height: `${height}%` }} />
+              <span className="tsf-ss-bar-label">{new Date(run.started).toLocaleDateString([], { month: "short", day: "numeric" })}</span>
+            </button>;
+          })}
+        </div> : <p className="tsf-fx-muted">No sessions in this period.</p>}
+      </Card>
+
+      <Card
         title="Session log"
-        description="Pi session files under builder/pi-agent/sessions, named by when they started."
+        description="Pi session files under builder/pi-agent/sessions, named by when they started. The time period applies to the chart and session picker."
         actions={
           <Button
             size="sm"
@@ -195,9 +245,9 @@ export function SessionsView() {
       >
         <Field label="Session">
           {(p) => (
-            <Select {...p} value={selected} onChange={(e) => setSelected(e.target.value)} disabled={sessions.length === 0}>
-              {sessions.length === 0 && <option value="">No sessions found</option>}
-              {sessions.map((s) => (
+            <Select {...p} value={selected} onChange={(e) => setSelected(e.target.value)} disabled={filteredRuns.length === 0}>
+              {filteredRuns.length === 0 && <option value="">No sessions in this period</option>}
+              {filteredRuns.map((s) => (
                 <option key={s.id} value={s.id}>
                   {label(s)}
                 </option>
