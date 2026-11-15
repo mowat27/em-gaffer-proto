@@ -1,3 +1,0 @@
-- just now | context/task | attempt 1 | built by pi stub (the configured model)
-- just now | context/examples/createinvoice-slice.json | attempt 1 | built by pi stub (the configured model)
-- just now | context/task | attempt 1 | built by pi stub (the configured model)

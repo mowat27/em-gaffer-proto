@@ -5,9 +5,6 @@ set positional-arguments
 default:
     @just --list
 
-# TSF: Tiny Software Factory, an Empty Factory with a durable agent (start, stop, status, logs, push)
-mod tsf
-
 # Gaffer host: its own TSF (gaffer tsf start|stop|status|logs) and its exe.dev VM (gaffer vm launch|key|token)
 mod gaffer
 
