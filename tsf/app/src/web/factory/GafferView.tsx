@@ -86,6 +86,7 @@ export function GafferView() {
     setPlanning(null);
     slices.refresh();
   };
+  const blocked = (slices.data?.slices ?? []).filter((sl) => sl.status === "Blocked");
   const boardError = slices.data?.summary.startsWith("board unavailable") ? slices.data.summary : null;
 
   return (
@@ -116,6 +117,12 @@ export function GafferView() {
       {act.error && (
         <Alert tone="error" soft onDismiss={act.clearError}>
           {act.error}
+        </Alert>
+      )}
+      {blocked.length > 0 && (
+        <Alert tone="error" title={blocked.length === 1 ? "1 slice is Blocked" : `${blocked.length} slices are Blocked`}>
+          {blocked.map((sl) => `${sl.context ? `${sl.context}/` : ""}${sl.title}`).join(", ")}: the runner gave up after 5 failed attempts. The reason is in the slice's note on the board and in the timeline
+          (slice.blocked). Set a slice back to Planned to retry it.
         </Alert>
       )}
       {s && !s.tokenPresent && (

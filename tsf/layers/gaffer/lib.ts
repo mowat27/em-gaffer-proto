@@ -3,7 +3,7 @@
  * file gaffer.ts appends to, the board API used to list and plan slices, and the Gaffer page. No pi-durable imports:
  * only node built-ins, so the layer loads from its cache copy.
  */
-import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, statSync, writeFileSync, watchFile, unwatchFile } from "node:fs";
+import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, rmSync, statSync, writeFileSync, watchFile, unwatchFile } from "node:fs";
 import { spawn, spawnSync } from "node:child_process";
 import { join, resolve } from "node:path";
 import type { LayerContext } from "../../app/src/agent/layer-context.ts";
@@ -186,7 +186,6 @@ export class GafferLayer {
       gate: s.gate,
       turnTimeoutMinutes: s.turnTimeoutMinutes,
       eventsFile: this.eventsFile,
-      sliceDumpDir: join(this.ctx.paths.projectRoot, "examples"),
     };
     writeFileSync(join(home, "gaffer.json"), JSON.stringify(config, null, 2));
   }
@@ -552,7 +551,9 @@ export class GafferLayer {
       }
     };
     watchFile(this.eventsFile, { interval: 1000 }, check);
+    this.blockedOffset = existsSync(this.runLog) ? statSync(this.runLog).size : 0;
     const pidTimer = setInterval(() => {
+      this.reportBlocked();
       const running = this.running();
       if (running !== this.lastRunning) {
         this.lastRunning = running;
@@ -570,6 +571,31 @@ export class GafferLayer {
     };
   }
   private lastRunning = false;
+  private blockedOffset = 0;
+
+  /** The runner blocks a slice after 5 failed attempts and only says so in its log: turn that line into an event. */
+  private reportBlocked(): void {
+    let size: number;
+    try {
+      size = statSync(this.runLog).size;
+    } catch {
+      return;
+    }
+    if (size < this.blockedOffset) this.blockedOffset = 0;
+    if (size === this.blockedOffset) return;
+    const fd = openSync(this.runLog, "r");
+    try {
+      const buf = Buffer.alloc(size - this.blockedOffset);
+      readSync(fd, buf, 0, buf.length, this.blockedOffset);
+      this.blockedOffset = size;
+      for (const line of buf.toString("utf8").split("\n")) {
+        const m = /Marked "(.+)" \(id=([^)]+)\) as Blocked/.exec(line);
+        if (m) this.emit("slice.blocked", `slice "${m[1]}" is Blocked after repeated failed attempts. Read its note on the board, then set it to Planned to retry.`, { slice: m[1], sliceId: m[2] });
+      }
+    } finally {
+      closeSync(fd);
+    }
+  }
 }
 
 function md(s: string): string {

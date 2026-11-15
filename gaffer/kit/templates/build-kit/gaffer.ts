@@ -71,6 +71,14 @@ function loadConfig(): GafferConfig {
   };
 }
 
+/**
+ * Exit code of a build turn that failed. It is 0 on purpose: the shared runner retries a non-zero exit in place,
+ * for ever, with growing backoff, and never counts it. A turn that exits 0 without recording a status is a failed
+ * attempt: the runner puts the slice back to Planned, counts the attempt and sets the slice to Blocked, with a
+ * comment, after 5. The reason is in the events file and in the note posted on the slice.
+ */
+const FAILED_ATTEMPT = 0;
+
 let cfg: GafferConfig;
 let jobId = "";
 let task: Task | null = null;
@@ -93,6 +101,35 @@ function git(args: string[], opts: { allowFail?: boolean } = {}): string {
     throw new Error(`git ${args.join(" ")} failed: ${(res.stderr || res.stdout || "").trim()}`);
   }
   return (res.stdout || "").trim();
+}
+
+const PUSH_TRIES = 4;
+
+/**
+ * Bring the branch level with origin, then push it so the builder can fetch the base, and return the base. Fetch
+ * first: the branch may not exist locally yet (checkout creates it from origin), and origin may have moved since setup.
+ * The remote can still move, or look older than it is, between the fetch and the push (a person or another gaffer
+ * pushing the same branch, a fetch answered from a lagging replica), and the push is then rejected as non-fast-forward.
+ * Fetch, fast-forward and push again, up to PUSH_TRIES times with a growing pause, and recompute the base each time.
+ * A branch that has really diverged fails at the fast-forward, with git's own message.
+ */
+async function syncAndPushBranch(): Promise<string> {
+  for (let attempt = 1; ; attempt++) {
+    git(["fetch", "-q", "origin"]);
+    git(["checkout", "-q", cfg.branch]);
+    git(["merge", "-q", "--ff-only", `origin/${cfg.branch}`]);
+    const base = git(["rev-parse", "HEAD"]);
+    emit("base", `base ${base.slice(0, 12)} on ${cfg.branch}`, { base, branch: cfg.branch });
+    try {
+      git(["push", "-q", "origin", cfg.branch]);
+      return base;
+    } catch (err) {
+      const message = (err as Error).message;
+      if (attempt >= PUSH_TRIES || !/rejected|fetch first|non-fast-forward/i.test(message)) throw err;
+      emit("push.retry", `push rejected because the remote moved: fetching again (try ${attempt + 1} of ${PUSH_TRIES})`, { attempt });
+      await new Promise((resolve) => setTimeout(resolve, attempt * 3000));
+    }
+  }
 }
 
 function em(args: string[]): void {
@@ -152,9 +189,36 @@ async function boardGet(board: BoardConfig, path: string, query: Record<string, 
   const url = `${board.baseUrl}/api/org/${board.organizationId}/boards/${board.boardId}${path}?${new URLSearchParams(query)}`;
   const headers: Record<string, string> = { "x-token": board.token };
   if (process.env.EVENTMODELERS_AGENT_ID) headers["x-agent-id"] = process.env.EVENTMODELERS_AGENT_ID;
-  const res = await fetch(url, { headers, signal: AbortSignal.timeout(30_000) });
-  if (!res.ok) throw new Error(`board GET ${path} answered HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`);
-  return (await res.json()) as Record<string, unknown>;
+  for (let attempt = 1; ; attempt++) {
+    const res = await fetch(url, { headers, signal: AbortSignal.timeout(30_000) });
+    if (res.ok) return (await res.json()) as Record<string, unknown>;
+    const text = (await res.text()).slice(0, 300);
+    // The board limits a token to 120 requests a minute (HTTP 429, with the wait it wants); a short wait clears it.
+    // Everything else sharing the token (the runner, the factory's polling) counts against the same limit.
+    if (attempt < BOARD_TRIES && [429, 502, 503, 504].includes(res.status)) {
+      const wait = retryWaitMs(res, text);
+      emit("board.retry", `board GET ${path} answered HTTP ${res.status}: waiting ${Math.round(wait / 1000)}s (try ${attempt + 1} of ${BOARD_TRIES})`, { status: res.status });
+      await new Promise((resolve) => setTimeout(resolve, wait));
+      continue;
+    }
+    throw new Error(`board GET ${path} answered HTTP ${res.status}: ${text}`);
+  }
+}
+
+const BOARD_TRIES = 4;
+
+/** How long the board asked us to wait: Retry-After, else context.retryAfterSeconds in the body, plus a second. At most 15s. */
+function retryWaitMs(res: Response, body: string): number {
+  let seconds = Number(res.headers.get("retry-after"));
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    try {
+      seconds = Number((JSON.parse(body) as { context?: { retryAfterSeconds?: unknown } }).context?.retryAfterSeconds);
+    } catch {
+      seconds = NaN;
+    }
+  }
+  if (!Number.isFinite(seconds) || seconds <= 0) seconds = 2;
+  return Math.min(15, seconds + 1) * 1000;
 }
 
 type BoardSlice = { id?: string; title?: string; contextName?: string; contextId?: string; [k: string]: unknown };
@@ -301,7 +365,7 @@ async function buildTurn(t: Task): Promise<number> {
   const found = findSlice(t.sliceId);
   if (!found) {
     emit("turn.fail", `slice.json for ${t.sliceId} not found under .build-kit/.slices`);
-    return 1;
+    return FAILED_ATTEMPT;
   }
 
   // The slice.json on disk is a summary stub. The builder gets the full definition from the board.
@@ -312,7 +376,7 @@ async function buildTurn(t: Task): Promise<number> {
     const reason = (err as Error).message;
     emit("turn.fail", reason);
     note(`gaffer: ${reason}`);
-    return 1;
+    return FAILED_ATTEMPT;
   }
   emit("slice.loaded", `full slice loaded from the board (${Object.keys(fullSlice).length} fields)`, { fields: Object.keys(fullSlice) });
   if (cfg.sliceDumpDir) {
@@ -326,14 +390,8 @@ async function buildTurn(t: Task): Promise<number> {
     }
   }
 
-  // 1. base = HEAD of the selected branch, pushed so the builder can fetch it. Fetch first: the branch may not exist
-  // locally yet (checkout creates it from origin), and origin may have moved since setup.
-  git(["fetch", "-q", "origin"]);
-  git(["checkout", "-q", cfg.branch]);
-  git(["merge", "-q", "--ff-only", `origin/${cfg.branch}`]);
-  const base = git(["rev-parse", "HEAD"]);
-  emit("base", `base ${base.slice(0, 12)} on ${cfg.branch}`, { base, branch: cfg.branch });
-  git(["push", "-q", "origin", cfg.branch]);
+  // 1. base = HEAD of the selected branch, pushed so the builder can fetch it.
+  const base = await syncAndPushBranch();
   emit("push", `${cfg.branch} pushed before dispatch`);
 
   const requires = Array.from(new Set([`repo:${repoKey(cfg.repoUrl || git(["remote", "get-url", "origin"]))}`, ...cfg.requires]));
@@ -365,12 +423,12 @@ async function buildTurn(t: Task): Promise<number> {
     if (!cb) {
       emit("turn.fail", "timed out waiting for the builder's callback");
       note(`gaffer: timed out after ${Math.round(timeoutMs / 60_000)} min waiting for the builder (job ${jobId})`);
-      return 1;
+      return FAILED_ATTEMPT;
     }
     if (cb.outcome === "failed") {
       emit("result.failed", `builder failed: ${cb.reason}`, { reason: cb.reason });
       note(`builder failed: ${cb.reason}`);
-      return 1;
+      return FAILED_ATTEMPT;
     }
     emit("result.done", `builder returned a patch (${cb.patch.length} bytes)`, { bytes: cb.patch.length });
     return applyAndMerge(t, base, cb.patch);
@@ -378,7 +436,7 @@ async function buildTurn(t: Task): Promise<number> {
     const reason = (err as Error).message;
     emit("turn.fail", reason);
     note(`gaffer: ${reason}`);
-    return 1;
+    return FAILED_ATTEMPT;
   } finally {
     server.close();
   }
@@ -430,7 +488,7 @@ function applyAndMerge(t: Task, base: string, patch: string): number {
     git(["branch", "-D", branch], { allowFail: true });
     emit("turn.fail", reason);
     note(`gaffer: ${reason}`);
-    return 1;
+    return FAILED_ATTEMPT;
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -457,6 +515,11 @@ main().then(
     } catch {
       /* ignore */
     }
-    process.exit(1);
+    try {
+      note(`gaffer: fatal: ${(err as Error).message}`);
+    } catch {
+      /* ignore */
+    }
+    process.exit(FAILED_ATTEMPT);
   },
 );

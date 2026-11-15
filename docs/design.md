@@ -118,7 +118,7 @@ Build turn:
 1. Record `base` as `git rev-parse HEAD` on main.
 2. Start the callback listener on the Tailscale address and create a new `jobId`.
 3. POST `/slices` and handle the response as [contract.md](contract.md) describes.
-4. Wait for the callback with a timeout just under the 60-minute turn limit. When the timeout is reached, exit non-zero.
+4. Wait for the callback with a timeout just under the 60-minute turn limit. When the timeout is reached, fail the turn (see below).
 5. Accept only the callback for the current `jobId`.
 6. On `done`:
    1. Apply the patch on a `feature/<slice>` branch with `git am -3`.
@@ -128,8 +128,10 @@ Build turn:
    5. Exit 0.
 7. On `failed`:
    1. Post the reason on the slice with `eventmodelers info "<reason>" --kind note`.
-   2. Exit non-zero.
-8. When `git am` or the gate fails, exit non-zero.
+   2. Fail the turn.
+8. When `git am` or the gate fails, fail the turn.
+
+A failed turn exits 0 without recording a status. The shared runner retries a non-zero exit in place for ever, without counting it, so the slice would never reach Blocked. An exit 0 without a status is a failed attempt: the runner puts the slice back to Planned and sets it to Blocked, with a comment, after 5.
 
 Repository and host:
 

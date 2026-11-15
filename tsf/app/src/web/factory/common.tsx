@@ -19,7 +19,7 @@ export interface FactoryEvent {
 export type Tone = "success" | "warning" | "error" | "info" | "neutral";
 
 export function toneOf(kind: string): Tone {
-  if (/fail|error|reject|abandoned|gone|stale|exit|timeout/.test(kind)) return "error";
+  if (/fail|error|reject|abandoned|gone|stale|exit|timeout|blocked/.test(kind)) return "error";
   if (/busy|retry|stop|skip/.test(kind)) return "warning";
   if (/done|ok|merged|settled|accepted|patch|applied|end|listening|start|setup/.test(kind)) return "success";
   return "info";
