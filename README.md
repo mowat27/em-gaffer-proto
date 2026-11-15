@@ -1,13 +1,14 @@
-# Gaffer / Builder prototype factory
+# Gaffer / Builder prototype
 
-A Tiny Software Factory (TSF) that prototypes the gaffer / builder architecture. A gaffer takes Planned slices from the Invoice Lite board and dispatches each one over HTTP to a build server. The build server runs a `pi` agent in a fresh clone and returns a patch. The gaffer applies, merges and pushes the patch, then settles the slice on the board.
+Prototypes the gaffer / builder architecture on two exe.dev VMs. A gaffer takes Planned slices from the Invoice Lite board and dispatches each one over HTTP, across the tailnet, to a build server on its own VM. The build server runs a `pi` agent in a fresh clone of the target repository and returns a patch. The gaffer applies, merges and pushes the patch, then settles the slice on the board.
 
-The default `pi` agent is a stub: it appends one line to `LOGBOOK.md`. The `pi` invocation and the agent files are meant to be rebuilt from inside the factory.
+Each system runs in its own Tiny Software Factory (TSF): a web app with an agent that starts, stops, configures and monitors it.
 
 ```
-Eventmodelers board <-platform contract-> shared runner --spawns--> gaffer.ts --POST /slices--> builder/server.ts
-                                          (gaffer kit, in the gaffer's clone)      ^                  |
-                                                                                   +---POST callback--+
+gaffer VM (gaffer TSF)                                                         builder VM (builder TSF)
+board <-platform contract-> shared runner --spawns--> gaffer.ts --POST /slices--> server.ts --> pi agent
+                            (gaffer kit, in the gaffer's clone)    ^     tailnet       |
+                                                                   +--POST callback----+
 ```
 
 ## Design docs
@@ -16,40 +17,53 @@ Use these to prime agents building tooling for the architecture.
 
 - [docs/design.md](docs/design.md): layers, runner, platform contract, gaffer kit and CLI, `gaffer.js`, builder.
 - [docs/contract.md](docs/contract.md): the gaffer / builder HTTP contract. Both ends are in `gaffer/kit/templates/build-kit/gaffer.ts` and `builder/server.ts`.
-- [docs/prototype.md](docs/prototype.md): what this repository built and how it deviates from the design (no Tailscale or VM, `gaffer.ts`, a locally built kit, the factory layer in place of the `em gaffer` CLI).
-- [docs/hosting.md](docs/hosting.md): the gaffer and the builder each in their own TSF, locally or on separate exe.dev VMs, with the feature map and the features curtailed by the split.
+- [docs/prototype.md](docs/prototype.md): what this repository built and how it deviates from the design (`gaffer.ts`, a locally built kit, factory layers in place of the `em gaffer` CLI, the gate, builder extras).
+- [docs/hosting.md](docs/hosting.md): the two TSFs, locally or on their exe.dev VMs: launching, network, the feature map and the features curtailed by the split.
 
 ## Layout
 
 | Path | What |
 |---|---|
-| `docs/` | `design.md`, `contract.md`, `prototype.md`, and `reference/stub-harness.sh` (the original spike's `--exec` script) |
+| `docs/` | `design.md`, `contract.md`, `prototype.md`, `hosting.md`, and `reference/stub-harness.sh` (the original spike's `--exec` script) |
 | `gaffer/kit/` | The gaffer build kit (a custom eventmodelers stack): `stack.json`, `templates/build-kit/gaffer.ts` (the runner's `--exec` command), empty `CLAUDE.md` and `AGENTS.md`. `gaffer_setup` turns it into a git repository and installs it with `eventmodelers init --stack gaffer --git` |
+| `gaffer/tsf/` | The gaffer's TSF (project root `gaffer/`). The `gaffer` layer runs the runner with `gaffer.ts` and covers settings, board slices and planning, and events. The `theme` layer installs the Ember colour theme. The app has the Overview and Gaffer screens |
+| `gaffer/vm/` | `vm.sh` (laptop side: launch, key, token) and `setup.sh` (VM side: eventmodelers CLI, deploy key) |
 | `builder/server.ts` | The build server: `POST /slices`, one job at a time, a fresh clone per job, the `pi` agent, `git format-patch` back to the gaffer's callback |
-| `builder/pi-agent/` | The builder's `pi` agent directory (`PI_CODING_AGENT_DIR`): `settings.json`, `AGENTS.md`, `prompts/build.md`, `extensions/`, `skills/`. Plain Pi files, edited directly. The next job picks up changes |
-| `gaffer/tsf/`, `gaffer/vm/` | The gaffer's own TSF (project root `gaffer/`) and its VM scripts: `just gaffer tsf start`, `just gaffer vm launch\|key\|token`. See [docs/hosting.md](docs/hosting.md) |
-| `builder/tsf/`, `builder/vm/` | The builder's own TSF (project root `builder/`) and its VM scripts: `just builder tsf start`, `just builder vm launch\|key`. See [docs/hosting.md](docs/hosting.md) |
-| `tsf/layers/gaffer/` | Factory layer: runs the gaffer (runner + gaffer.ts), settings, board slice listing and planning, events, the Gaffer page |
-| `tsf/layers/builder/` | Factory layer: runs the build server, settings including the full `pi` invocation, events, the Builder page |
-| `tsf/layers/titlebar/` | Factory layer: titlebar |
-| `tsf/pages/` | Factory pages kept in the repository: `ai-docs/pi.md` (Pi reference) and `builder/pi-agent.md` (how the builder's agent is configured). The Gaffer and Builder progress pages are rewritten by the layers as events arrive and live in the factory's page store, not here |
-| `tsf/data/layers/{gaffer,builder}/` | Runtime state (gitignored): settings, events, logs, pids, the board token, the gaffer home (`gaffers/<name>/repo`) |
-| `examples/` | A sample `slice.json` (CreateInvoice) |
-| `LOGBOOK.md` | The target of the stub agent's entries |
+| `builder/pi-agent/` | The builder's `pi` agent directory (`PI_CODING_AGENT_DIR`): `settings.json`, `AGENTS.md`, `prompts/build.md`, `extensions/`, `skills/`. Plain Pi files, edited directly. The next job picks up changes. `sessions/` (gitignored) holds every job's pi session log |
+| `builder/tsf/` | The builder's TSF (project root `builder/`). The `builder` layer runs the build server and covers settings (including the `pi` invocation), events and pi sessions. The app has the Builder screen and the Pi agent file tree. Pages: `ai-docs/pi.md` (Pi reference) and `builder/pi-agent.md` |
+| `builder/vm/` | `vm.sh` (laptop side: launch, key) and `setup.sh` (VM side: pi, deploy key, docker check) |
+| `builder/jobs/` | Job workspaces (the newest 3 are kept) and every job's log (gitignored) |
+| `gaffer/tsf/data/`, `builder/tsf/data/` | Runtime state (gitignored): settings, events, logs, pids, the board token (gaffer only) and the gaffer home (`layers/gaffer/gaffers/<name>/repo`) |
+| `examples/` | Sample `slice.json` files for the Invoice Lite slices, and `em-skills/` (eventmodelers skills kept for reference) |
 | `.claude/skills/hosts/` | Skill for launching the gaffer's or the builder's TSF locally or on a VM |
 | `.claude/skills/import-from-build-kit/` | Skill for porting `@eventmodelers/cli` and build-kit behaviour into the builder's `pi` agent |
 
 ## Running
 
+On exe.dev, builder first ([docs/hosting.md](docs/hosting.md) has the details):
+
 ```
-av just tsf start          # the factory, at http://127.0.0.1:8010 (port set in tsf/.env)
+just builder vm launch <builder-vm>
+just builder vm key <builder-vm> <owner/repo>
+just gaffer vm launch <gaffer-vm> <builder-vm>
+just gaffer vm key <gaffer-vm> <owner/repo>
+just gaffer vm token <gaffer-vm>
 ```
 
-Then in the factory (Settings > Advanced > Gaffer / Builder, or ask the agent):
+Then:
 
-1. `builder_start`
-2. `gaffer_setup` (once, and after changing the board, repository or name), then `gaffer_start`
-3. `gaffer_plan_slice CreateClient` and watch the two pages.
+1. On `https://<builder-vm>.exe.xyz`, Start the build server.
+2. On `https://<gaffer-vm>.exe.xyz`, set the board, repository and branch, then Set up and Start.
+3. Plan a slice from the Gaffer screen or the top bar, and watch both screens.
+
+Each TSF's agent can do the same with its `builder_*` or `gaffer_*` tools. Run `launch` again to redeploy changed code.
+
+Locally, both TSFs default to 127.0.0.1 (builder 8788, callback 8787), so they work together on one machine:
+
+```
+av just builder tsf start --port 8012
+av just gaffer tsf start --port 8013
+```
 
 To try the builder's `pi` agent by hand with its own settings:
 
@@ -59,12 +73,13 @@ just pi [pi args]
 
 ## Customising the builder's agent
 
-- **Files.** Edit `builder/pi-agent/` directly (instructions, prompt template, extensions, skills).
-- **Invocation.** The `pi_*` builder settings (`pi_command`, `pi_agentDir`, `pi_provider`, `pi_model`, `pi_thinking`, `pi_args`, `pi_timeoutMinutes`) set the command line. Use the Builder panel or `builder_set_setting`.
-- **Model.** The live provider, model and thinking level come from `builder/pi-agent/settings.json`, falling back to the `pi_*` settings.
+- **Files.** Edit `builder/pi-agent/` (instructions, prompt template, extensions, skills), then run `just builder vm launch <builder-vm>` to deploy. A redeploy copies the laptop's tracked files over the VM's, so edits made on the VM in the Pi agent tree, including model picks saved to `settings.json`, are overwritten.
+- **Invocation.** The `pi_*` builder settings (`pi_command`, `pi_agentDir`, `pi_provider`, `pi_model`, `pi_thinking`, `pi_args`, `pi_timeoutMinutes`) set the command line. Use the Builder screen or `builder_set_setting`.
+- **Model.** The live provider, model and thinking level come from `builder/pi-agent/settings.json`, falling back to the `pi_*` settings. The Builder screen and the top bar's Model and Effort pickers write both.
 - Changes apply to the next job.
 
 ## Secrets
 
-- `tsf/.env` holds only the placeholder `set-in-agent-vault`. The `av` wrapper routes provider calls through the vault proxy.
-- The board token is read from `EVENTMODELERS_TOKEN`, else from `tsf/data/layers/gaffer/board-token` (mode 600). It goes only into the gaffer clone's `.eventmodelers/config.json` and is never shown or logged.
+- **Provider keys.** Each TSF's `tsf/.env` holds only placeholders. On a VM, `/etc/agent-vault.env` routes provider calls through the Agent Vault proxy and the TSF's systemd unit reads it. `launch` writes `tsf/.env` with the placeholder `agent-vault`. Locally, the `av` wrapper does the same.
+- **Board token.** Gaffer only. Read from `EVENTMODELERS_TOKEN`, else from `gaffer/tsf/data/layers/gaffer/board-token` (mode 600). `just gaffer vm token <gaffer-vm>` stores it on the gaffer VM through `gaffer_set_token`. It goes only into the gaffer clone's `.eventmodelers/config.json` and is never shown or logged. The builder VM never holds it.
+- **Repository access.** `vm key` adds each VM's deploy key to the target repository: read-only for the builder, with write access for the gaffer.

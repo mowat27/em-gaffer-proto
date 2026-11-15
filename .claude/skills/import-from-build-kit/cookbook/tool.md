@@ -27,7 +27,7 @@ divergence gate.
   be diffed against the source when the CLI changes.
 - **Port only the flags in COMMAND.** Fix the other options at the defaults the CLI uses when they are omitted, e.g.
   `scope: 'repo'`, no tags. Do not add retract, merge or other modes unless COMMAND names them.
-- **Write the extension in `builder/pi-agent/extensions/`**, never under `tsf/pages/`. Pages are not copied there.
+- **Write the extension in `builder/pi-agent/extensions/`**, never under the builder TSF's `builder/tsf/pages/`. Pi loads extensions only from the agent dir.
 
 ## Workflow
 

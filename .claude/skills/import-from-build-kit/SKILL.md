@@ -41,9 +41,8 @@ Every recipe relies on these facts. Verify any that a recipe depends on before a
 - **Builder agent model.** The builder (`builder/server.ts`) runs one `pi` process per job with the isolated agent
   dir `builder/pi-agent/` (`PI_CODING_AGENT_DIR`). Pi's cwd is a fresh clone of the target repo. The builder has
   no slice state, no event log, no board connection and no kit agent config. Extensions load only from
-  `builder/pi-agent/extensions/`. The `tsf/pages/Builder/Agent/` pages are copied into the agent dir only for
-  `AGENTS.md` and `prompts/build.md`.
-- **Pi reference.** `tsf/pages/ai-docs/pi.md` covers the extension API (section 8) and tools (section 5).
+  `builder/pi-agent/extensions/`. `AGENTS.md` and `prompts/build.md` are plain files in the agent dir, read for every job.
+- **Pi reference.** `builder/tsf/pages/ai-docs/pi.md` covers the extension API (section 8) and tools (section 5).
 
 ---
 

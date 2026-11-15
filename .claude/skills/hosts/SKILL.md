@@ -16,7 +16,7 @@ Run the gaffer's or the builder's TSF where the user asks: locally or on its own
 
 - `docs/hosting.md` is the source of truth: layout, network, feature map and curtailed features. Read it before acting.
 - Each system folder (`gaffer/`, `builder/`) is its own TSF project. Run its TSF only through `just gaffer tsf …` or `just builder tsf …` locally, and only through `just gaffer vm …` or `just builder vm …` for a VM.
-- **Never use `just gaffer tsf push` or `just builder tsf push`.** The tsf skill's push copies the whole repository, including the old TSF's `tsf/data` with the board token, to the VM.
+- **Never use `just gaffer tsf push` or `just builder tsf push`.** The tsf skill's push copies the whole repository to one VM: both systems and any local `tsf/data`, including the local gaffer's board token.
 - Launch the builder VM before the gaffer VM: the gaffer's launch needs the builder VM's tailnet name.
 - Never print the board token or any key value. `vm token` sends the token on stdin.
 - Do not change the contract, `gaffer/kit/templates/build-kit/gaffer.ts` or `builder/server.ts` from this skill.

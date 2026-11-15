@@ -1,6 +1,6 @@
 # Hosting: one TSF per system
 
-Read when: running, launching or changing the gaffer's or the builder's own TSF, locally or on an exe.dev VM. The design is in [design.md](design.md) and the contract in [contract.md](contract.md). The old single TSF in `tsf/` still runs both systems from the repository root and is unchanged.
+Read when: running, launching or changing the gaffer's or the builder's own TSF, locally or on an exe.dev VM. The design is in [design.md](design.md), the contract in [contract.md](contract.md) and the deviations from the design in [prototype.md](prototype.md). These two TSFs replaced a single TSF that ran both systems from the repository root.
 
 ## Layout
 
@@ -8,10 +8,10 @@ Each system folder is the project root of its own TSF, made with the `tsf` skill
 
 | Path | What |
 |---|---|
-| `gaffer/kit/` | The gaffer build kit (unchanged) |
+| `gaffer/kit/` | The gaffer build kit |
 | `gaffer/tsf/` | The gaffer's TSF: `app/` (the skill's app plus the factory screens), `layers/gaffer/`, `layers/theme/` (the Ember colour theme), `pages/`, `mod.just`, `permissions.json` |
 | `gaffer/vm/` | `vm.sh` (laptop side: launch, key, token) and `setup.sh` (VM side: eventmodelers CLI, deploy key) |
-| `builder/server.ts`, `builder/pi-agent/` | The build server and its pi agent (unchanged) |
+| `builder/server.ts`, `builder/pi-agent/` | The build server and its pi agent |
 | `builder/tsf/` | The builder's TSF: `app/` (the skill's app plus the factory screens and the pi agent routes), `layers/builder/`, `pages/` (`ai-docs/pi.md`, `builder/pi-agent.md`) |
 | `builder/vm/` | `vm.sh` (laptop side: launch, key) and `setup.sh` (VM side: pi 1.5.2, deploy key, docker check) |
 
@@ -24,7 +24,7 @@ av just gaffer tsf start --port 8013
 av just builder tsf start --port 8012
 ```
 
-Or set `TSF_PORT` in each `tsf/.env` (copy `tsf/.env.example`). Both layers default to the same addresses as the old TSF (builder `127.0.0.1:8788`, callback `127.0.0.1:8787`), and the local builder shares `builder/jobs/` and `builder/pi-agent/sessions/` with it. Do not run the new builder's server and the old TSF's at the same time.
+Or set `TSF_PORT` in each `tsf/.env` (copy `tsf/.env.example`). Both layers default to 127.0.0.1 (builder 8788, callback 8787), so the two work together on one machine. Locally the builder runs the laptop's pi (`~/.pi/agent/bin/pi`).
 
 ## Run on exe.dev
 
@@ -54,11 +54,20 @@ Then Start on the Builder screen (`https://<builder-vm>.exe.xyz`), and on the Ga
 - The tailnet ACL lets `tag:sandbox` reach `tag:sandbox` on tcp 8787 (callback) and 8788 (builder). It applies to every sandbox VM.
 - The build server listens on the builder's tailnet name and the callback listener on the gaffer's, so neither port is open on any other interface.
 
+## Current VMs
+
+| VM | Runs | URL |
+|---|---|---|
+| `pw-gaffer-1` | The gaffer TSF (`tsf-gaffer.service`) and the gaffer runner | https://pw-gaffer-1.exe.xyz |
+| `pw-builder-1` | The builder TSF (`tsf-builder.service`) and the build server | https://pw-builder-1.exe.xyz |
+
+Both have deploy keys on `mowat27/invoice-lite`. Redeploy them with `just builder vm launch pw-builder-1` and `just gaffer vm launch pw-gaffer-1 pw-builder-1`.
+
 ## Feature map
 
-Every feature of the old single TSF, and where it lives now.
+Every feature of the former single TSF, and where it lives now.
 
-| Old TSF feature | Gaffer TSF | Builder TSF | Notes |
+| Single TSF feature | Gaffer TSF | Builder TSF | Notes |
 |---|---|---|---|
 | gaffer layer: 12 tools, Settings > Advanced > Gaffer panel, status widget, rules section | Yes | | Kit path now `kit/` |
 | builder layer: 13 tools, Settings > Advanced > Builder panel, status widget, rules section | | Yes | Defaults `workspaceDir` `jobs`, `pi_agentDir` `pi-agent` |
@@ -81,7 +90,7 @@ Every feature of the old single TSF, and where it lives now.
 | Responsive top bar and workbench, navbar wrapping, chat code-block fix | Yes | Yes | |
 | Model panel sorted by name | Yes | Yes | Now built into the skill's Model panel |
 | Pages `ai-docs/pi.md`, `builder/pi-agent.md` | | Yes | Paths made relative to `builder/` |
-| Ember colour theme, dark mode (runtime data in the old TSF) | Yes | | Kept in git as `layers/theme/`. At every start it creates Ember or refreshes its colours from `theme.ts`, and makes it active in dark mode while the factory is on the default theme. The surface tokens are pinned so it renders exactly as the original |
+| Ember colour theme, dark mode (runtime data in the single TSF) | Yes | | Kept in git as `layers/theme/`. At every start it creates Ember or refreshes its colours from `theme.ts`, and makes it active in dark mode while the factory is on the default theme. The surface tokens are pinned so it renders exactly as the original |
 
 ## Curtailed features
 
@@ -100,8 +109,8 @@ Each TSF's agent also has only its own system's tools.
 
 ## Operating notes
 
-- Do not use `just gaffer tsf push` or `just builder tsf push`. The tsf skill's push copies the whole repository to the VM, including the old TSF's `tsf/data` and its board token.
+- Do not use `just gaffer tsf push` or `just builder tsf push`. The tsf skill's push copies the whole repository to one VM: both systems, and any local `tsf/data`, including the local gaffer's board token.
 - `launch` copies one way. Edits made on a VM, for example by its TSF agent, are not copied back, and a redeploy overwrites the files git tracks.
 - GitHub accepts a deploy key on one repository only. A VM that must reach a second target repository needs another key.
 - systemd restarts each TSF on failure and at boot. After a VM reboot, start the build server and the gaffer runner again from their screens, as after a laptop restart.
-- A VM starts from the layers' default settings. The settings in use on the first VMs were copied from the old TSF.
+- A new VM starts from the layers' default settings: the Invoice Lite board, `mowat27/invoice-lite` on `main`, and the builder's pi defaults. Change them on the Gaffer and Builder screens.
