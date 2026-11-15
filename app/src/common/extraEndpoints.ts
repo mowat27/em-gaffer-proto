@@ -1,5 +1,0 @@
-// Endpoints the model describes that do not follow the kit's naming convention (e.g. a file download such as
-// 'GET orderdocument/:orderId/pdf'). `:param` stands for one path segment. Kept by hand: the em-scaffold
-// skill creates this file once and never overwrites it.
-export const EXTRA_ENDPOINTS: string[] = [
-];

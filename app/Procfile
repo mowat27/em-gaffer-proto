@@ -1,2 +1,0 @@
-api: npm run dev
-web: npm --prefix web run dev
