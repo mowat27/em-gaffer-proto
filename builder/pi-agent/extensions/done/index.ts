@@ -53,7 +53,8 @@ const base = () => process.env.BUILDER_BASE || "HEAD";
 /** True when `rel` exists in the base commit. */
 function existsAtBase(cwd: string, rel: string): boolean {
   try {
-    execFileSync("git", ["cat-file", "-e", `${base()}:${rel}`], { cwd, stdio: "ignore" });
+    // `./` makes the path relative to cwd (the app directory), not to the repository root.
+    execFileSync("git", ["cat-file", "-e", `${base()}:./${rel}`], { cwd, stdio: "ignore" });
     return true;
   } catch {
     return false;

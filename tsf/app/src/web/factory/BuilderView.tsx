@@ -6,6 +6,7 @@ import type { Json } from "../../shared/types.ts";
 import { api, errorMessage } from "../api/client.ts";
 import { useModels } from "../state/queries.ts";
 import { Pre, RecentEvents, ScreenTabs, SettingsForm, StatusChip, Timeline, ago, type FactoryEvent, type ScreenTab } from "./common.tsx";
+import { SessionsView } from "./SessionsView.tsx";
 import { useLayerAction, useLayerQuery } from "./useLayer.ts";
 import { setView } from "./viewStore.ts";
 
@@ -19,8 +20,8 @@ interface BuilderStatus {
 interface Health {
   ok: boolean;
   busy: boolean;
-  job: { jobId: string; title: string; context: string; attempt: number; step: string; startedAt: number } | null;
-  lastJob: { jobId: string; title: string; outcome: string; endedAt: number } | null;
+  job: { jobId: string; name?: string; title: string; context: string; attempt: number; step: string; startedAt: number } | null;
+  lastJob: { jobId: string; name?: string; title: string; outcome: string; endedAt: number } | null;
   pi?: { provider: string; model: string; thinking: string; agentDir: string };
   error?: string;
 }
@@ -104,7 +105,9 @@ export function BuilderView() {
         </Alert>
       )}
 
-      <ScreenTabs value={tab} onChange={setTab} />
+      <ScreenTabs value={tab} onChange={setTab} sessions />
+
+      {tab === "sessions" && <SessionsView />}
 
       {tab === "timeline" && (
         <Card title="Timeline" description={s?.lastEvent ? `Last event ${ago(s.lastEvent.ts)}` : "Nothing yet"} actions={<Button size="sm" variant="ghost" onClick={() => void act.run("clear_events")}>Clear</Button>}>
@@ -145,7 +148,7 @@ export function BuilderView() {
               <dt>Started</dt>
               <dd>{ago(h.job.startedAt)}</dd>
               <dt>Job</dt>
-              <dd className="tsf-fx-mono">{h.job.jobId}</dd>
+              <dd>{h.job.name ? `${h.job.name} ` : ""}<span className="tsf-fx-mono">{h.job.jobId}</span></dd>
             </dl>
           ) : h?.lastJob ? (
             <dl className="tsf-fx-kv">
@@ -153,7 +156,7 @@ export function BuilderView() {
               <dd>waiting for a dispatch</dd>
               <dt>Last job</dt>
               <dd>
-                {h.lastJob.title}: <StatusChip state={h.lastJob.outcome === "done" ? "ok" : "error"} label={h.lastJob.outcome} /> {ago(h.lastJob.endedAt)}
+                {h.lastJob.name ? `${h.lastJob.name}, ` : ""}{h.lastJob.title}: <StatusChip state={h.lastJob.outcome === "done" ? "ok" : "error"} label={h.lastJob.outcome} /> {ago(h.lastJob.endedAt)}
               </dd>
             </dl>
           ) : (
@@ -175,7 +178,6 @@ export function BuilderView() {
               { key: "host", label: "Listen host" },
               { key: "port", label: "Listen port", kind: "number" },
               { key: "capabilities", label: "Capabilities", help: "requires entries it meets, comma-separated" },
-              { key: "logbookFile", label: "Logbook file", mono: true },
               { key: "workspaceDir", label: "Workspace directory", mono: true },
               { key: "jobTimeoutMinutes", label: "Job timeout (minutes)", kind: "number" },
             ]}

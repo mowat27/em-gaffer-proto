@@ -4,11 +4,7 @@
   "defaultProvider": "openrouter",
   "defaultModel": "z-ai/glm-5.3",
   "defaultThinkingLevel": "medium",
-  "defaultTools": [
-    "read",
-    "write",
-    "edit"
-  ],
+  "defaultTools": ["read", "write", "edit", "grep", "find", "ls"],
   "defaultProjectTrust": "never",
   "lastChangelogVersion": "1.5.2",
   "enabledModels": [

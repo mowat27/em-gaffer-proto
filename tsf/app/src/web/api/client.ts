@@ -148,6 +148,12 @@ export const api = {
     write(path: string, content: string): Promise<{ path: string; content: string; size: number }> {
       return post("/api/builder-agent/write", { path, content });
     },
+    sessions(): Promise<{ sessions: { id: string; started: string; dir: string; jobId: string | null; name: string | null; size: number }[] }> {
+      return get("/api/builder-agent/sessions");
+    },
+    session(id: string): Promise<{ id: string; content: string; size: number }> {
+      return get(`/api/builder-agent/session?id=${encodeURIComponent(id)}`);
+    },
   },
   pages: {
     read(path: PagePath): Promise<Page> {

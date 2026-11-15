@@ -6,31 +6,42 @@
  *   GET  /status   what it is doing, and the pi configuration it will use for the next job
  *   GET  /health   200 ok
  *
- * Each job: a fresh clone of the target repository at `repo.base` under <workspaceDir>/<jobId>, the stub `pi` agent
- * run in it (it appends an entry to the logbook file), a commit on top of base, `git format-patch <base>..HEAD` sent
- * to the callback, workspace deleted. The builder has read access to the repository only and no board access.
+ * Each job: a fresh clone of the target repository at `repo.base` under <workspaceDir>/<jobId>, the app directory
+ * (`appDir`, where package.json and src/ are) set up, the `pi` agent run in the app directory, a commit on top of
+ * base, `git format-patch <base>..HEAD` sent to the callback. The builder has read access to the repository only and
+ * no board access.
+ *
+ * Setup: before pi starts, the builder runs `setupCommands` (npm ci) and then `baseCheckCommands` (npx tsc --noEmit)
+ * in the app directory. A base without package.json, package-lock.json or tsconfig.json there, or one where a command
+ * fails, fails the job with "target repository is not set up: ..." and pi never starts. The agent never installs.
+ *
+ * Workspaces: the newest `keepWorkspaces` job workspaces are kept after a job, for debugging (the log of every job
+ * is kept regardless); older ones are deleted.
  *
  * Halting: pi gets $BUILDER_HALT_FILE, a path outside the workspace. The agent's `halt` tool writes
  * `{ "reason": "..." }` there when the slice cannot be built. The builder stops pi as soon as the file appears and
  * sends `{ "outcome": "failed", "reason": <reason> }` instead of a patch.
  *
- * Finishing: pi gets $BUILDER_DONE_FILE, $BUILDER_BASE and $BUILDER_LOGBOOK_FILE. The agent's `done` tool
- * (pi-agent/extensions/done/) runs the build kit's slice commit-scope checks on the changes since base and writes the
- * done file when they pass. The builder sends a patch only when that file exists, and runs the same checks again
- * first. `.slice.json` is excluded from the clone, so it never lands in the patch.
+ * Finishing: pi gets $BUILDER_DONE_FILE and $BUILDER_BASE. The agent's `done` tool (pi-agent/extensions/done/) runs
+ * the build kit's slice commit-scope checks, in the app directory, on the changes since base and writes the done file
+ * when they pass. The builder sends a patch only when that file exists, and runs the same checks again first.
+ * `.slice.json` (written into the app directory), `node_modules/` and `.scratch/` (the agent's throwaway scripts) are
+ * excluded through .git/info/exclude, so they never land in the patch.
  *
  * Job context: pi also gets the job's facts as BUILDER_* variables (job id, slice id, title, context, attempt, slice
- * file, base, logbook). The job-context extension adds them to the agent's system prompt. The /build arguments
+ * file, base). The job-context extension adds them to the agent's system prompt. The /build arguments
  * still carry the same values.
  *
  * Configuration is the JSON file named by $BUILDER_CONFIG (the factory's builder layer writes it from its settings).
  * The file is re-read at the start of every job, so a changed pi configuration applies to the next build. Progress is
  * appended as JSON lines to `eventsFile`. Runs on Node 24 type stripping: only erasable TypeScript syntax is used.
  */
-import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { spawn, spawnSync } from "node:child_process";
+import { rm } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { join, resolve } from "node:path";
+import { jobLabel, jobName } from "./job-name.ts";
 import { allChanges, builderExceptions, formatViolations, runChecks, SLICE_FILE } from "./pi-agent/extensions/done/checks.ts";
 
 export interface PiConfig {
@@ -58,7 +69,15 @@ export interface BuilderConfig {
   /** `requires` entries this builder satisfies besides `repo:*` (for example "stack:stub"). */
   capabilities: string[];
   jobTimeoutMinutes: number;
-  logbookFile: string;
+  /** The app inside the clone, where package.json, tsconfig.json and src/ are; pi runs here ("" or "." = the clone root). */
+  appDir: string;
+  /** Run in the app directory before pi starts, in order. A failure fails the job. */
+  setupCommands: string[];
+  /** Run in the app directory after setup: the base must pass them. A failure fails the job. */
+  baseCheckCommands: string[];
+  setupTimeoutMinutes: number;
+  /** How many job workspaces to keep after a job (the newest). 0 deletes each workspace when its job ends. */
+  keepWorkspaces: number;
   /** How many times to retry the callback (backoff 1, 2, 4 ... seconds, capped at 30). */
   callbackRetries: number;
   eventsFile?: string;
@@ -95,7 +114,11 @@ export function defaultConfig(): BuilderConfig {
     workspaceDir: "builder/jobs",
     capabilities: ["stack:stub"],
     jobTimeoutMinutes: 20,
-    logbookFile: "LOGBOOK.md",
+    appDir: "app",
+    setupCommands: ["npm ci"],
+    baseCheckCommands: ["npx tsc --noEmit"],
+    setupTimeoutMinutes: 10,
+    keepWorkspaces: 3,
     callbackRetries: 8,
     pi: {
       // The pi binary itself: the factory already runs under the vault wrapper, and the `pi` shell wrapper (av pi)
@@ -131,7 +154,7 @@ let lastJob: (Job & { outcome: string; endedAt: number }) | null = null;
 function emit(kind: string, msg: string, data: Record<string, unknown> = {}): void {
   console.log(`[builder] ${msg}`);
   if (!cfg.eventsFile) return;
-  const event = { ts: new Date().toISOString(), source: "builder", kind, msg, jobId: current?.jobId, slice: current?.title, ...data };
+  const event = { ts: new Date().toISOString(), source: "builder", kind, msg, jobId: current?.jobId, name: current ? jobName(current.jobId) : undefined, slice: current?.title, ...data };
   try {
     appendFileSync(cfg.eventsFile, JSON.stringify(event) + "\n");
   } catch (err) {
@@ -228,6 +251,92 @@ function git(cwd: string, args: string[]): string {
   return (res.stdout || "").trim();
 }
 
+/** The app inside a job's clone: where setup runs, pi runs and the checks run. */
+function appRootOf(job: Job): string {
+  return join(job.workspace, cfg.appDir);
+}
+
+/** Run a shell command without blocking the server; its output goes to the job log. */
+function runShell(command: string, cwd: string, timeoutMs: number, logFile: string): Promise<{ code: number | null; timedOut: boolean; tail: string }> {
+  return new Promise((resolveRun) => {
+    let tail = "";
+    let timedOut = false;
+    appendFileSync(logFile, `\n$ ${command}  (in ${cwd})\n`);
+    const child = spawn(command, { cwd, shell: true, env: { ...process.env, CI: "1", NO_COLOR: "1" }, stdio: ["ignore", "pipe", "pipe"] });
+    const onData = (chunk: Buffer) => {
+      const text = chunk.toString("utf8");
+      tail = (tail + text).slice(-2000);
+      try {
+        appendFileSync(logFile, text);
+      } catch {
+        /* ignore */
+      }
+    };
+    child.stdout.on("data", onData);
+    child.stderr.on("data", onData);
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGTERM");
+      setTimeout(() => child.kill("SIGKILL"), 5000).unref();
+    }, timeoutMs);
+    child.on("error", (err) => {
+      clearTimeout(timer);
+      resolveRun({ code: -1, timedOut, tail: `${tail}\nspawn error: ${err.message}` });
+    });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      resolveRun({ code, timedOut, tail });
+    });
+  });
+}
+
+/**
+ * Get the app directory ready for the agent: it has the files a Node app needs, its dependencies install, and the
+ * base passes the base checks. Throws "target repository is not set up: ..." otherwise, so pi never starts on a base
+ * that cannot build.
+ */
+async function setupApp(job: Job, d: Dispatch): Promise<void> {
+  const appRoot = appRootOf(job);
+  const short = d.repo.base.slice(0, 12);
+  const where = cfg.appDir && cfg.appDir !== "." ? `${cfg.appDir}/` : "";
+  if (!existsSync(appRoot)) throw new Error(`target repository is not set up: ${where || "the app directory"} missing at base ${short}`);
+  for (const file of ["package.json", "package-lock.json", "tsconfig.json"]) {
+    if (!existsSync(join(appRoot, file))) throw new Error(`target repository is not set up: ${where}${file} missing at base ${short}`);
+  }
+  emit("setup.start", `setting up ${where || "."}: ${[...cfg.setupCommands, ...cfg.baseCheckCommands].join(", ")}`);
+  for (const command of [...cfg.setupCommands, ...cfg.baseCheckCommands]) {
+    const res = await runShell(command, appRoot, Math.max(1, cfg.setupTimeoutMinutes) * 60_000, job.logFile);
+    if (res.code !== 0) {
+      const why = res.timedOut ? `timed out after ${cfg.setupTimeoutMinutes} min` : `failed`;
+      const reason = `target repository is not set up: \`${command}\` ${why} at base ${short}: ${res.tail.trim().slice(-400)}`;
+      emit("setup.fail", reason, { command });
+      throw new Error(reason);
+    }
+  }
+  emit("setup.ok", "dependencies installed and the base builds");
+}
+
+/**
+ * Keep the newest `keep` job workspaces (the current one counts); delete the rest. The logs directory is never touched.
+ * Deleting is asynchronous: a workspace holds node_modules, and removing it must not stall the server's HTTP answers.
+ */
+function pruneWorkspaces(wsRoot: string, current: string, keep: number): void {
+  try {
+    const drop = (path: string) => void rm(path, { recursive: true, force: true }).catch((err: Error) => emit("cleanup.warn", `could not delete ${path}: ${err.message}`));
+    if (keep <= 0) {
+      drop(current);
+      return;
+    }
+    const others = readdirSync(wsRoot, { withFileTypes: true })
+      .filter((e) => e.isDirectory() && e.name !== "logs" && join(wsRoot, e.name) !== current)
+      .map((e) => ({ path: join(wsRoot, e.name), mtime: statSync(join(wsRoot, e.name)).mtimeMs }))
+      .sort((a, b) => b.mtime - a.mtime);
+    for (const old of others.slice(keep - 1)) drop(old.path);
+  } catch (err) {
+    emit("cleanup.warn", `could not prune workspaces: ${(err as Error).message}`);
+  }
+}
+
 /** Shell-like quoting for a `/build` argument: pi's prompt-template parser respects quotes the same way a shell does. */
 function quoteArg(s: string): string {
   return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
@@ -267,9 +376,12 @@ function runPi(job: Job, d: Dispatch): Promise<{ code: number | null; timedOut: 
   const command = pi.command.replace(/^~(?=\/|$)/, process.env.HOME ?? "~");
   const agentDir = pi.agentDir ? resolve(pi.agentDir.replace(/^~(?=\/|$)/, process.env.HOME ?? "~")) : "";
   const live = livePiSettings(pi);
-  // The full slice spec (commands, events, readmodels, screens, specifications) as sent by the gaffer: written next
-  // to the clone so the agent can read it with a plain relative path (pi's cwd is job.workspace).
-  writeFileSync(join(job.workspace, SLICE_FILE), JSON.stringify(d.slice ?? null, null, 2));
+  // The full slice spec (commands, events, readmodels, screens, specifications) as sent by the gaffer: written into
+  // the app directory so the agent can read it with a plain relative path (pi's cwd is the app directory). Removed
+  // first so a tracked file or symlink of that name is replaced, never written through.
+  const sliceFile = join(appRootOf(job), SLICE_FILE);
+  rmSync(sliceFile, { force: true });
+  writeFileSync(sliceFile, JSON.stringify(d.slice ?? null, null, 2));
   // The `/build` prompt template (builder/pi-agent/prompts/build.md, a real file, edited directly) expands $1..
   // itself; this is the same `/name arg1 arg2` a human types in an interactive pi session.
   const prompt = [
@@ -280,7 +392,6 @@ function runPi(job: Job, d: Dispatch): Promise<{ code: number | null; timedOut: 
     quoteArg(d.task.context),
     quoteArg(d.task.sliceId),
     quoteArg(String(d.task.attempt)),
-    quoteArg(cfg.logbookFile),
     quoteArg(d.repo.base),
     quoteArg(pi.model),
     quoteArg(new Date().toISOString()),
@@ -298,7 +409,7 @@ function runPi(job: Job, d: Dispatch): Promise<{ code: number | null; timedOut: 
     let timedOut = false;
     let halt: string | null = null;
     const child = spawn(command, args, {
-      cwd: job.workspace,
+      cwd: appRootOf(job),
       env: {
         ...process.env,
         PI_NO_UPDATE_CHECK: "1",
@@ -312,7 +423,6 @@ function runPi(job: Job, d: Dispatch): Promise<{ code: number | null; timedOut: 
         BUILDER_ATTEMPT: String(d.task.attempt),
         BUILDER_SLICE_FILE: SLICE_FILE,
         BUILDER_BASE: d.repo.base,
-        BUILDER_LOGBOOK_FILE: cfg.logbookFile,
         ...(agentDir ? { PI_CODING_AGENT_DIR: agentDir } : {}) },
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -411,8 +521,12 @@ async function runJob(job: Job, d: Dispatch): Promise<void> {
     git(job.workspace, ["checkout", "-q", "-B", "job", d.repo.base]);
     git(job.workspace, ["config", "user.name", "builder"]);
     git(job.workspace, ["config", "user.email", "builder@gaffer.local"]);
-    // The slice spec is written into the clone for the agent; it must never reach the patch.
-    appendFileSync(join(job.workspace, ".git", "info", "exclude"), `\n${SLICE_FILE}\n`);
+    // Never in the patch: the slice spec written for the agent, installed dependencies, the agent's scratch scripts.
+    appendFileSync(join(job.workspace, ".git", "info", "exclude"), `\n${SLICE_FILE}\nnode_modules/\n.scratch/\n`);
+
+    step("setup");
+    await setupApp(job, d);
+    if (Date.now() > deadline) throw new Error(`job exceeded ${cfg.jobTimeoutMinutes} min during setup`);
 
     step("pi");
     const pi = await runPi(job, d);
@@ -425,7 +539,7 @@ async function runJob(job: Job, d: Dispatch): Promise<void> {
     // The agent hands the work over with its done tool; without it there is no verdict to send.
     if (!existsSync(job.doneFile)) throw new Error("the agent finished without calling done");
     step("checks");
-    const violations = runChecks(job.workspace, allChanges(job.workspace, d.repo.base), builderExceptions(cfg.logbookFile));
+    const violations = runChecks(appRootOf(job), allChanges(appRootOf(job), d.repo.base), builderExceptions());
     if (violations.length) throw new Error(`slice commit-scope checks failed after done:\n${formatViolations(violations)}`);
 
     step("commit");
@@ -450,12 +564,12 @@ async function runJob(job: Job, d: Dispatch): Promise<void> {
   await postCallback(job, d.callback, result);
 
   step("cleanup");
-  rmSync(job.workspace, { recursive: true, force: true });
+  pruneWorkspaces(resolve(cfg.workspaceDir), job.workspace, cfg.keepWorkspaces);
   rmSync(job.haltFile, { force: true });
   rmSync(job.doneFile, { force: true });
   lastJob = { ...job, outcome: result.outcome, endedAt: Date.now() };
   current = null;
-  emit("job.end", `job ${job.jobId.slice(0, 8)} ${result.outcome} in ${Math.round((Date.now() - job.startedAt) / 1000)}s`, { outcome: result.outcome });
+  emit("job.end", `job ${jobLabel(job.jobId)} ${result.outcome} in ${Math.round((Date.now() - job.startedAt) / 1000)}s`, { outcome: result.outcome, name: jobName(job.jobId) });
 }
 
 function status(): Record<string, unknown> {
@@ -465,8 +579,8 @@ function status(): Record<string, unknown> {
   return {
     ok: true,
     busy: !!current,
-    job: current ? { jobId: current.jobId, title: current.title, context: current.context, attempt: current.attempt, step: current.step, startedAt: current.startedAt } : null,
-    lastJob: lastJob ? { jobId: lastJob.jobId, title: lastJob.title, outcome: lastJob.outcome, endedAt: lastJob.endedAt } : null,
+    job: current ? { jobId: current.jobId, name: jobName(current.jobId), title: current.title, context: current.context, attempt: current.attempt, step: current.step, startedAt: current.startedAt } : null,
+    lastJob: lastJob ? { jobId: lastJob.jobId, name: jobName(lastJob.jobId), title: lastJob.title, outcome: lastJob.outcome, endedAt: lastJob.endedAt } : null,
     capabilities: cfg.capabilities,
     pi: { command: pi.command, agentDir: pi.agentDir, ...livePiSettings(pi), args: pi.args },
     workspaceDir: resolve(cfg.workspaceDir),
@@ -491,7 +605,7 @@ const server = createServer(async (req, res) => {
       return json(res, 400, { error: v.error });
     }
     if (current) {
-      emit("busy", `503: busy with job ${current.jobId.slice(0, 8)}`);
+      emit("busy", `503: busy with job ${jobLabel(current.jobId)}`);
       return json(res, 503, { error: "busy", jobId: current.jobId }, { "retry-after": "15" });
     }
     cfg = loadConfig();
@@ -515,9 +629,9 @@ const server = createServer(async (req, res) => {
       haltFile: join(wsRoot, "logs", `${jobId}.halt.json`),
       doneFile: join(wsRoot, "logs", `${jobId}.done.json`),
     };
-    writeFileSync(job.logFile, `job ${jobId}: ${v.d.task.context}/${v.d.task.title} attempt ${v.d.task.attempt}, base ${v.d.repo.base}\n`);
+    writeFileSync(job.logFile, `job ${jobName(jobId)} (${jobId}): ${v.d.task.context}/${v.d.task.title} attempt ${v.d.task.attempt}, base ${v.d.repo.base}\n`);
     current = job;
-    emit("accepted", `202: job ${jobId.slice(0, 8)} for ${v.d.task.context}/${v.d.task.title} (attempt ${v.d.task.attempt})`, {
+    emit("accepted", `202: job ${jobLabel(jobId)} for ${v.d.task.context}/${v.d.task.title} (attempt ${v.d.task.attempt})`, {
       sliceId: v.d.task.sliceId,
       base: v.d.repo.base,
       attempt: v.d.task.attempt,
@@ -535,7 +649,7 @@ server.listen(cfg.port, cfg.host, () => {
 
 for (const sig of ["SIGINT", "SIGTERM"] as const) {
   process.on(sig, () => {
-    emit("stopping", `build server stopping (${sig})${current ? `, abandoning job ${current.jobId.slice(0, 8)}` : ""}`);
+    emit("stopping", `build server stopping (${sig})${current ? `, abandoning job ${jobLabel(current.jobId)}` : ""}`);
     server.close();
     process.exit(0);
   });

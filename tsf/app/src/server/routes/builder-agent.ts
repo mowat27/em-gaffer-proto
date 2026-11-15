@@ -3,6 +3,7 @@ import { join, relative, resolve } from "node:path";
 import { Hono } from "hono";
 import { jsonBody, ServiceError } from "../../core/errors.ts";
 import { resolveProjectRoot } from "../../core/paths.ts";
+import { listSessions, readSession } from "../../../../../builder/pi-session-files.ts";
 
 const ROOT = resolve(resolveProjectRoot(), "builder", "pi-agent");
 const MAX_FILE_BYTES = 256 * 1024;
@@ -39,9 +40,19 @@ function list(dir: string, prefix = ""): BuilderAgentFile[] {
   return out;
 }
 
+const SESSIONS = resolve(ROOT, "sessions");
+
 /** Read-only browser access to Pi's actual agent directory. auth.json is intentionally excluded. */
 export function builderAgentRoutes(): Hono {
   const app = new Hono();
+
+  app.get("/builder-agent/sessions", (c) => c.json({ sessions: listSessions(SESSIONS) }));
+
+  app.get("/builder-agent/session", (c) => {
+    const r = readSession(SESSIONS, c.req.query("id"));
+    if (!r.ok) throw new ServiceError(r.code, r.message);
+    return c.json({ id: r.id, content: r.content, size: r.size });
+  });
 
   app.get("/builder-agent/files", (c) => c.json({ root: "builder/pi-agent", files: list(ROOT) }));
 

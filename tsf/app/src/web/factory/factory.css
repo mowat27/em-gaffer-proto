@@ -829,3 +829,202 @@
 .tsf-link-button:hover {
   text-decoration: none;
 }
+
+/* --- Builder > Sessions: a pi session log as a list of entries --------------------------------------------------- */
+
+.tsf-ss {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-sp-4);
+}
+
+.tsf-ss-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 14rem);
+  gap: var(--pw-sp-3);
+}
+
+.tsf-ss-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-sp-2);
+}
+
+.tsf-ss-entry {
+  --ss: var(--pw-text-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-sp-1);
+  padding: var(--pw-sp-2) var(--pw-sp-3);
+  border: 1px solid var(--pw-border-subtle);
+  border-left: 4px solid var(--ss);
+  border-radius: var(--pw-r-sm);
+  background: color-mix(in srgb, var(--ss) 7%, transparent);
+}
+
+.tsf-ss-entry[data-kind="user"] {
+  --ss: var(--pw-info, var(--pw-brand-text));
+}
+
+.tsf-ss-entry[data-kind="assistant"] {
+  --ss: var(--pw-accent, var(--pw-brand-text));
+}
+
+.tsf-ss-entry[data-kind="tool"] {
+  --ss: var(--pw-success);
+}
+
+.tsf-ss-entry[data-kind="tool-error"] {
+  --ss: var(--pw-error);
+}
+
+.tsf-ss-entry[data-kind="system"] {
+  --ss: var(--pw-warning);
+}
+
+.tsf-ss-head {
+  display: flex;
+  align-items: center;
+  gap: var(--pw-sp-3);
+  font-size: var(--pw-fs-xs);
+}
+
+.tsf-ss-kind {
+  padding: 0 var(--pw-sp-2);
+  border-radius: var(--pw-r-sm);
+  background: color-mix(in srgb, var(--ss) 22%, transparent);
+  color: var(--pw-text);
+  font-weight: var(--pw-fw-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tsf-ss-time,
+.tsf-ss-n {
+  color: var(--pw-text-3);
+  font-family: var(--pw-font-mono, monospace);
+}
+
+.tsf-ss-n {
+  margin-left: auto;
+}
+
+.tsf-ss-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-sp-1);
+  min-width: 0;
+  font-size: var(--pw-fs-sm);
+}
+
+.tsf-ss-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.tsf-ss-thinking {
+  color: var(--pw-text-3);
+  font-style: italic;
+}
+
+.tsf-ss-call {
+  word-break: break-all;
+}
+
+.tsf-ss-call code,
+.tsf-ss-line code {
+  font-family: var(--pw-font-mono, monospace);
+  font-size: var(--pw-fs-xs);
+}
+
+.tsf-ss-dim {
+  color: var(--pw-text-3);
+  font-size: var(--pw-fs-xs);
+}
+
+.tsf-ss-raw summary {
+  width: max-content;
+  color: var(--pw-text-3);
+  font-size: var(--pw-fs-xs);
+  cursor: pointer;
+}
+
+.tsf-ss-raw .tsf-fx-pre {
+  margin-top: var(--pw-sp-1);
+}
+
+.tsf-ss-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pw-sp-2);
+}
+
+.tsf-ss-chips-label {
+  min-width: 3rem;
+  color: var(--pw-text-3);
+  font-size: var(--pw-fs-xs);
+  font-weight: var(--pw-fw-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tsf-ss-chip {
+  --ss: var(--pw-text-3);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pw-sp-1);
+  min-height: var(--pw-ctl-h-sm, 1.75rem);
+  padding: 0 var(--pw-sp-3);
+  border: 1px solid color-mix(in srgb, var(--ss) 55%, transparent);
+  border-radius: var(--pw-r-sm);
+  background: transparent;
+  color: var(--pw-text);
+  font: inherit;
+  font-size: var(--pw-fs-xs);
+  cursor: pointer;
+}
+
+.tsf-ss-chip[data-kind="user"] {
+  --ss: var(--pw-info, var(--pw-brand-text));
+}
+
+.tsf-ss-chip[data-kind="assistant"] {
+  --ss: var(--pw-accent, var(--pw-brand-text));
+}
+
+.tsf-ss-chip[data-kind="tool"],
+.tsf-ss-chip[data-kind="tool-name"] {
+  --ss: var(--pw-success);
+}
+
+.tsf-ss-chip[data-kind="tool-error"] {
+  --ss: var(--pw-error);
+}
+
+.tsf-ss-chip[data-kind="system"] {
+  --ss: var(--pw-warning);
+}
+
+.tsf-ss-chip:hover {
+  background: color-mix(in srgb, var(--ss) 12%, transparent);
+}
+
+.tsf-ss-chip[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--ss) 28%, transparent);
+  border-color: var(--ss);
+  font-weight: var(--pw-fw-semibold);
+}
+
+.tsf-ss-chip:focus-visible {
+  outline: 2px solid var(--pw-focus);
+  outline-offset: 2px;
+}
+
+.tsf-ss-chip-count {
+  color: var(--pw-text-3);
+  font-family: var(--pw-font-mono, monospace);
+}

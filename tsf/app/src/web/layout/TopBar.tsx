@@ -39,6 +39,19 @@ export function TopBar() {
             {c.word}
           </Badge>
           <IconButton
+            label="Restart factory"
+            icon={RotateCw}
+            variant="ghost"
+            data-cap="factory.restart"
+            data-testid="topbar-restart-factory"
+            disabled={connection === "restarting" || connection === "offline"}
+            onClick={() => {
+              api.factory.restart("Top navigation").catch(() => {
+                // The connection badge reports a failed restart attempt.
+              });
+            }}
+          />
+          <IconButton
             label={hotkey ? `Settings (${hotkey.toUpperCase()})` : "Settings"}
             icon={Settings}
             variant="ghost"

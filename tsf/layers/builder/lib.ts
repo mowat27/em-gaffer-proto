@@ -15,7 +15,6 @@ export interface BuilderSettings {
   workspaceDir: string;
   capabilities: string;
   jobTimeoutMinutes: number;
-  logbookFile: string;
   callbackRetries: number;
   pi_command: string;
   pi_agentDir: string;
@@ -32,7 +31,6 @@ export const DEFAULTS: BuilderSettings = {
   workspaceDir: "builder/jobs",
   capabilities: "stack:stub",
   jobTimeoutMinutes: 20,
-  logbookFile: "LOGBOOK.md",
   callbackRetries: 8,
   pi_command: "~/.pi/agent/bin/pi",
   pi_agentDir: "builder/pi-agent",
@@ -131,7 +129,6 @@ export class BuilderLayer {
         .map((x) => x.trim())
         .filter(Boolean),
       jobTimeoutMinutes: s.jobTimeoutMinutes,
-      logbookFile: s.logbookFile,
       callbackRetries: s.callbackRetries,
       eventsFile: this.eventsFile,
       pi: {
@@ -290,9 +287,8 @@ export class BuilderLayer {
       "|---|---|",
       `| Listen | ${this.url()} (POST /slices, GET /status) |`,
       `| Capabilities | repo:<any reachable>, ${s.capabilities || "(none)"} |`,
-      `| Workspaces | \`${s.workspaceDir}/<jobId>\` (deleted after the job; logs in \`${s.workspaceDir}/logs\`) |`,
+      `| Workspaces | \`${s.workspaceDir}/<jobId>\` (the newest few are kept after a job; logs in \`${s.workspaceDir}/logs\`) |`,
       `| Job timeout | ${s.jobTimeoutMinutes} min |`,
-      `| Logbook | \`${s.logbookFile}\` |`,
       "",
       "## pi agent (next build)",
       "",

@@ -326,8 +326,11 @@ async function buildTurn(t: Task): Promise<number> {
     }
   }
 
-  // 1. base = HEAD of the selected branch, pushed so the builder can fetch it.
+  // 1. base = HEAD of the selected branch, pushed so the builder can fetch it. Fetch first: the branch may not exist
+  // locally yet (checkout creates it from origin), and origin may have moved since setup.
+  git(["fetch", "-q", "origin"]);
   git(["checkout", "-q", cfg.branch]);
+  git(["merge", "-q", "--ff-only", `origin/${cfg.branch}`]);
   const base = git(["rev-parse", "HEAD"]);
   emit("base", `base ${base.slice(0, 12)} on ${cfg.branch}`, { base, branch: cfg.branch });
   git(["push", "-q", "origin", cfg.branch]);

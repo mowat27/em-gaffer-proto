@@ -11,10 +11,12 @@
 // Differences from the kit:
 // - Changes are the working tree against the job's base commit (`git diff <base>` plus untracked files), not
 //   against HEAD or the index. The builder commits for the agent, so the patch is everything since base.
-// - findSliceJson reads the job's `.slice.json` at the clone root instead of `.build-kit/.slices/<ctx>/<slice>/`,
-//   and matches it to a slice folder by its contextName and title, normalized the same way.
-// - slice-scope also allows the builder's own files outside a slice: the logbook file the build prompt appends to
-//   and the learnings file capture-learning writes (BuilderExceptions).
+// - findSliceJson reads the job's `.slice.json` from the app directory (the checks' working directory) instead of
+//   `.build-kit/.slices/<ctx>/<slice>/`, and matches it to a slice folder by its contextName and title, normalized
+//   the same way.
+// - slice-scope also allows the builder's own files outside a slice: the learnings file capture-learning writes
+//   (BuilderExceptions) and the `.scratch/` directory of throwaway scripts. All paths are relative to the app
+//   directory, which is where pi runs and where the checks run.
 // - The checks are one module instead of a directory the runner loads, so a check is added here, not dropped in.
 
 import { execFileSync, execSync } from "node:child_process";
@@ -39,9 +41,9 @@ export const SLICE_PATTERN = /^src\/slices\/[^/]+\/[^/]+\//;
 export const WEBHOOK_FUNCTION_PATTERN = /^supabase\/functions\/[^/]+\/index\.ts$/;
 export const MIGRATION_PATTERN = /^supabase\/migrations\/V\d+__.*\.sql$/;
 
-/** The builder's own files outside a slice: the logbook the build prompt appends to, and the learnings file. */
-export function builderExceptions(logbookFile = process.env.BUILDER_LOGBOOK_FILE || "LOGBOOK.md"): string[] {
-  return [logbookFile, "LEARNINGS.md"];
+/** The builder's own files outside a slice: the learnings file (paths relative to the app directory). */
+export function builderExceptions(): string[] {
+  return ["LEARNINGS.md"];
 }
 
 // ---- runner (check-commit-scope.cjs) ----
@@ -174,6 +176,7 @@ export const ALLOWED_EXCEPTIONS = [
   /^src\/slices\/[^/]+\/[A-Za-z0-9]+Events\.ts$/, // per-context event union (append-only)
   /^src\/common\/loadPostgresEventstore\.ts$/, // projection registration / schema.migrate()
   /^supabase\/config\.toml$/, // webhook function registration (verify_jwt entry)
+  /^\.scratch\//, // throwaway scripts: the builder keeps this directory out of the patch (.git/info/exclude)
 ];
 
 // Captures the {context}/{slice} segment so files from two different slices

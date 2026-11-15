@@ -1,6 +1,6 @@
 ---
 description: Build one slice
-argument-hint: "<sliceFile> <title> <context> <sliceId> <attempt> <logbook> <base> <model> <now>"
+argument-hint: "<sliceFile> <title> <context> <sliceId> <attempt> <base> <model> <now>"
 ---
 
 # Project Configuration
@@ -14,8 +14,8 @@ argument-hint: "<sliceFile> <title> <context> <sliceId> <attempt> <logbook> <bas
 
 | Handle | Path | Description |
 | ---    | ---  | ---         |
-| `SLICE_FILE` | `<code-repo>/.slice.json` | Defines the slice to be built |
-| `LEARNINGS_FILE` | `<code-repo>/LEARNINGS.md` | text file containing learnings from previous agent runs |
+| `SLICE_FILE` | `.slice.json` | Defines the slice to be built (in the working directory, the app) |
+| `LEARNINGS_FILE` | `LEARNINGS.md` | text file containing learnings from previous agent runs (in the working directory, the app) |
 
 ## Commands
 
@@ -75,8 +75,8 @@ Record a new one using the `CAPTURE-LEARNING` command.
    - when `state-view` → invoke `/build-state-view`
    - when `state-change` → invoke `/build-state-change`
 4. **Verify against `SLICE_FILE`**: After the skill completes, check that every command field, event field, and specification in slice.json appears in the implementation. No invented fields — if it is not in `SLICE_FILE`, it must not be in the code. This applies even when the slice was previously `Done` and reappears as `Planned` — never dismiss a mismatch as "already implemented" or harmless drift; diff slice.json against the code field by field and update the code to match every change.
-5. Run quality checks (`npm run build`, then the slice tests only).
-6. If checks pass, go to **Finally**. Do not commit: the builder commits for you
+5. Run quality checks: the `npm` tool with `["run", "build"]`, then the slice tests only (`npx` with `["tsx", "--test", "<the slice's test file>"]`).
+6. If checks pass, invoke `DONE`. Do not commit: the builder commits for you. Do not ask questions.
 
 ## Example Slice Structure
 
@@ -86,12 +86,3 @@ src/slices/
 │   ├── CommandHandler.ts
 │   └── routes.ts
 ```
-
-### Finally
-
-Always append exactly one line to `${6:-LOGBOOK.md}` in the form:
-
-    - ${9:-just now} | ${3:-context}/${2:-task} | attempt ${5:-1} | slice_type: `$SLICE_TYPE` status: `PASS|FAIL` |
-
-Keep every existing line in that file exactly as it is. Do not create, change or delete any other file. Do not
-ask questions. When the line is appended, invoke `DONE`.

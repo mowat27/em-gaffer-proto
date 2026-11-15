@@ -81,7 +81,7 @@ export function Timeline({ events, empty = "No events yet.", showSource = false,
                 {showSource && <span className="tsf-fx-event-source">{e.source}</span>}
                 {e.kind}
                 {e.slice && <span className="tsf-fx-event-slice">{e.slice}</span>}
-                {newJob && e.jobId && <span className="tsf-fx-event-job">job {e.jobId.slice(0, 8)}</span>}
+                {newJob && e.jobId && <span className="tsf-fx-event-job">job {typeof e.name === "string" ? e.name : e.jobId.slice(0, 8)}</span>}
               </span>
               <span className="tsf-fx-event-msg">{e.msg}</span>
             </span>
@@ -280,10 +280,15 @@ export function RecentEvents({ events, n = 5, onMore, showSource = false }: { ev
   );
 }
 
-export type ScreenTab = "dashboard" | "timeline" | "logs";
+export type ScreenTab = "dashboard" | "timeline" | "logs" | "sessions";
 
 /** The tab strip at the top of a factory screen. */
-export function ScreenTabs({ value, onChange, logs = true }: { value: ScreenTab; onChange: (t: ScreenTab) => void; logs?: boolean }) {
-  const items = [{ id: "dashboard", label: "Dashboard" }, { id: "timeline", label: "Timeline" }, ...(logs ? [{ id: "logs", label: "Logs" }] : [])];
+export function ScreenTabs({ value, onChange, logs = true, sessions = false }: { value: ScreenTab; onChange: (t: ScreenTab) => void; logs?: boolean; sessions?: boolean }) {
+  const items = [
+    { id: "dashboard", label: "Dashboard" },
+    { id: "timeline", label: "Timeline" },
+    ...(logs ? [{ id: "logs", label: "Logs" }] : []),
+    ...(sessions ? [{ id: "sessions", label: "Sessions" }] : []),
+  ];
   return <Tabs items={items} value={value} onChange={(id) => onChange(id as ScreenTab)} label="Screen sections" className="tsf-fx-tabs" />;
 }

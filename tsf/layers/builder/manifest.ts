@@ -49,7 +49,6 @@ export const manifest: LayerManifest = {
           field("capabilities", "Capabilities (comma-separated requires it meets)"),
           field("workspaceDir", "Workspace directory"),
           field("jobTimeoutMinutes", "Job timeout (minutes)", "number"),
-          field("logbookFile", "Logbook file in the target repository"),
           field("pi_command", "pi command"),
           field("pi_agentDir", "pi agent dir (settings.json, AGENTS.md, prompts/, extensions/, skills/; empty = ~/.pi/agent)"),
           field("pi_provider", "pi provider"),
@@ -88,5 +87,8 @@ export const manifest: LayerManifest = {
     cap("clear_events", "action", "Clear the builder event log", true),
     cap("log", "query", "The tail of the build server's log", false),
     cap("job_log", "query", "The pi output of one job (default: the latest)", false),
+    cap("sessions", "query", "The pi session logs, newest first, by start time and job name", false),
+    cap("session_summary", "query", "Summary metrics for one pi session (default: the latest)", false),
+    cap("session_entries", "query", "Entries of one pi session, filtered by type, tool and text and sorted by timestamp", false),
   ],
 };

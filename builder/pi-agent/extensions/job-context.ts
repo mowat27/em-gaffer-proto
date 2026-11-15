@@ -7,23 +7,22 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
-/** The variables shown to the agent, in order, with their labels. */
-const FIELDS: [env: string, label: string][] = [
-  ["BUILDER_SLICE_TITLE", "Slice"],
-  ["BUILDER_SLICE_CONTEXT", "Context"],
-  ["BUILDER_SLICE_ID", "Slice id"],
-  ["BUILDER_SLICE_FILE", "Slice spec file (in the working directory)"],
-  ["BUILDER_ATTEMPT", "Attempt"],
-  ["BUILDER_BASE", "Base commit"],
-  ["BUILDER_LOGBOOK_FILE", "Logbook file"],
-  ["BUILDER_JOB_ID", "Builder job id"],
+/** The variables shown to the agent, in order, keyed by name. The agent's instructions map them to tokens. */
+const FIELDS = [
+  "BUILDER_SLICE_TITLE",
+  "BUILDER_SLICE_CONTEXT",
+  "BUILDER_SLICE_ID",
+  "BUILDER_SLICE_FILE",
+  "BUILDER_ATTEMPT",
+  "BUILDER_BASE",
+  "BUILDER_JOB_ID",
 ];
 
 /** The job section's text, or null outside a builder job. */
 export function jobSection(env: NodeJS.ProcessEnv = process.env): string | null {
   if (!env.BUILDER_JOB_ID) return null;
-  const rows = FIELDS.filter(([key]) => env[key]).map(([key, label]) => `| ${label} | \`${env[key]}\` |`);
-  return ["You are running in a builder job that builds exactly one slice.", "", "| Fact | Value |", "|---|---|", ...rows].join("\n");
+  const rows = FIELDS.filter((key) => env[key]).map((key) => `| \`${key}\` | \`${env[key]}\` |`);
+  return ["You are running in a builder job that builds exactly one slice.", "", "| Variable | Value |", "|---|---|", ...rows].join("\n");
 }
 
 export default function (pi: ExtensionAPI) {
