@@ -9,7 +9,7 @@ Each system folder is the project root of its own TSF, made with the `tsf` skill
 | Path | What |
 |---|---|
 | `gaffer/kit/` | The gaffer build kit (unchanged) |
-| `gaffer/tsf/` | The gaffer's TSF: `app/` (the skill's app plus the factory screens), `layers/gaffer/`, `pages/`, `mod.just`, `permissions.json` |
+| `gaffer/tsf/` | The gaffer's TSF: `app/` (the skill's app plus the factory screens), `layers/gaffer/`, `layers/theme/` (the Ember colour theme), `pages/`, `mod.just`, `permissions.json` |
 | `gaffer/vm/` | `vm.sh` (laptop side: launch, key, token) and `setup.sh` (VM side: eventmodelers CLI, deploy key) |
 | `builder/server.ts`, `builder/pi-agent/` | The build server and its pi agent (unchanged) |
 | `builder/tsf/` | The builder's TSF: `app/` (the skill's app plus the factory screens and the pi agent routes), `layers/builder/`, `pages/` (`ai-docs/pi.md`, `builder/pi-agent.md`) |
@@ -81,6 +81,7 @@ Every feature of the old single TSF, and where it lives now.
 | Responsive top bar and workbench, navbar wrapping, chat code-block fix | Yes | Yes | |
 | Model panel sorted by name | Yes | Yes | Now built into the skill's Model panel |
 | Pages `ai-docs/pi.md`, `builder/pi-agent.md` | | Yes | Paths made relative to `builder/` |
+| Ember colour theme, dark mode (runtime data in the old TSF) | Yes | | Kept in git as `layers/theme/`. At every start it creates Ember or refreshes its colours from `theme.ts`, and makes it active in dark mode while the factory is on the default theme. The surface tokens are pinned so it renders exactly as the original |
 
 ## Curtailed features
 
