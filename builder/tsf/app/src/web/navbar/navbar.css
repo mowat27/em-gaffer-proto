@@ -1,0 +1,269 @@
+/* Navbars and their widgets (P4). Tokens only (--pw-*), 4px scale. */
+
+.tsf-navbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pw-sp-2);
+  min-width: 0;
+}
+
+.tsf-navbar-global {
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  padding: 0 var(--pw-sp-2);
+}
+
+.tsf-navbar-item {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+/* The first widget of the centre and of the right slot takes the free space before it. */
+.tsf-navbar-item[data-first="true"] {
+  margin-left: auto;
+}
+
+.tsf-navbar-item[data-full="true"] {
+  flex: 1 1 100%;
+}
+
+.tsf-navbar-item[data-full="true"] > * {
+  flex: 1 1 auto;
+}
+
+.tsf-factory-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pw-sp-2);
+  font-weight: var(--pw-fw-semibold);
+  color: var(--pw-text);
+  white-space: nowrap;
+}
+
+.tsf-factory-name svg {
+  width: var(--pw-icon-md);
+  height: var(--pw-icon-md);
+  color: var(--pw-text-2);
+}
+
+/* Context bar: label, a track with a fill, and "used / window". */
+.tsf-context {
+  display: flex;
+  align-items: center;
+  gap: var(--pw-sp-2);
+  min-width: 0;
+  font-size: var(--pw-fs-sm);
+  color: var(--pw-text-2);
+}
+
+.tsf-context-icon {
+  flex: none;
+  width: var(--pw-icon-sm);
+  height: var(--pw-icon-sm);
+}
+
+.tsf-context-label {
+  flex: none;
+}
+
+.tsf-context-track {
+  flex: 1 1 96px;
+  min-width: 64px;
+  height: var(--pw-sp-2);
+  border-radius: var(--pw-r-sm);
+  background: var(--pw-control-track);
+  overflow: hidden;
+  position: relative;
+}
+
+/* The two compaction thresholds. */
+.tsf-context-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--pw-text-2);
+  opacity: 0.7;
+}
+
+.tsf-context-mark[data-kind="forced"] {
+  background: var(--pw-error);
+}
+
+.tsf-context-fill {
+  height: 100%;
+  background: var(--pw-brand);
+  transition: width var(--pw-duration-fast) var(--pw-ease-standard);
+}
+
+.tsf-context[data-tone="warning"] .tsf-context-fill {
+  background: var(--pw-warning);
+}
+
+.tsf-context[data-tone="error"] .tsf-context-fill {
+  background: var(--pw-error);
+}
+
+.tsf-context-num,
+.tsf-context-cost {
+  flex: none;
+  font-family: var(--pw-font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tsf-context-cost {
+  color: var(--pw-text);
+}
+
+/*
+ * In the agent navbar the context bar takes the free width, so a wide pane gets a long meter. In a narrow pane it moves
+ * to a line of its own below the status and the buttons, instead of squeezing the track or covering a button.
+ */
+.tsf-navbar-agent {
+  container-type: inline-size;
+}
+
+.tsf-navbar-agent .tsf-navbar-item[data-widget="context_bar"] {
+  flex: 1 1 240px;
+}
+
+.tsf-navbar-agent .tsf-navbar-item[data-widget="context_bar"] > .tsf-context {
+  flex: 1 1 auto;
+}
+
+@container (max-width: 520px) {
+  .tsf-navbar-agent .tsf-context-label {
+    display: none;
+  }
+}
+
+@container (max-width: 400px) {
+  .tsf-navbar-agent .tsf-navbar-item[data-widget="context_bar"] {
+    flex-basis: 100%;
+    order: 1;
+  }
+
+  .tsf-navbar-agent .tsf-navbar-item[data-widget="context_bar"][data-first="true"] + .tsf-navbar-item {
+    margin-left: auto;
+  }
+}
+
+/* A narrow agent bar sheds the numbers before anything can overlap the header buttons beside it. */
+.tsf-navbar-agent .tsf-navbar-item[data-widget="context_bar"] {
+  overflow: hidden;
+}
+
+@container (max-width: 300px) {
+  .tsf-navbar-agent .tsf-context-num {
+    display: none;
+  }
+}
+
+@container (max-width: 180px) {
+  .tsf-navbar-agent .tsf-context-cost {
+    display: none;
+  }
+
+  .tsf-navbar-agent .tsf-context-track {
+    min-width: var(--pw-sp-8);
+  }
+}
+
+/* Collapsed agent rail: busy or idle at a glance. */
+.tsf-rail-state {
+  width: var(--pw-sp-3);
+  height: var(--pw-sp-3);
+  margin-top: var(--pw-sp-3);
+  border-radius: 50%;
+  background: var(--pw-n-400, var(--pw-text-3));
+  border: 2px solid var(--pw-surface);
+}
+
+.tsf-rail-state:not([data-state="idle"]) {
+  background: var(--pw-accent);
+  animation: tsf-pulse 1.6s var(--pw-ease-standard) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tsf-rail-state {
+    animation: none !important;
+  }
+}
+
+.tsf-layer-control {
+  display: grid;
+  gap: var(--pw-sp-1);
+  min-width: 0;
+}
+
+.tsf-layer-label {
+  color: var(--pw-text-2);
+  font-size: var(--pw-fs-sm);
+}
+
+.tsf-layer-input {
+  display: flex;
+  gap: var(--pw-sp-2);
+  align-items: center;
+}
+
+.tsf-layer-error {
+  margin: 0;
+  color: var(--pw-error);
+  font-size: var(--pw-fs-sm);
+}
+
+/* A layer control in a navbar: the label beside the control on one line, so the bar keeps its height. */
+.tsf-layer-control[data-inline="true"] {
+  display: flex;
+  align-items: center;
+  gap: var(--pw-sp-2);
+}
+
+.tsf-layer-control[data-inline="true"] .tsf-layer-label {
+  white-space: nowrap;
+}
+
+.tsf-layer-control[data-inline="true"] .tsf-layer-select {
+  min-width: 0;
+  max-width: 240px;
+}
+
+/* A layer control used as a navbar widget: one row, not a stacked form field. */
+.tsf-navbar-item .tsf-layer-control {
+  display: flex;
+  align-items: center;
+  gap: var(--pw-sp-1);
+}
+
+.tsf-navbar-item .pw-field {
+  display: flex;
+  align-items: center;
+  gap: var(--pw-sp-1);
+}
+
+.tsf-navbar-item .pw-field-label {
+  font-size: var(--pw-fs-xs);
+  font-weight: var(--pw-fw-regular);
+  color: var(--pw-text-2);
+  white-space: nowrap;
+}
+
+.tsf-navbar-item .pw-field-help,
+.tsf-navbar-item .pw-field-foot,
+.tsf-navbar-item .pw-field-msg {
+  display: none;
+}
+
+.tsf-navbar-item .pw-select,
+.tsf-navbar-item .pw-input {
+  width: auto;
+  max-width: 160px;
+  min-height: calc(var(--pw-ctl-h) - 6px);
+  font-size: var(--pw-fs-sm);
+  padding: 0 var(--pw-sp-2);
+}

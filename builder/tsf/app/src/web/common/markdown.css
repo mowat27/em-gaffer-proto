@@ -1,0 +1,190 @@
+/*
+ * .tsf-markdown scope (DESIGN 11). The glass preset sets, on bare h1-h4,
+ * font-family display, font-stretch 112%, text-transform uppercase and wide
+ * letter-spacing. `.tsf-markdown h1` (0,1,1) outranks bare `h1` (0,0,1), so
+ * the reset below wins without !important.
+ */
+.tsf-markdown {
+  font-family: var(--pw-font-sans);
+  font-size: var(--pw-fs-md);
+  line-height: var(--pw-lh-relaxed);
+  color: var(--pw-text);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+/*
+ * pw-ui's .pw-msg-text (the grid item wrapping a message's content) has no min-width: 0, so a <pre> inside it (which
+ * cannot wrap by design) pushes that grid item, and the whole bubble, past the pane edge instead of scrolling inside
+ * the code block. Letting it shrink lets .tsf-markdown pre's own overflow-x below do its job.
+ */
+.pw-msg-text {
+  min-width: 0;
+}
+
+/* Overlay editor: the textarea handles input while the pre beneath it supplies syntax colour. */
+.tsf-code-editor {
+  position: relative;
+  height: max(28rem, calc(100vh - 13rem));
+  border: 1px solid var(--pw-border-subtle);
+  border-radius: var(--pw-r-sm);
+  background: var(--pw-surface-sunken);
+  overflow: hidden;
+  font-family: var(--pw-font-mono, monospace);
+  font-size: var(--pw-fs-sm);
+  line-height: 1.5;
+}
+
+.tsf-code-editor pre,
+.tsf-code-editor textarea {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: var(--pw-sp-3) var(--pw-sp-4);
+  border: 0;
+  font: inherit;
+  line-height: inherit;
+  letter-spacing: normal;
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+}
+
+.tsf-code-editor pre {
+  pointer-events: none;
+  overflow: hidden;
+  color: var(--pw-text);
+}
+
+.tsf-code-editor textarea {
+  position: absolute;
+  inset: 0;
+  resize: none;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--pw-text);
+  outline: none;
+}
+
+.tsf-code-editor textarea::selection {
+  background: color-mix(in srgb, var(--pw-accent) 45%, transparent);
+}
+
+.tsf-code-comment { color: var(--pw-text-3); font-style: italic; }
+.tsf-code-string { color: var(--pw-success); }
+.tsf-code-number { color: var(--pw-accent); }
+.tsf-code-keyword { color: var(--pw-brand-text); font-weight: var(--pw-fw-semibold); }
+.tsf-code-heading { color: var(--pw-brand-text); font-weight: var(--pw-fw-semibold); }
+.tsf-code-link { color: var(--pw-accent); text-decoration: underline; }
+.tsf-code-markup { color: var(--pw-text-2); }
+
+.tsf-markdown h1,
+.tsf-markdown h2,
+.tsf-markdown h3,
+.tsf-markdown h4,
+.tsf-markdown h5,
+.tsf-markdown h6 {
+  font-family: var(--pw-font-sans);
+  font-stretch: 100%;
+  font-weight: var(--pw-fw-semibold);
+  text-transform: none;
+  letter-spacing: normal;
+  line-height: var(--pw-lh-tight);
+  color: var(--pw-text);
+  margin: var(--pw-sp-6) 0 var(--pw-sp-3);
+}
+
+.tsf-markdown > :first-child { margin-top: 0; }
+.tsf-markdown > :last-child { margin-bottom: 0; }
+
+.tsf-markdown h1 { font-size: var(--pw-fs-2xl); }
+.tsf-markdown h2 { font-size: var(--pw-fs-xl); }
+.tsf-markdown h3 { font-size: var(--pw-fs-lg); }
+.tsf-markdown h4,
+.tsf-markdown h5,
+.tsf-markdown h6 { font-size: var(--pw-fs-md); }
+
+.tsf-markdown p { margin: 0 0 var(--pw-sp-3); }
+
+.tsf-markdown ul,
+.tsf-markdown ol {
+  margin: 0 0 var(--pw-sp-3);
+  padding-left: var(--pw-sp-6);
+  list-style: revert;
+  display: block;
+}
+.tsf-markdown li + li { margin-top: var(--pw-sp-1); }
+.tsf-markdown li > ul,
+.tsf-markdown li > ol { margin: var(--pw-sp-1) 0 0; }
+
+.tsf-markdown a {
+  color: var(--pw-accent-text);
+  text-decoration: underline;
+}
+
+.tsf-markdown blockquote {
+  margin: 0 0 var(--pw-sp-3);
+  padding: var(--pw-sp-1) var(--pw-sp-4);
+  border-left: 3px solid var(--pw-border);
+  color: var(--pw-text-2);
+}
+
+.tsf-markdown hr {
+  border: 0;
+  border-top: 1px solid var(--pw-border-subtle);
+  margin: var(--pw-sp-6) 0;
+}
+
+.tsf-markdown code {
+  font-family: var(--pw-font-mono);
+  font-size: var(--pw-fs-sm);
+  background: var(--pw-surface-sunken);
+  border-radius: var(--pw-r-xs);
+  padding: 0 var(--pw-sp-1);
+}
+
+.tsf-markdown pre {
+  margin: 0 0 var(--pw-sp-3);
+  padding: var(--pw-sp-3) var(--pw-sp-4);
+  background: var(--pw-surface-sunken);
+  border: 1px solid var(--pw-border-subtle);
+  border-radius: var(--pw-r-sm);
+  max-width: 100%;
+  overflow-x: auto;
+}
+.tsf-markdown pre code {
+  background: none;
+  border-radius: 0;
+  padding: 0;
+  font-size: var(--pw-fs-sm);
+  line-height: var(--pw-lh-normal);
+}
+
+.tsf-markdown table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 0 var(--pw-sp-3);
+  border-collapse: collapse;
+  font-size: var(--pw-fs-sm);
+}
+.tsf-markdown th,
+.tsf-markdown td {
+  padding: var(--pw-sp-2) var(--pw-sp-3);
+  border: 1px solid var(--pw-border-subtle);
+  text-align: left;
+  vertical-align: top;
+}
+.tsf-markdown th {
+  font-weight: var(--pw-fw-semibold);
+  background: var(--pw-surface-sunken);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.tsf-markdown img {
+  max-width: 100%;
+  height: auto;
+}

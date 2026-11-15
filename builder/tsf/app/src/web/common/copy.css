@@ -1,0 +1,28 @@
+/*
+ * The corner Copy button of a code block or a tool step's arguments or result: hidden until the pointer is over the
+ * block or the button has keyboard focus, always shown where there is no hover.
+ */
+.tsf-copy-block {
+  position: relative;
+}
+
+.tsf-copy-block > .tsf-copy-btn {
+  position: absolute;
+  top: var(--pw-sp-1);
+  right: var(--pw-sp-1);
+  background: var(--pw-surface);
+  opacity: 0;
+  transition: opacity var(--pw-duration-fast) ease;
+}
+
+.tsf-copy-block:hover > .tsf-copy-btn,
+.tsf-copy-block > .tsf-copy-btn:focus-visible,
+.tsf-copy-block > .tsf-copy-btn[data-copied="true"] {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .tsf-copy-block > .tsf-copy-btn {
+    opacity: 1;
+  }
+}
