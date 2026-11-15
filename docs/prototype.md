@@ -21,7 +21,7 @@ Both ends are in this repository: `gaffer/kit/templates/build-kit/gaffer.ts` (th
 | Gaffer callback | 204 or 410 | Also 400 for a malformed body and 404 for any other path |
 | `task.attempt` | Attempt number | From `$GAFFER_ATTEMPT`, default 1 |
 | Builder extras | None | `GET /health` and `GET /status`, used by the factory. `/status` reports the `pi` configuration the next job will use |
-| Builder agent | A real build agent | The `pi` agent builds the slice in the app directory (`appDir`, default `app`), with read, write, edit, grep, find, ls and read-only git, npm, npx and docker tools. It has no shell and writes no logbook |
+| Builder agent | A real build agent | The `pi` agent builds the slice in the app directory (`appDir`, the builder setting, default `.` for the repository root), with read, write, edit, grep, find, ls and read-only git, npm, npx and docker tools. It has no shell and writes no logbook |
 | Setup | Not specified | Before `pi` starts the builder runs `setupCommands` (`npm ci`) and `baseCheckCommands` (`npx tsc --noEmit`) in the app directory. A base that is not set up fails the job with `target repository is not set up: ...` |
 | Workspaces | Deleted after the job | The newest `keepWorkspaces` (default 3) are kept for debugging. `.slice.json`, `node_modules/` and `.scratch/` are excluded from the patch |
 

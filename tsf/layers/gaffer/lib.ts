@@ -226,15 +226,31 @@ export class GafferLayer {
     const steps: string[] = [];
     mkdirSync(home, { recursive: true });
 
+    // A clone of another repository (repoUrl changed since it was made) is replaced. setup reinstalls the kit below.
+    if (existsSync(join(repo, ".git"))) {
+      const origin = spawnSync("git", ["remote", "get-url", "origin"], { cwd: repo, encoding: "utf8" }).stdout?.trim() ?? "";
+      if (origin !== s.repoUrl) {
+        if (this.running()) throw new Error(`repoUrl changed (${origin} -> ${s.repoUrl}): stop the gaffer before setup replaces its clone`);
+        rmSync(repo, { recursive: true, force: true });
+        steps.push(`clone of ${origin || "an unknown origin"} removed: repoUrl is now ${s.repoUrl}`);
+      }
+    }
+
     if (!existsSync(join(repo, ".git"))) {
       rmSync(repo, { recursive: true, force: true });
       this.run("git", ["clone", "-q", s.repoUrl, repo], home);
       steps.push(`cloned ${s.repoUrl}`);
     } else {
       this.run("git", ["fetch", "-q", "origin"], repo);
-      this.run("git", ["checkout", "-q", "-f", s.branch], repo);
-      this.run("git", ["reset", "-q", "--hard", `origin/${s.branch}`], repo);
-      steps.push(`clone refreshed to origin/${s.branch}`);
+      if (this.run("git", ["ls-remote", "--heads", "origin", `refs/heads/${s.branch}`], repo)) {
+        this.run("git", ["checkout", "-q", "-f", s.branch], repo);
+        this.run("git", ["reset", "-q", "--hard", `origin/${s.branch}`], repo);
+        steps.push(`clone refreshed to origin/${s.branch}`);
+      } else {
+        // gaffer.ts pushes it to origin at the first dispatch.
+        this.run("git", ["checkout", "-q", "-f", "-B", s.branch, "origin/main"], repo);
+        steps.push(`${s.branch} is not on origin: created locally from origin/main`);
+      }
     }
     this.run("git", ["config", "user.name", "gaffer"], repo);
     this.run("git", ["config", "user.email", "gaffer@gaffer.local"], repo);

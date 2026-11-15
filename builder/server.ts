@@ -114,7 +114,7 @@ export function defaultConfig(): BuilderConfig {
     workspaceDir: "builder/jobs",
     capabilities: ["stack:stub"],
     jobTimeoutMinutes: 20,
-    appDir: "app",
+    appDir: ".",
     setupCommands: ["npm ci"],
     baseCheckCommands: ["npx tsc --noEmit"],
     setupTimeoutMinutes: 10,

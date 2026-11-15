@@ -48,6 +48,7 @@ export const manifest: LayerManifest = {
           field("port", "Listen port", "number"),
           field("capabilities", "Capabilities (comma-separated requires it meets)"),
           field("workspaceDir", "Workspace directory"),
+          field("appDir", "App directory in the target repository (. = root)"),
           field("jobTimeoutMinutes", "Job timeout (minutes)", "number"),
           field("pi_command", "pi command"),
           field("pi_agentDir", "pi agent dir (settings.json, AGENTS.md, prompts/, extensions/, skills/; empty = ~/.pi/agent)"),

@@ -104,10 +104,18 @@ function git(args: string[], opts: { allowFail?: boolean } = {}): string {
 }
 
 const PUSH_TRIES = 4;
+/** A target branch missing from origin is created from this branch and pushed as its upstream. */
+const FROM_BRANCH = "main";
+
+function remoteHasBranch(branch: string): boolean {
+  return git(["ls-remote", "--heads", "origin", `refs/heads/${branch}`]) !== "";
+}
 
 /**
  * Bring the branch level with origin, then push it so the builder can fetch the base, and return the base. Fetch
  * first: the branch may not exist locally yet (checkout creates it from origin), and origin may have moved since setup.
+ * A branch missing from origin is created from origin/main, replacing any local branch of that name, and the push
+ * creates it on origin with its upstream set.
  * The remote can still move, or look older than it is, between the fetch and the push (a person or another gaffer
  * pushing the same branch, a fetch answered from a lagging replica), and the push is then rejected as non-fast-forward.
  * Fetch, fast-forward and push again, up to PUSH_TRIES times with a growing pause, and recompute the base each time.
@@ -116,12 +124,17 @@ const PUSH_TRIES = 4;
 async function syncAndPushBranch(): Promise<string> {
   for (let attempt = 1; ; attempt++) {
     git(["fetch", "-q", "origin"]);
-    git(["checkout", "-q", cfg.branch]);
-    git(["merge", "-q", "--ff-only", `origin/${cfg.branch}`]);
+    if (remoteHasBranch(cfg.branch)) {
+      git(["checkout", "-q", cfg.branch]);
+      git(["merge", "-q", "--ff-only", `origin/${cfg.branch}`]);
+    } else {
+      git(["checkout", "-q", "-B", cfg.branch, `origin/${FROM_BRANCH}`]);
+      emit("branch.create", `${cfg.branch} is not on origin: created from origin/${FROM_BRANCH}`, { branch: cfg.branch, from: FROM_BRANCH });
+    }
     const base = git(["rev-parse", "HEAD"]);
     emit("base", `base ${base.slice(0, 12)} on ${cfg.branch}`, { base, branch: cfg.branch });
     try {
-      git(["push", "-q", "origin", cfg.branch]);
+      git(["push", "-q", "-u", "origin", cfg.branch]);
       return base;
     } catch (err) {
       const message = (err as Error).message;

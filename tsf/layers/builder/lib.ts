@@ -13,6 +13,8 @@ export interface BuilderSettings {
   host: string;
   port: number;
   workspaceDir: string;
+  /** The app inside the target repository, relative to its root ("." = the root). */
+  appDir: string;
   capabilities: string;
   jobTimeoutMinutes: number;
   callbackRetries: number;
@@ -29,6 +31,7 @@ export const DEFAULTS: BuilderSettings = {
   host: "127.0.0.1",
   port: 8788,
   workspaceDir: "builder/jobs",
+  appDir: ".",
   capabilities: "stack:stub",
   jobTimeoutMinutes: 20,
   callbackRetries: 8,
@@ -124,6 +127,7 @@ export class BuilderLayer {
       host: s.host,
       port: s.port,
       workspaceDir: resolve(this.ctx.paths.projectRoot, s.workspaceDir),
+      appDir: s.appDir || ".",
       capabilities: s.capabilities
         .split(",")
         .map((x) => x.trim())
@@ -288,6 +292,7 @@ export class BuilderLayer {
       `| Listen | ${this.url()} (POST /slices, GET /status) |`,
       `| Capabilities | repo:<any reachable>, ${s.capabilities || "(none)"} |`,
       `| Workspaces | \`${s.workspaceDir}/<jobId>\` (the newest few are kept after a job; logs in \`${s.workspaceDir}/logs\`) |`,
+      `| App directory | \`${s.appDir || "."}\` in the target repository |`,
       `| Job timeout | ${s.jobTimeoutMinutes} min |`,
       "",
       "## pi agent (next build)",
