@@ -22,6 +22,8 @@ import { join, resolve } from "node:path";
 interface GafferConfig {
   name: string;
   repoUrl: string;
+  /** Target branch to build and fast-forward. */
+  branch: string;
   builderUrl: string;
   callbackHost: string;
   callbackPort: number;
@@ -56,6 +58,7 @@ function loadConfig(): GafferConfig {
   return {
     name: raw.name ?? "gaffer",
     repoUrl: raw.repoUrl ?? "",
+    branch: raw.branch ?? "main",
     builderUrl: raw.builderUrl.replace(/\/+$/, ""),
     callbackHost: raw.callbackHost ?? "127.0.0.1",
     callbackPort: Number(raw.callbackPort ?? 8787),
@@ -323,12 +326,12 @@ async function buildTurn(t: Task): Promise<number> {
     }
   }
 
-  // 1. base = HEAD of main, pushed so the builder can fetch it.
-  git(["checkout", "-q", "main"]);
+  // 1. base = HEAD of the selected branch, pushed so the builder can fetch it.
+  git(["checkout", "-q", cfg.branch]);
   const base = git(["rev-parse", "HEAD"]);
-  emit("base", `base ${base.slice(0, 12)} on main`, { base });
-  git(["push", "-q", "origin", "main"]);
-  emit("push", "main pushed before dispatch");
+  emit("base", `base ${base.slice(0, 12)} on ${cfg.branch}`, { base, branch: cfg.branch });
+  git(["push", "-q", "origin", cfg.branch]);
+  emit("push", `${cfg.branch} pushed before dispatch`);
 
   const requires = Array.from(new Set([`repo:${repoKey(cfg.repoUrl || git(["remote", "get-url", "origin"]))}`, ...cfg.requires]));
   const publicHost = cfg.callbackPublicHost || cfg.callbackHost;
@@ -406,11 +409,11 @@ function applyAndMerge(t: Task, base: string, patch: string): number {
       emit("gate.ok", "no gate configured (stub build): passing");
     }
 
-    git(["checkout", "-q", "main"]);
+    git(["checkout", "-q", cfg.branch]);
     git(["merge", "--ff-only", branch]);
-    git(["push", "-q", "origin", "main"]);
+    git(["push", "-q", "origin", cfg.branch]);
     const head = git(["rev-parse", "HEAD"]);
-    emit("merged", `main fast-forwarded to ${head.slice(0, 12)} and pushed`, { head });
+    emit("merged", `${cfg.branch} fast-forwarded to ${head.slice(0, 12)} and pushed`, { head, branch: cfg.branch });
     git(["branch", "-D", branch], { allowFail: true });
 
     const status = t.handover ? "Waiting" : "Done";
@@ -420,7 +423,7 @@ function applyAndMerge(t: Task, base: string, patch: string): number {
     return 0;
   } catch (err) {
     const reason = (err as Error).message;
-    git(["checkout", "-q", "-f", "main"], { allowFail: true });
+    git(["checkout", "-q", "-f", cfg.branch], { allowFail: true });
     git(["branch", "-D", branch], { allowFail: true });
     emit("turn.fail", reason);
     note(`gaffer: ${reason}`);

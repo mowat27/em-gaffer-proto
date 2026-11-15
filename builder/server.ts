@@ -14,6 +14,15 @@
  * `{ "reason": "..." }` there when the slice cannot be built. The builder stops pi as soon as the file appears and
  * sends `{ "outcome": "failed", "reason": <reason> }` instead of a patch.
  *
+ * Finishing: pi gets $BUILDER_DONE_FILE, $BUILDER_BASE and $BUILDER_LOGBOOK_FILE. The agent's `done` tool
+ * (pi-agent/extensions/done/) runs the build kit's slice commit-scope checks on the changes since base and writes the
+ * done file when they pass. The builder sends a patch only when that file exists, and runs the same checks again
+ * first. `.slice.json` is excluded from the clone, so it never lands in the patch.
+ *
+ * Job context: pi also gets the job's facts as BUILDER_* variables (job id, slice id, title, context, attempt, slice
+ * file, base, logbook). The job-context extension adds them to the agent's system prompt. The /build arguments
+ * still carry the same values.
+ *
  * Configuration is the JSON file named by $BUILDER_CONFIG (the factory's builder layer writes it from its settings).
  * The file is re-read at the start of every job, so a changed pi configuration applies to the next build. Progress is
  * appended as JSON lines to `eventsFile`. Runs on Node 24 type stripping: only erasable TypeScript syntax is used.
@@ -22,6 +31,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileS
 import { spawn, spawnSync } from "node:child_process";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { join, resolve } from "node:path";
+import { allChanges, builderExceptions, formatViolations, runChecks, SLICE_FILE } from "./pi-agent/extensions/done/checks.ts";
 
 export interface PiConfig {
   /** The pi executable ("pi", or an absolute path). */
@@ -74,6 +84,8 @@ interface Job {
   logFile: string;
   /** Where the agent's halt tool writes `{ reason }` to halt the job (outside the workspace). */
   haltFile: string;
+  /** Where the agent's done tool writes `{ ok: true }` once the checks pass (outside the workspace). */
+  doneFile: string;
 }
 
 export function defaultConfig(): BuilderConfig {
@@ -221,8 +233,6 @@ function quoteArg(s: string): string {
   return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
-/** Name of the full slice spec file written into the job workspace, relative to it (pi's cwd), for the agent to read. */
-const SLICE_FILE = ".slice.json";
 
 /** Pi's live settings file is the single source of provider/model/thinking truth. */
 function livePiSettings(pi: PiConfig): Pick<PiConfig, "provider" | "model" | "thinking"> {
@@ -282,13 +292,28 @@ function runPi(job: Job, d: Dispatch): Promise<{ code: number | null; timedOut: 
   });
   appendFileSync(job.logFile, `\n$ ${pi.command} ${args.slice(0, -1).map((a) => (/\s/.test(a) ? JSON.stringify(a) : a)).join(" ")} -- <prompt>\n--- prompt ---\n${prompt}\n--- output ---\n`);
   rmSync(job.haltFile, { force: true });
+  rmSync(job.doneFile, { force: true });
   return new Promise((resolveRun) => {
     let output = "";
     let timedOut = false;
     let halt: string | null = null;
     const child = spawn(command, args, {
       cwd: job.workspace,
-      env: { ...process.env, PI_NO_UPDATE_CHECK: "1", BUILDER_HALT_FILE: job.haltFile, ...(agentDir ? { PI_CODING_AGENT_DIR: agentDir } : {}) },
+      env: {
+        ...process.env,
+        PI_NO_UPDATE_CHECK: "1",
+        BUILDER_HALT_FILE: job.haltFile,
+        BUILDER_DONE_FILE: job.doneFile,
+        // Job context: pi-agent/extensions/job-context.ts puts these in the agent's system prompt.
+        BUILDER_JOB_ID: job.jobId,
+        BUILDER_SLICE_ID: d.task.sliceId,
+        BUILDER_SLICE_TITLE: d.task.title,
+        BUILDER_SLICE_CONTEXT: d.task.context,
+        BUILDER_ATTEMPT: String(d.task.attempt),
+        BUILDER_SLICE_FILE: SLICE_FILE,
+        BUILDER_BASE: d.repo.base,
+        BUILDER_LOGBOOK_FILE: cfg.logbookFile,
+        ...(agentDir ? { PI_CODING_AGENT_DIR: agentDir } : {}) },
       stdio: ["ignore", "pipe", "pipe"],
     });
     // The agent called the halt tool: stop pi now rather than waiting for it to finish its turn.
@@ -386,6 +411,8 @@ async function runJob(job: Job, d: Dispatch): Promise<void> {
     git(job.workspace, ["checkout", "-q", "-B", "job", d.repo.base]);
     git(job.workspace, ["config", "user.name", "builder"]);
     git(job.workspace, ["config", "user.email", "builder@gaffer.local"]);
+    // The slice spec is written into the clone for the agent; it must never reach the patch.
+    appendFileSync(join(job.workspace, ".git", "info", "exclude"), `\n${SLICE_FILE}\n`);
 
     step("pi");
     const pi = await runPi(job, d);
@@ -395,6 +422,11 @@ async function runJob(job: Job, d: Dispatch): Promise<void> {
     if (pi.code !== 0) throw new Error(`pi exited ${pi.code}: ${pi.output.trim().slice(-400)}`);
     emit("pi.done", `pi finished: ${pi.output.trim().split("\n").pop()?.slice(0, 120) ?? ""}`);
     if (Date.now() > deadline) throw new Error(`job exceeded ${cfg.jobTimeoutMinutes} min`);
+    // The agent hands the work over with its done tool; without it there is no verdict to send.
+    if (!existsSync(job.doneFile)) throw new Error("the agent finished without calling done");
+    step("checks");
+    const violations = runChecks(job.workspace, allChanges(job.workspace, d.repo.base), builderExceptions(cfg.logbookFile));
+    if (violations.length) throw new Error(`slice commit-scope checks failed after done:\n${formatViolations(violations)}`);
 
     step("commit");
     const dirty = git(job.workspace, ["status", "--porcelain"]);
@@ -420,6 +452,7 @@ async function runJob(job: Job, d: Dispatch): Promise<void> {
   step("cleanup");
   rmSync(job.workspace, { recursive: true, force: true });
   rmSync(job.haltFile, { force: true });
+  rmSync(job.doneFile, { force: true });
   lastJob = { ...job, outcome: result.outcome, endedAt: Date.now() };
   current = null;
   emit("job.end", `job ${job.jobId.slice(0, 8)} ${result.outcome} in ${Math.round((Date.now() - job.startedAt) / 1000)}s`, { outcome: result.outcome });
@@ -480,6 +513,7 @@ const server = createServer(async (req, res) => {
       workspace: join(wsRoot, jobId),
       logFile: join(wsRoot, "logs", `${jobId}.log`),
       haltFile: join(wsRoot, "logs", `${jobId}.halt.json`),
+      doneFile: join(wsRoot, "logs", `${jobId}.done.json`),
     };
     writeFileSync(job.logFile, `job ${jobId}: ${v.d.task.context}/${v.d.task.title} attempt ${v.d.task.attempt}, base ${v.d.repo.base}\n`);
     current = job;

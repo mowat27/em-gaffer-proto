@@ -49,9 +49,22 @@ Every recipe relies on these facts. Verify any that a recipe depends on before a
 
 ## Dispatch
 
-Parse `$ARGUMENTS`. The first token is the **MODE**, the rest is the **USER_PROMPT**.
+Parse `$ARGUMENTS`. When the first token is a mode, it is the **MODE** and the rest is the **USER_PROMPT**.
 
-If no mode is given or the mode is unrecognised, list the modes above and stop.
+Otherwise, read the request together with the conversation and map it onto modes. A request can name several
+modes, or none, e.g. "build the new tools and hooks":
+
+- Each tool to port is one `tool` run. Each set of files to protect is one `guard` run.
+- Run a tool before any guard that points at it. When a guard's TOOL_NAME is a tool from the same request, the
+  guard goes into that tool's extension.
+- Decisions already agreed in the conversation (tool names, changed paths, dropped kit machinery) are CHANGES and
+  answer the divergence gate. Ask only about a divergence the conversation has not settled.
+- A build-kit script (e.g. `stacks/<stack>/templates/build-kit/lib/*.cjs`) is ported like a CLI command: its file
+  takes the place of the `.command(...)` block.
+- Wiring a port needs to work outside `builder/pi-agent/extensions/` (an env var or check in `builder/server.ts`,
+  a line in `prompts/build.md`) is part of the run. Report it separately.
+
+Only when nothing in the request maps onto a mode, list the modes above and stop.
 
 ---
 

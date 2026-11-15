@@ -1,0 +1,12 @@
+{
+  "appTitle": "Invoice Lite",
+  "css": "bulma",
+  "timelines": [{"title": "Invoicing", "x": -421.09780526753775, "y": 983.5080868062474}],
+  "slices": [
+    {"title": "Clients", "sliceType": "STATE_VIEW", "chapter": "Invoicing", "screens": ["Clients"]},
+    {"title": "CreateClient", "sliceType": "STATE_CHANGE", "chapter": "Invoicing", "screens": ["New Client"]},
+    {"title": "Invoices", "sliceType": "STATE_VIEW", "chapter": "Invoicing", "screens": ["Invoices"]},
+    {"title": "CreateInvoice", "sliceType": "STATE_CHANGE", "chapter": "Invoicing", "screens": ["New Invoice"]}
+  ],
+  "screens": [{"title": "Clients"}, {"title": "New Client"}, {"title": "Invoices"}, {"title": "New Invoice"}]
+}

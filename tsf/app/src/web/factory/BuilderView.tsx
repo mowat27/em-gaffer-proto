@@ -31,6 +31,7 @@ export function BuilderView() {
   const status = useLayerQuery<BuilderStatus>("builder", "status", {}, 5000);
   const health = useLayerQuery<Health>("builder", "health", {}, 4000);
   const settings = useLayerQuery<Record<string, Json>>("builder", "settings");
+  const gafferSettings = useLayerQuery<Record<string, Json>>("gaffer", "settings");
   const events = useLayerQuery<{ events: FactoryEvent[] }>("builder", "events", { limit: 120 });
   const jobLog = useLayerQuery<{ jobId: string | null; tail: string }>("builder", "job_log", { lines: 300 }, 5000);
   const log = useLayerQuery<{ tail: string }>("builder", "log", { lines: 120 }, 10000);
@@ -124,6 +125,12 @@ export function BuilderView() {
 
       {tab === "dashboard" && (
       <div className="tsf-fx-cols">
+        <Card title="Target branch" description="Chosen by the Gaffer. Builds use this branch and successful patches fast-forward it.">
+          <dl className="tsf-fx-kv">
+            <dt>Branch</dt>
+            <dd><code>{String(gafferSettings.data?.branch ?? "main")}</code></dd>
+          </dl>
+        </Card>
         <Card title="Current job" description={s?.url ? `POST ${s.url}/slices` : ""}>
           {h?.busy && h.job ? (
             <dl className="tsf-fx-kv">

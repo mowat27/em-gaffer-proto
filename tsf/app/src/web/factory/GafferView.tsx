@@ -210,6 +210,7 @@ export function GafferView() {
               { key: "orgId", label: "Organisation id", mono: true },
               { key: "baseUrl", label: "Platform base URL", mono: true },
               { key: "repoUrl", label: "Target repository (git URL)", mono: true, wide: true },
+              { key: "branch", label: "Target branch", mono: true, help: "The branch to dispatch builds to and fast-forward after each successful build." },
             ]}
             saveLabel="Save connection"
           >

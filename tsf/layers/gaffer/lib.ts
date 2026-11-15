@@ -15,6 +15,8 @@ export interface GafferSettings {
   orgId: string;
   baseUrl: string;
   repoUrl: string;
+  /** Git branch the gaffer dispatches to and fast-forwards. */
+  branch: string;
   builderHost: string;
   builderPort: number;
   callbackHost: string;
@@ -34,6 +36,7 @@ export const DEFAULTS: GafferSettings = {
   orgId: "b44da9b9-2fae-47a2-ab4c-2ad0d3ea2978",
   baseUrl: "https://api.eventmodelers.ai",
   repoUrl: "git@github.com:mowat27/em-gaffer-proto.git",
+  branch: "main",
   builderHost: "127.0.0.1",
   builderPort: 8788,
   callbackHost: "127.0.0.1",
@@ -172,6 +175,7 @@ export class GafferLayer {
     const config = {
       name: s.name,
       repoUrl: s.repoUrl,
+      branch: s.branch,
       builderUrl: this.builderUrl(),
       callbackHost: s.callbackHost,
       callbackPort: s.callbackPort,
@@ -229,9 +233,9 @@ export class GafferLayer {
       steps.push(`cloned ${s.repoUrl}`);
     } else {
       this.run("git", ["fetch", "-q", "origin"], repo);
-      this.run("git", ["checkout", "-q", "-f", "main"], repo);
-      this.run("git", ["reset", "-q", "--hard", "origin/main"], repo);
-      steps.push("clone refreshed to origin/main");
+      this.run("git", ["checkout", "-q", "-f", s.branch], repo);
+      this.run("git", ["reset", "-q", "--hard", `origin/${s.branch}`], repo);
+      steps.push(`clone refreshed to origin/${s.branch}`);
     }
     this.run("git", ["config", "user.name", "gaffer"], repo);
     this.run("git", ["config", "user.email", "gaffer@gaffer.local"], repo);
@@ -448,7 +452,7 @@ export class GafferLayer {
   head(): { sha: string; subject: string; author: string; date: string } | null {
     if (!existsSync(join(this.repoDir(), ".git"))) return null;
     try {
-      const [sha, subject, author, date] = this.run("git", ["log", "-1", "--format=%h%x1f%s%x1f%an%x1f%cI", "main"], this.repoDir()).split("\x1f");
+      const [sha, subject, author, date] = this.run("git", ["log", "-1", "--format=%h%x1f%s%x1f%an%x1f%cI", this.settings.branch], this.repoDir()).split("\x1f");
       return { sha, subject, author, date };
     } catch {
       return null;
@@ -472,6 +476,7 @@ export class GafferLayer {
       callback: `http://${s.callbackHost}:${s.callbackPort}/jobs/<jobId>`,
       board: { boardId: s.boardId, orgId: s.orgId, baseUrl: s.baseUrl },
       handover: s.handover,
+      branch: s.branch,
       summary: `Gaffer ${pid ? "running" : ready ? "stopped" : "not set up"}${last ? ` · ${last.kind}` : ""}`,
       lastEvent: last ?? null,
     };
@@ -490,7 +495,7 @@ export class GafferLayer {
       "| Setting | Value |",
       "|---|---|",
       `| Board | \`${s.boardId}\` (org \`${s.orgId}\`) at ${s.baseUrl} |`,
-      `| Target repository | \`${s.repoUrl}\` |`,
+      `| Target repository | \`${s.repoUrl}\` (${s.branch}) |`,
       `| Builder | ${this.builderUrl()} |`,
       `| Callback | http://${s.callbackHost}:${s.callbackPort}/jobs/<jobId> |`,
       `| Handover | ${s.handover ? "on (slices end Waiting)" : "off (slices end Done)"} |`,

@@ -1,0 +1,10 @@
+.eventmodelers/
+.claude/settings.local.json
+.env
+web/.env
+node_modules/
+dist/
+web/dist/
+supabase/.temp/
+supabase/.branches/
+.foreman.pid

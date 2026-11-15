@@ -6,3 +6,5 @@ tsf/app/dist/
 tsf/app/.vite/
 builder/jobs/
 builder/pi-agent/sessions/
+
+.eventmodelers/

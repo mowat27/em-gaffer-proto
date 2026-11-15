@@ -22,6 +22,7 @@ argument-hint: "<sliceFile> <title> <context> <sliceId> <attempt> <logbook> <bas
 Information dense keywords capturing actions you can take and what they mean.
 
 `HALT` - call the `halt` tool with the reason given and stop immediately
+`DONE` - call the `done` tool. If it lists problems, fix each one and call it again. When it passes, stop immediately
 `CAPTURE-LEARNING` - call the `capture-learning` tool with a one terse line explaining the learning (max 50 words), the topic of the learning and `LEARNINGS_FILE`
 
 ## Code Standards
@@ -59,17 +60,32 @@ Record a new one using the `CAPTURE-LEARNING` command.
 
 ### Workflow
 
-
 1. Read the slice definition from `SLICE_FILE`.
    If `slice.json` is missing, or has no `commands`, `events`, `readmodels`, `screens` or `processors` then `HALT` with an explanation of what was missing.
 2. Determine the slice type as `SLICE_TYPE`:
-   - **Webhook** — `sliceType === "WEBHOOK"`
-   - **Translation** — `sliceType === "TRANSLATION"`
-   - **Automation** — `processors` array is non-empty
-   - **State-view** — `projections` or `queries` array is non-empty
-   - **State-change** — default (has `commands` / `events`)
+   - `webhook` — `sliceType === "WEBHOOK"`
+   - `translation` — `sliceType === "TRANSLATION"`
+   - `automation` — `processors` array is non-empty
+   - `state-view` — `projections` or `queries` array is non-empty
+   - `state-change` — default (has `commands` / `events`)
+3. Invoke build skill based on `SLICE_TYPE`:
+   - when `webhook` → invoke `/build-webhook`
+   - when `translation` → read `description` and `notes` from `SLICE_FILE`; use `/build-webhook` if notes describe an HTTP endpoint, otherwise default to `/build-automation`
+   - when `automation` → invoke `/build-automation`
+   - when `state-view` → invoke `/build-state-view`
+   - when `state-change` → invoke `/build-state-change`
+4. **Verify against `SLICE_FILE`**: After the skill completes, check that every command field, event field, and specification in slice.json appears in the implementation. No invented fields — if it is not in `SLICE_FILE`, it must not be in the code. This applies even when the slice was previously `Done` and reappears as `Planned` — never dismiss a mismatch as "already implemented" or harmless drift; diff slice.json against the code field by field and update the code to match every change.
+5. Run quality checks (`npm run build`, then the slice tests only).
+6. If checks pass, go to **Finally**. Do not commit: the builder commits for you
 
+## Example Slice Structure
 
+```
+src/slices/
+├── {slice-name}/
+│   ├── CommandHandler.ts
+│   └── routes.ts
+```
 
 ### Finally
 
@@ -78,4 +94,4 @@ Always append exactly one line to `${6:-LOGBOOK.md}` in the form:
     - ${9:-just now} | ${3:-context}/${2:-task} | attempt ${5:-1} | slice_type: `$SLICE_TYPE` status: `PASS|FAIL` |
 
 Keep every existing line in that file exactly as it is. Do not create, change or delete any other file. Do not
-ask questions. When the line is appended, reply with the single word DONE.
+ask questions. When the line is appended, invoke `DONE`.
