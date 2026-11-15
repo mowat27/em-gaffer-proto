@@ -17,6 +17,7 @@ Use these to prime agents building tooling for the architecture.
 - [docs/design.md](docs/design.md): layers, runner, platform contract, gaffer kit and CLI, `gaffer.js`, builder.
 - [docs/contract.md](docs/contract.md): the gaffer / builder HTTP contract. Both ends are in `gaffer/kit/templates/build-kit/gaffer.ts` and `builder/server.ts`.
 - [docs/prototype.md](docs/prototype.md): what this repository built and how it deviates from the design (no Tailscale or VM, `gaffer.ts`, a locally built kit, the factory layer in place of the `em gaffer` CLI).
+- [docs/hosting.md](docs/hosting.md): the gaffer and the builder each in their own TSF, locally or on separate exe.dev VMs, with the feature map and the features curtailed by the split.
 
 ## Layout
 
@@ -26,6 +27,8 @@ Use these to prime agents building tooling for the architecture.
 | `gaffer/kit/` | The gaffer build kit (a custom eventmodelers stack): `stack.json`, `templates/build-kit/gaffer.ts` (the runner's `--exec` command), empty `CLAUDE.md` and `AGENTS.md`. `gaffer_setup` turns it into a git repository and installs it with `eventmodelers init --stack gaffer --git` |
 | `builder/server.ts` | The build server: `POST /slices`, one job at a time, a fresh clone per job, the `pi` agent, `git format-patch` back to the gaffer's callback |
 | `builder/pi-agent/` | The builder's `pi` agent directory (`PI_CODING_AGENT_DIR`): `settings.json`, `AGENTS.md`, `prompts/build.md`, `extensions/`, `skills/`. Plain Pi files, edited directly. The next job picks up changes |
+| `gaffer/tsf/`, `gaffer/vm/` | The gaffer's own TSF (project root `gaffer/`) and its VM scripts: `just gaffer tsf start`, `just gaffer vm launch\|key\|token`. See [docs/hosting.md](docs/hosting.md) |
+| `builder/tsf/`, `builder/vm/` | The builder's own TSF (project root `builder/`) and its VM scripts: `just builder tsf start`, `just builder vm launch\|key`. See [docs/hosting.md](docs/hosting.md) |
 | `tsf/layers/gaffer/` | Factory layer: runs the gaffer (runner + gaffer.ts), settings, board slice listing and planning, events, the Gaffer page |
 | `tsf/layers/builder/` | Factory layer: runs the build server, settings including the full `pi` invocation, events, the Builder page |
 | `tsf/layers/titlebar/` | Factory layer: titlebar |
@@ -33,6 +36,7 @@ Use these to prime agents building tooling for the architecture.
 | `tsf/data/layers/{gaffer,builder}/` | Runtime state (gitignored): settings, events, logs, pids, the board token, the gaffer home (`gaffers/<name>/repo`) |
 | `examples/` | A sample `slice.json` (CreateInvoice) |
 | `LOGBOOK.md` | The target of the stub agent's entries |
+| `.claude/skills/hosts/` | Skill for launching the gaffer's or the builder's TSF locally or on a VM |
 | `.claude/skills/import-from-build-kit/` | Skill for porting `@eventmodelers/cli` and build-kit behaviour into the builder's `pi` agent |
 
 ## Running
