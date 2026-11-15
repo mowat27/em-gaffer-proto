@@ -1,0 +1,13 @@
+set shell := ["zsh", "-cu"]
+set positional-arguments
+
+# List recipes
+default:
+    @just --list
+
+# TSF: Tiny Software Factory, an Empty Factory with a durable agent (start, stop, status, logs, push)
+mod tsf
+
+# Run the gaffer's TSF on a persistent exe.dev VM (see vm/vm.sh): vm launch <vm> <builder-vm> | vm key <vm> <owner/repo> | vm token <vm>
+vm *ARGS:
+    @bash vm/vm.sh "$@"

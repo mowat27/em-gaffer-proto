@@ -1,0 +1,371 @@
+/*
+ * Globals, the workbench grid, its rails and handles, and the top bar (DESIGN 11, T25). Each lot's components keep
+ * their own file (common/markdown.css, pages/pages.css, agent/agent.css). Only --pw- tokens and --tsf- layout
+ * variables; the theme (tokens and style preset) arrives from the server as <style id="tsf-theme">.
+ */
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  overflow: hidden;
+}
+
+body.tsf-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+/* --- App frame: top bar over the workbench ------------------------------------------------------------------- */
+
+.tsf-app {
+  height: 100vh;
+  height: 100dvh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.tsf-topbar {
+  position: relative;
+  /* Grows when the bar stacks onto more rows (see the media query below). */
+  height: auto;
+  min-height: var(--pw-topbar-h);
+}
+
+/* The failed-rebuild banner floats over the top bar's right half; the app grid is not changed. */
+.tsf-web-error {
+  position: fixed;
+  top: calc(var(--pw-topbar-h) + var(--pw-sp-2));
+  right: var(--pw-sp-4);
+  z-index: 50;
+  max-width: min(640px, calc(100vw - 2 * var(--pw-sp-4)));
+}
+
+.tsf-web-error-text {
+  margin: 0;
+  max-height: 14rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-family: var(--pw-font-mono, monospace);
+  font-size: var(--pw-fs-sm, 0.875rem);
+}
+
+.tsf-topbar .pw-topbar-inner {
+  max-width: none;
+  height: auto;
+  min-height: var(--pw-topbar-h);
+  box-sizing: border-box;
+  padding: var(--pw-sp-1) var(--pw-sp-4);
+  flex-wrap: wrap;
+  row-gap: var(--pw-sp-1);
+}
+
+.tsf-topbar .pw-topbar-actions {
+  margin-left: auto;
+}
+
+/* Below 1700px the factory strip and the navbar each take a row of their own under the brand and the settings
+   controls, so nothing is pushed past the right edge. */
+@media (max-width: 1700px) {
+  .tsf-topbar .tsf-topbar-title {
+    order: 0;
+  }
+  .tsf-topbar .pw-topbar-actions {
+    order: 1;
+  }
+  .tsf-topbar .tsf-fxbar {
+    order: 2;
+    flex: 1 1 100%;
+    margin-left: 0;
+  }
+  .tsf-topbar .pw-topbar-inner > .tsf-navbar-global {
+    order: 3;
+    flex: 1 1 100%;
+    padding: 0;
+  }
+}
+
+/* --- Workbench: left pane, left handle, centre, right handle, right pane ------------------------------------- */
+
+.tsf-workbench {
+  --tsf-rail-w: 32px;
+  /* One header height across the panes, so the header line runs unbroken through the resize handles. */
+  --tsf-head-h: 56px;
+  display: grid;
+  grid-template-columns: var(--tsf-left-w, 280px) auto minmax(0, 1fr) auto var(--tsf-right-w, 440px);
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+  min-width: 0;
+  /* Grid children must never make the application wider than the viewport. */
+  overflow: hidden;
+  /* The chat popover and the narrow-screen pages drawer are positioned inside the workbench. */
+  position: relative;
+}
+
+.tsf-pane-left,
+.tsf-rail-left {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.tsf-resize-left,
+.tsf-gap-left {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.tsf-pane-center {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.tsf-resize-right,
+.tsf-gap-right {
+  grid-column: 4;
+  grid-row: 1;
+}
+
+.tsf-pane-right,
+.tsf-rail-right {
+  grid-column: 5;
+  grid-row: 1;
+}
+
+/* Maximised: the agent covers the centre and right columns. */
+.tsf-workbench-max .tsf-pane-right {
+  grid-column: 3 / 6;
+}
+
+.tsf-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tsf-pane[hidden],
+.tsf-rail[hidden] {
+  display: none;
+}
+
+.tsf-pane-left,
+.tsf-pane-right,
+.tsf-rail {
+  background: var(--pw-glass, var(--pw-surface));
+  -webkit-backdrop-filter: var(--pw-glass-blur, none);
+  backdrop-filter: var(--pw-glass-blur, none);
+}
+
+.tsf-pane-left,
+.tsf-rail-left {
+  border-right: 1px solid var(--pw-glass-line, var(--pw-border-subtle));
+}
+
+.tsf-pane-right,
+.tsf-rail-right {
+  border-left: 1px solid var(--pw-glass-line, var(--pw-border-subtle));
+}
+
+.tsf-pane-center {
+  overflow: auto;
+}
+
+.tsf-pane-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--pw-sp-1);
+  min-height: var(--tsf-head-h);
+  box-sizing: border-box;
+  padding: var(--pw-sp-2) var(--pw-sp-2) var(--pw-sp-2) var(--pw-sp-4);
+  border-bottom: 1px solid var(--pw-glass-line, var(--pw-border-subtle));
+}
+
+.tsf-pane-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--pw-font-sans);
+  font-size: var(--pw-fs-sm);
+  font-weight: var(--pw-fw-semibold);
+  font-stretch: normal;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--pw-text-2);
+}
+
+.tsf-pane-tools {
+  flex: none;
+  display: inline-flex;
+  gap: var(--pw-sp-1);
+}
+
+.tsf-pane-head-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--pw-sp-2);
+}
+
+.tsf-pane-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+/* --- Rails: a collapsed sidebar keeps one button to show it again -------------------------------------------- */
+
+.tsf-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: var(--pw-sp-2);
+  min-width: 0;
+}
+
+/* --- Resize handles ------------------------------------------------------------------------------------------ */
+
+/* The handle is painted: its top carries the header line, so the centre header's line reaches both panes' borders. */
+.tsf-resize {
+  position: relative;
+  width: 8px;
+  background: linear-gradient(
+    to bottom,
+    transparent calc(var(--tsf-head-h) - 1px),
+    var(--pw-border-subtle) calc(var(--tsf-head-h) - 1px),
+    var(--pw-border-subtle) var(--tsf-head-h),
+    transparent var(--tsf-head-h)
+  );
+  cursor: col-resize;
+  touch-action: none;
+  outline: none;
+}
+
+.tsf-resize::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 2px;
+  background: transparent;
+  transition: background-color var(--pw-ease);
+}
+
+.tsf-resize:hover::after,
+.tsf-resize:focus-visible::after,
+body.tsf-resizing .tsf-resize::after {
+  background: var(--pw-focus);
+}
+
+.tsf-resize:focus-visible {
+  outline: 2px solid var(--pw-focus);
+  outline-offset: -2px;
+}
+
+.tsf-gap-left,
+.tsf-gap-right {
+  width: 0;
+}
+
+/* Up to 1800px the agent is a popover: a floating card (or, collapsed, a round button) at the bottom right of the
+   workbench. It floats over the page instead of taking a column, so the centre pane keeps the full width. The
+   resize handle is hidden: the popover is a fixed size capped by the viewport. A maximised agent keeps its grid
+   columns, so it is left alone here. */
+@media (max-width: 1800px) {
+  .tsf-workbench:not(.tsf-workbench-max) {
+    grid-template-columns: var(--tsf-left-w, 280px) auto minmax(0, 1fr);
+  }
+
+  .tsf-workbench:not(.tsf-workbench-max) .tsf-resize-right,
+  .tsf-workbench:not(.tsf-workbench-max) .tsf-gap-right {
+    display: none;
+  }
+
+  .tsf-workbench:not(.tsf-workbench-max) .tsf-pane-right {
+    grid-area: auto;
+    position: absolute;
+    right: var(--pw-sp-3);
+    bottom: var(--pw-sp-3);
+    z-index: 30;
+    box-sizing: border-box;
+    width: min(var(--tsf-right-w, 440px), calc(100% - 2 * var(--pw-sp-3)));
+    height: min(720px, calc(100% - 2 * var(--pw-sp-3)));
+    border: 1px solid var(--pw-glass-line, var(--pw-border-subtle));
+    border-radius: var(--pw-r-md);
+    background: var(--pw-surface);
+    box-shadow: 0 12px 32px color-mix(in srgb, var(--pw-text) 22%, transparent);
+  }
+
+  .tsf-workbench:not(.tsf-workbench-max) .tsf-rail-right {
+    grid-area: auto;
+    position: absolute;
+    right: var(--pw-sp-3);
+    bottom: var(--pw-sp-3);
+    z-index: 30;
+    box-sizing: border-box;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    justify-content: center;
+    border: 1px solid var(--pw-glass-line, var(--pw-border-subtle));
+    border-radius: 50%;
+    background: var(--pw-surface);
+    box-shadow: 0 6px 18px color-mix(in srgb, var(--pw-text) 22%, transparent);
+  }
+
+  .tsf-workbench:not(.tsf-workbench-max) .tsf-rail-right .tsf-rail-state {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+  }
+}
+
+/* Up to 900px the pages pane is a drawer over the centre pane (open) or a 32px rail (closed), so the centre pane
+   always has the whole width. The agent, when maximised, spans the same single column. */
+@media (max-width: 900px) {
+  .tsf-workbench,
+  .tsf-workbench:not(.tsf-workbench-max) {
+    grid-template-columns: 0 0 minmax(0, 1fr);
+  }
+
+  .tsf-workbench[data-left="closed"],
+  .tsf-workbench[data-left="closed"]:not(.tsf-workbench-max) {
+    grid-template-columns: var(--tsf-rail-w) 0 minmax(0, 1fr);
+  }
+
+  .tsf-workbench .tsf-resize-left,
+  .tsf-workbench .tsf-resize-right {
+    display: none;
+  }
+
+  .tsf-workbench .tsf-pane-left {
+    grid-area: auto;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 25;
+    box-sizing: border-box;
+    width: min(var(--tsf-left-w, 280px), calc(100% - var(--tsf-rail-w)));
+    background: var(--pw-surface);
+    box-shadow: 12px 0 28px color-mix(in srgb, var(--pw-text) 18%, transparent);
+  }
+
+  .tsf-workbench-max .tsf-pane-right {
+    grid-column: 3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tsf-resize::after {
+    transition: none;
+  }
+}

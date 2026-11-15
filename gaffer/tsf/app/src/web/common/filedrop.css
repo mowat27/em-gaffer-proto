@@ -1,0 +1,44 @@
+/* File upload controls (common/FileDrop.tsx). pw-ui has no drop zone, so it is composed here from tokens only. */
+
+.tsf-drop {
+  position: relative;
+}
+
+/* While files hover: a dashed brand outline on a soft brand fill, with the words of what a drop does. */
+.tsf-drop-overlay {
+  position: absolute;
+  inset: var(--pw-sp-1);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--pw-sp-2);
+  padding: var(--pw-sp-4);
+  border: 2px dashed var(--pw-brand-border);
+  border-radius: var(--pw-r-md);
+  background: var(--pw-brand-soft);
+  color: var(--pw-brand-text);
+  font-size: var(--pw-fs-sm);
+  font-weight: var(--pw-fw-medium);
+  text-align: center;
+  pointer-events: none;
+}
+
+.tsf-drop-icon {
+  width: var(--pw-icon-lg);
+  height: var(--pw-icon-lg);
+}
+
+.tsf-upload {
+  display: inline-flex;
+  border-radius: var(--pw-r-sm);
+  transition: background-color var(--pw-ease), outline-color var(--pw-ease);
+}
+
+/* The button as a drop target: the same dashed brand outline, around the button. */
+.tsf-upload[data-dragging="true"] {
+  outline: 2px dashed var(--pw-brand-border);
+  outline-offset: 2px;
+  background: var(--pw-brand-soft);
+}

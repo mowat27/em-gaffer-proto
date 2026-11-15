@@ -1,0 +1,722 @@
+/* Settings modal: tabs, panels, the theme editor. Tokens only (--pw-*), 4px scale. */
+
+.tsf-settings {
+  width: min(960px, calc(100vw - var(--pw-sp-8)));
+}
+
+.tsf-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pw-sp-1);
+  border-bottom: 1px solid var(--pw-border-subtle);
+}
+
+.tsf-tab {
+  appearance: none;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  padding: var(--pw-sp-2) var(--pw-sp-3);
+  min-height: var(--pw-ctl-h);
+  font: inherit;
+  font-size: var(--pw-fs-sm);
+  font-weight: var(--pw-fw-medium);
+  color: var(--pw-text-2);
+  cursor: pointer;
+}
+
+.tsf-tab:hover {
+  color: var(--pw-text);
+}
+
+.tsf-tab[aria-selected="true"] {
+  color: var(--pw-brand-text);
+  border-bottom-color: var(--pw-brand);
+}
+
+.tsf-tab:focus-visible {
+  outline: 2px solid var(--pw-focus);
+  outline-offset: -2px;
+}
+
+.tsf-tabs-sub {
+  margin-bottom: var(--pw-sp-4);
+}
+
+.tsf-set-body {
+  padding-top: var(--pw-sp-4);
+  min-height: 320px;
+}
+
+.tsf-set-panel {
+  display: grid;
+  gap: var(--pw-sp-6);
+}
+
+.tsf-set-group {
+  display: grid;
+  gap: var(--pw-sp-3);
+  min-width: 0;
+}
+
+.tsf-set-h {
+  margin: 0;
+  font-family: var(--pw-font-sans);
+  font-size: var(--pw-fs-md);
+  font-weight: var(--pw-fw-semibold);
+  font-stretch: normal;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--pw-text);
+}
+
+.tsf-set-h2 {
+  margin: 0;
+  font-family: var(--pw-font-sans);
+  font-size: var(--pw-fs-sm);
+  font-weight: var(--pw-fw-semibold);
+  font-stretch: normal;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--pw-text-2);
+}
+
+.tsf-set-note {
+  margin: 0;
+  color: var(--pw-text-2);
+  font-size: var(--pw-fs-sm);
+}
+
+.tsf-set-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--pw-sp-4);
+}
+
+.tsf-set-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--pw-sp-3);
+}
+
+.tsf-set-colours {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--pw-sp-3) var(--pw-sp-4);
+}
+
+.tsf-set-colour {
+  display: flex;
+  align-items: center;
+  gap: var(--pw-sp-2);
+}
+
+.tsf-set-swatch {
+  flex: none;
+  width: var(--pw-sp-6);
+  height: var(--pw-sp-6);
+  border-radius: var(--pw-r-sm);
+  border: 1px solid var(--pw-control-border);
+  background: var(--pw-surface-sunken);
+}
+
+.tsf-set-swatch {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.tsf-set-swatch:focus-within {
+  outline: 2px solid var(--pw-focus);
+  outline-offset: 2px;
+}
+
+/* Visually hidden but focusable and clickable through the swatch label. */
+.tsf-set-picker {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  padding: 0;
+  border: 0;
+}
+
+.tsf-set-picker:disabled {
+  cursor: default;
+}
+
+.tsf-set-warnings {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--pw-sp-1);
+  font-size: var(--pw-fs-sm);
+  max-height: 160px;
+  overflow: auto;
+}
+
+.tsf-set-preview {
+  display: grid;
+  gap: var(--pw-sp-3);
+  padding: var(--pw-sp-4);
+  border: 1px solid var(--pw-border);
+  border-radius: var(--pw-r-md);
+  background: var(--pw-surface);
+}
+
+.tsf-set-preview-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pw-sp-2);
+}
+
+.tsf-set-preview-text {
+  margin: 0;
+  color: var(--pw-text);
+}
+
+.tsf-set-preview-muted {
+  color: var(--pw-text-2);
+}
+
+/* Layout panel */
+.tsf-set-widgets {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--pw-sp-2);
+}
+
+.tsf-set-widget {
+  display: grid;
+  grid-template-columns: minmax(140px, 1.4fr) minmax(120px, 1fr) auto auto;
+  align-items: center;
+  gap: var(--pw-sp-3);
+  padding: var(--pw-sp-2) var(--pw-sp-3);
+  border: 1px solid var(--pw-border-subtle);
+  border-radius: var(--pw-r-md);
+}
+
+.tsf-set-widget-name {
+  display: grid;
+  min-width: 0;
+}
+
+.tsf-set-widget-name code {
+  color: var(--pw-text-3);
+  font-size: var(--pw-fs-xs);
+}
+
+.tsf-set-widget-actions {
+  display: flex;
+  gap: var(--pw-sp-1);
+}
+
+.tsf-set-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--pw-sp-3);
+}
+
+/* Import layer: the path and its Upload file button share a row. */
+.tsf-import-source {
+  display: flex;
+  align-items: center;
+  gap: var(--pw-sp-2);
+}
+
+.tsf-import-source > .pw-input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Hotkeys panel */
+.tsf-set-hotkeys {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--pw-sp-4);
+}
+
+.tsf-set-hotkey-input {
+  display: flex;
+  gap: var(--pw-sp-2);
+  align-items: center;
+}
+
+@media (max-width: 640px) {
+  .tsf-set-widget {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Core 4 > Context: the bar with the two thresholds */
+.tsf-ctx {
+  display: grid;
+  gap: var(--pw-sp-3);
+}
+
+.tsf-ctx-track {
+  position: relative;
+  height: var(--pw-sp-4);
+  border-radius: var(--pw-r-sm);
+  background: var(--pw-control-track);
+  overflow: hidden;
+}
+
+.tsf-ctx-fill {
+  height: 100%;
+  background: var(--pw-brand);
+  transition: width var(--pw-duration-fast) var(--pw-ease-standard);
+}
+
+.tsf-ctx[data-tone="warning"] .tsf-ctx-fill {
+  background: var(--pw-warning);
+}
+
+.tsf-ctx[data-tone="error"] .tsf-ctx-fill {
+  background: var(--pw-error);
+}
+
+.tsf-ctx-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--pw-text);
+}
+
+.tsf-ctx-mark[data-kind="forced"] {
+  background: var(--pw-error);
+}
+
+.tsf-ctx-legend {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--pw-sp-3);
+}
+
+.tsf-ctx-legend dt {
+  font-size: var(--pw-fs-xs);
+  color: var(--pw-text-3);
+}
+
+.tsf-ctx-legend dd {
+  margin: 0;
+  font-family: var(--pw-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Core 4 > Prompts */
+.tsf-prompts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--pw-sp-3);
+}
+
+.tsf-prompt {
+  display: grid;
+  gap: var(--pw-sp-2);
+  padding: var(--pw-sp-3);
+  border: 1px solid var(--pw-border-subtle);
+  border-radius: var(--pw-r-md);
+  min-width: 0;
+}
+
+.tsf-prompt-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pw-sp-3);
+}
+
+.tsf-prompt-runtime {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.tsf-prompt-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.tsf-code {
+  margin: 0;
+  padding: var(--pw-sp-3);
+  max-height: 280px;
+  overflow: auto;
+  background: var(--pw-surface-sunken);
+  border: 1px solid var(--pw-border-subtle);
+  border-radius: var(--pw-r-sm);
+  font-family: var(--pw-font-mono);
+  font-size: var(--pw-fs-xs);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--pw-text);
+}
+
+/* Core 4 > Tools: the matrix and the quick view side by side */
+.tsf-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: var(--pw-sp-6);
+  align-items: start;
+}
+
+.tsf-tool-group {
+  display: grid;
+  gap: var(--pw-sp-2);
+}
+
+.tsf-tool-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--pw-sp-1);
+}
+
+.tsf-tool {
+  display: grid;
+  grid-template-columns: minmax(160px, auto) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--pw-sp-3);
+  padding: var(--pw-sp-1) var(--pw-sp-3);
+  border: 1px solid var(--pw-border-subtle);
+  border-radius: var(--pw-r-md);
+}
+
+.tsf-tool[data-viewing="true"] {
+  border-color: var(--pw-brand);
+}
+
+.tsf-tool-desc {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--pw-text-2);
+  font-size: var(--pw-fs-sm);
+}
+
+.tsf-quick {
+  display: grid;
+  gap: var(--pw-sp-3);
+  min-width: 0;
+  position: sticky;
+  top: 0;
+  padding: var(--pw-sp-4);
+  border: 1px solid var(--pw-border);
+  border-radius: var(--pw-r-md);
+  background: var(--pw-surface);
+}
+
+.tsf-quick-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pw-sp-2);
+}
+
+/* Advanced */
+.tsf-layers {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--pw-sp-3);
+}
+
+.tsf-layer {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--pw-sp-3);
+  padding: var(--pw-sp-3);
+  border: 1px solid var(--pw-border-subtle);
+  border-radius: var(--pw-r-md);
+}
+
+.tsf-layer-order {
+  color: var(--pw-text-3);
+  font-family: var(--pw-font-mono);
+}
+
+.tsf-layer-main {
+  display: grid;
+  gap: var(--pw-sp-2);
+  min-width: 0;
+}
+
+.tsf-layer-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pw-sp-2);
+}
+
+.tsf-chips {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pw-sp-2);
+}
+
+.tsf-chips li {
+  padding: 0 var(--pw-sp-2);
+  border: 1px solid var(--pw-border-subtle);
+  border-radius: var(--pw-r-sm);
+  font-size: var(--pw-fs-sm);
+}
+
+.tsf-runs {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--pw-fs-sm);
+}
+
+.tsf-runs th,
+.tsf-runs td {
+  text-align: left;
+  padding: var(--pw-sp-1) var(--pw-sp-2);
+  border-bottom: 1px solid var(--pw-border-subtle);
+  vertical-align: middle;
+}
+
+.tsf-runs-prompt {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 800px) {
+  .tsf-tools {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- Advanced > Factory ---------------------------------------------------------------------------------------- */
+
+.tsf-shot {
+  margin: 0;
+  display: grid;
+  gap: var(--pw-sp-2);
+}
+
+.tsf-shot-img {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--pw-border);
+  border-radius: var(--pw-r-sm);
+}
+
+/* Settings > Core 4 > Model: the model in use, the favourites and the grouped, searchable list. */
+.tsf-model-current {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pw-sp-3);
+  padding: var(--pw-sp-3) var(--pw-sp-4);
+  border: 1px solid var(--pw-border);
+  border-radius: var(--pw-r-md);
+  background: var(--pw-surface-raised);
+}
+
+.tsf-model-current-text {
+  display: grid;
+  gap: var(--pw-sp-1);
+  min-width: 0;
+}
+
+.tsf-model-current-name {
+  font-size: var(--pw-fs-lg);
+  font-weight: var(--pw-fw-semibold);
+  color: var(--pw-text);
+}
+
+.tsf-model-name {
+  font-weight: var(--pw-fw-medium);
+  color: var(--pw-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tsf-model-sub {
+  font-family: var(--pw-font-mono);
+  font-size: var(--pw-fs-xs);
+  color: var(--pw-text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A row's main button: the whole name area chooses the model. */
+.tsf-model-pick {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--pw-sp-3);
+  min-width: 0;
+  padding: var(--pw-sp-2) var(--pw-sp-3);
+  border: 0;
+  border-radius: var(--pw-r-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tsf-model-pick:hover:not(:disabled) {
+  background: var(--pw-surface-hover);
+}
+
+.tsf-model-pick:focus-visible {
+  outline: 2px solid var(--pw-focus);
+  outline-offset: -2px;
+}
+
+.tsf-model-pick:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.tsf-model-fav .tsf-model-pick {
+  display: grid;
+  gap: 0;
+}
+
+.tsf-model-favs {
+  display: grid;
+  gap: var(--pw-sp-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tsf-model-fav {
+  display: flex;
+  align-items: center;
+  gap: var(--pw-sp-2);
+  min-width: 0;
+  padding-right: var(--pw-sp-1);
+  border: 1px solid var(--pw-border-subtle);
+  border-radius: var(--pw-r-md);
+}
+
+.tsf-model-fav[data-current="true"] {
+  border-color: var(--pw-brand-border);
+  background: var(--pw-brand-soft);
+}
+
+/* The 1, 2, 3 key a favourite answers to. */
+.tsf-model-key {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: var(--pw-sp-6);
+  height: var(--pw-sp-6);
+  margin-left: var(--pw-sp-2);
+  border-radius: var(--pw-r-sm);
+  font-family: var(--pw-font-mono);
+  font-size: var(--pw-fs-xs);
+  color: var(--pw-text-2);
+}
+
+.tsf-model-key:not(:empty) {
+  border: 1px solid var(--pw-border);
+  background: var(--pw-surface-sunken);
+}
+
+.tsf-model-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pw-sp-2);
+}
+
+.tsf-model-search {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.tsf-model-list {
+  max-height: 420px;
+  overflow-y: auto;
+  border: 1px solid var(--pw-border);
+  border-radius: var(--pw-r-md);
+  background: var(--pw-surface-sunken);
+}
+
+.tsf-model-group-h {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  padding: var(--pw-sp-2) var(--pw-sp-3);
+  border-bottom: 1px solid var(--pw-border-subtle);
+  background: var(--pw-surface-raised);
+  font-size: var(--pw-fs-sm);
+  font-weight: var(--pw-fw-semibold);
+  color: var(--pw-text);
+}
+
+.tsf-model-group-n {
+  margin-left: var(--pw-sp-1);
+  font-weight: var(--pw-fw-regular);
+  color: var(--pw-text-3);
+}
+
+.tsf-model-row {
+  display: flex;
+  align-items: center;
+  gap: var(--pw-sp-1);
+  padding: var(--pw-sp-1) var(--pw-sp-2);
+  border-bottom: 1px solid var(--pw-border-subtle);
+}
+
+.tsf-model-row[data-current="true"] {
+  background: var(--pw-brand-soft);
+}
+
+.tsf-model-text {
+  display: grid;
+  min-width: 0;
+}
+
+/* The radio dot marks the model in use; the row itself is the button. */
+.tsf-model-radio {
+  flex: none;
+  width: var(--pw-sp-4);
+  height: var(--pw-sp-4);
+  border: 2px solid var(--pw-control-border);
+  border-radius: var(--pw-r-full);
+}
+
+.tsf-model-radio[data-on="true"] {
+  border-color: var(--pw-brand);
+  background: radial-gradient(circle, var(--pw-brand) 40%, transparent 45%);
+}
+
+.tsf-model-star[data-on="true"] svg {
+  color: var(--pw-warning);
+  fill: currentColor;
+}

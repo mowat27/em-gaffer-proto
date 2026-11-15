@@ -1,0 +1,211 @@
+/* Lot I: page tree and focus view rules. Tokens only (--pw-*), 4px scale. */
+
+/* ------------------------------------------------------------------ tree */
+
+.tsf-tree {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+}
+
+.tsf-tree-alert {
+  padding: 0 var(--pw-sp-3) var(--pw-sp-2);
+}
+
+.tsf-tree-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--pw-sp-1) var(--pw-sp-2) var(--pw-sp-4);
+}
+
+.tsf-tree-empty {
+  margin: var(--pw-sp-3);
+  font-size: var(--pw-fs-sm);
+  color: var(--pw-text-3);
+}
+
+.tsf-tree-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tsf-tree-row {
+  display: flex;
+  align-items: center;
+  border-radius: var(--pw-r-sm);
+  padding-left: calc(var(--tsf-depth, 0) * var(--pw-sp-4));
+  color: var(--pw-text);
+}
+
+.tsf-tree-row:hover,
+.tsf-tree-row:focus-within {
+  background: var(--pw-surface-hover);
+}
+
+.tsf-tree-row[data-selected="true"] {
+  background: var(--pw-surface-selected);
+  color: var(--pw-brand-text);
+}
+
+.tsf-tree-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--pw-sp-1);
+  min-height: var(--pw-ctl-h-sm);
+  padding: 0 var(--pw-sp-1);
+  border: 0;
+  border-radius: var(--pw-r-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--pw-fs-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.tsf-tree-main:focus-visible {
+  outline: 2px solid var(--pw-focus);
+  outline-offset: -2px;
+}
+
+.tsf-tree-chevron {
+  flex: none;
+  width: var(--pw-icon-sm);
+  height: var(--pw-icon-sm);
+  color: var(--pw-text-3);
+}
+
+.tsf-tree-icon {
+  flex: none;
+  width: var(--pw-icon-sm);
+  height: var(--pw-icon-sm);
+  color: var(--pw-text-3);
+}
+
+.tsf-tree-row[data-selected="true"] .tsf-tree-icon {
+  color: currentColor;
+}
+
+.tsf-tree-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Row actions stay in the DOM (keyboard reachable) and show on hover, focus and for the open page. */
+.tsf-tree-actions {
+  flex: none;
+  display: flex;
+  opacity: 0;
+}
+
+.tsf-tree-row:hover .tsf-tree-actions,
+.tsf-tree-row:focus-within .tsf-tree-actions,
+.tsf-tree-row[data-selected="true"] .tsf-tree-actions {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .tsf-tree-actions {
+    opacity: 1;
+  }
+}
+
+/* ----------------------------------------------------------------- focus */
+
+.tsf-focus {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+}
+
+.tsf-focus-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pw-sp-3);
+  min-height: var(--tsf-head-h, 56px);
+  box-sizing: border-box;
+  padding: var(--pw-sp-2) var(--pw-sp-6);
+  border-bottom: 1px solid var(--pw-border-subtle);
+}
+
+.tsf-focus-crumbs {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tsf-focus-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--pw-sp-2);
+}
+
+.tsf-focus-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-sp-3);
+  overflow: auto;
+  padding: var(--pw-sp-6) var(--pw-sp-8);
+}
+
+.tsf-focus-body > .tsf-markdown,
+.tsf-focus-body > [data-testid="page-content"] {
+  width: 100%;
+  max-width: 88ch;
+  margin: 0 auto;
+}
+
+.tsf-focus-alert {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-sp-2);
+}
+
+.tsf-focus-newer {
+  font-size: var(--pw-fs-sm);
+  color: var(--pw-text-2);
+}
+
+.tsf-focus-newer summary {
+  cursor: pointer;
+}
+
+.tsf-editor {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  resize: none;
+  font-family: var(--pw-font-mono);
+  font-size: var(--pw-fs-sm);
+  line-height: var(--pw-lh-relaxed);
+}
+
+.tsf-focus-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--pw-sp-4);
+  padding: var(--pw-sp-8);
+}
+
+.tsf-focus-loading {
+  margin: var(--pw-sp-8);
+  color: var(--pw-text-3);
+}
