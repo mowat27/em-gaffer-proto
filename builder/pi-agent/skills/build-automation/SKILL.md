@@ -5,6 +5,8 @@ description: Implements an emmett automation slice (reactor processor + command 
 
 # Build Automation Slice
 
+> Read `../emmett-reference/SKILL.md` (next to this skill) first. It has the installed emmett, dumbo and test APIs and the places where this app differs from the templates below. Do not search `node_modules` for them.
+
 > Before doing anything else, read the slice definition from `.slices/{Context}/{slicename}/slice.json`. This file is the **source of truth** for which trigger event drives the automation and what command it fires.
 
 ---

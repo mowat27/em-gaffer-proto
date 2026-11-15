@@ -78,8 +78,20 @@ export function GafferView() {
   const [tab, setTab] = useState<ScreenTab>("dashboard");
   const [planStatus, setPlanStatus] = useState("Planned");
   const [planning, setPlanning] = useState<string | null>(null);
+  const [restarting, setRestarting] = useState(false);
 
   const s = status.data;
+  const fullRestart = async (): Promise<void> => {
+    setRestarting(true);
+    try {
+      if (s?.running && await act.run("stop") === null) return;
+      if (await act.run("setup") === null) return;
+      await act.run("start");
+      status.refresh();
+    } finally {
+      setRestarting(false);
+    }
+  };
   const plan = async (slice: Slice): Promise<void> => {
     setPlanning(slice.id);
     await act.run("plan_slice", { slice: slice.id, status: planStatus });
@@ -95,6 +107,9 @@ export function GafferView() {
         <h1>Gaffer</h1>
         {s && <StatusChip state={s.running ? "running" : s.ready ? "stopped" : "missing"} label={s.running ? `Running (pid ${s.pid})` : s.ready ? "Stopped" : "Not set up"} />}
         <div className="tsf-fx-actions">
+          <Button size="sm" variant="primary" icon={RefreshCw} loading={restarting} disabled={!s?.tokenPresent || restarting} onClick={() => void fullRestart()}>
+            Restart &amp; set up
+          </Button>
           <Button size="sm" variant="secondary" icon={Wrench} loading={act.busy === "setup"} disabled={!s?.tokenPresent} onClick={() => void act.run("setup")}>
             {s?.ready ? "Re-run setup" : "Set up"}
           </Button>

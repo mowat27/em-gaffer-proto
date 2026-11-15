@@ -41,7 +41,10 @@ import { spawn, spawnSync } from "node:child_process";
 import { rm } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { join, resolve } from "node:path";
+import { createHash } from "node:crypto";
 import { jobLabel, jobName } from "./job-name.ts";
+import { fmtDuration, fmtNum, metricsOf, parseSession, type Metrics } from "./pi-session.ts";
+import { listSessions, readSession } from "./pi-session-files.ts";
 import { allChanges, builderExceptions, formatViolations, runChecks, SLICE_FILE } from "./pi-agent/extensions/done/checks.ts";
 
 export interface PiConfig {
@@ -501,6 +504,71 @@ async function postCallback(job: Job, url: string, body: unknown): Promise<void>
   emit("callback.abandoned", `callback to ${url} abandoned after ${cfg.callbackRetries + 1} tries`);
 }
 
+/** Slice fields that change without the slice's definition changing: board state, discussion, assignment. */
+const VOLATILE_SLICE_FIELDS = new Set(["status", "comments", "assignee", "ticketNumber"]);
+
+/** JSON with object keys sorted at every level, so equal definitions serialise identically. */
+function canonicalJson(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(canonicalJson).join(",")}]`;
+  if (v && typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    return `{${Object.keys(o).sort().map((k) => `${JSON.stringify(k)}:${canonicalJson(o[k])}`).join(",")}}`;
+  }
+  return JSON.stringify(v ?? null);
+}
+
+/**
+ * The slice's version: a hash of its definition (commands, events, read models, screens, specifications...) without
+ * the volatile fields. The board keeps no version number, so two builds of an unchanged slice get the same version
+ * and any change to the slice in the model gives a new one.
+ */
+function sliceVersion(slice: unknown): string {
+  const def = slice && typeof slice === "object" && !Array.isArray(slice) ? Object.fromEntries(Object.entries(slice).filter(([k]) => !VOLATILE_SLICE_FIELDS.has(k))) : slice;
+  return createHash("sha256").update(canonicalJson(def)).digest("hex").slice(0, 12);
+}
+
+/** Metrics of the pi session this job ran, or null when pi kept no session file for it. */
+function piMetrics(job: Job): Metrics | null {
+  const agentDir = cfg.pi.agentDir ? resolve(cfg.pi.agentDir.replace(/^~(?=\/|$)/, process.env.HOME ?? "~")) : join(process.env.HOME ?? "~", ".pi", "agent");
+  const sessionsDir = join(agentDir, "sessions");
+  const session = listSessions(sessionsDir).find((s) => s.jobId === job.jobId);
+  if (!session) return null;
+  const read = readSession(sessionsDir, session.id);
+  return read.ok ? metricsOf(parseSession(read.content)) : null;
+}
+
+/** The commit message: a plain subject, then the job's metadata as git trailers (`git log --format=%(trailers)`). */
+function commitMessage(job: Job, d: Dispatch): string {
+  const slice = (d.slice && typeof d.slice === "object" ? d.slice : {}) as Record<string, unknown>;
+  const text = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
+  const live = livePiSettings(cfg.pi);
+  const m = piMetrics(job);
+  const trailers: [string, string | null][] = [
+    ["Slice", d.task.title],
+    ["Slice-Id", d.task.sliceId],
+    ["Slice-Version", sliceVersion(d.slice)],
+    ["Slice-Type", text(slice.sliceType)],
+    ["Context", d.task.context],
+    ["Chapter", text(slice.chapterTitle) ?? text(slice.chapter)],
+    ["Attempt", String(d.task.attempt)],
+    ["Handover", d.task.handover ? "on" : "off"],
+    ["Job-Id", job.jobId],
+    ["Job-Name", jobName(job.jobId)],
+    ["Base", d.repo.base],
+    ["Repository", repoKey(d.repo.url)],
+    ["Agent", `pi ${live.provider}/${live.model}`],
+    ["Agent-Thinking", text(live.thinking)],
+    ["Agent-Duration", m ? fmtDuration(m.durationMs) : null],
+    ["Agent-Turns", m ? String(m.turns) : null],
+    ["Agent-Tool-Calls", m ? `${m.toolCalls} (${m.toolErrors} errors)` : null],
+    ["Agent-Tokens", m ? `input ${fmtNum(m.input)}, cache read ${fmtNum(m.cacheRead)}, output ${fmtNum(m.output)}` : null],
+    ["Agent-Cost", m && m.cost ? `$${m.cost.toFixed(4)}` : null],
+    ["Job-Duration", fmtDuration(Date.now() - job.startedAt)],
+    ["Built-At", new Date().toISOString()],
+  ];
+  return [`Build slice ${d.task.context}/${d.task.title}`, "", ...trailers.filter(([, v]) => v !== null).map(([k, v]) => `${k}: ${v}`)].join("\n");
+}
+
 async function runJob(job: Job, d: Dispatch): Promise<void> {
   const deadline = job.startedAt + cfg.jobTimeoutMinutes * 60_000;
   const step = (s: string) => {
@@ -546,7 +614,7 @@ async function runJob(job: Job, d: Dispatch): Promise<void> {
     const dirty = git(job.workspace, ["status", "--porcelain"]);
     if (dirty) {
       git(job.workspace, ["add", "-A"]);
-      git(job.workspace, ["commit", "-q", "-m", `build: ${d.task.context}/${d.task.title} (stub, attempt ${d.task.attempt})`]);
+      git(job.workspace, ["commit", "-q", "-m", commitMessage(job, d)]);
     }
     const count = Number(git(job.workspace, ["rev-list", "--count", `${d.repo.base}..HEAD`]));
     if (!count) throw new Error("the agent produced no changes");

@@ -5,6 +5,8 @@ description: Implements an emmett state-view slice (projection, tests, route, mi
 
 # Build State View Slice
 
+> Read `../emmett-reference/SKILL.md` (next to this skill) first. It has the installed emmett, dumbo and test APIs and the places where this app differs from the templates below. Do not search `node_modules` for them.
+
 > Before doing anything else, read the slice definition from `.slices/{Context}/{slicename}/slice.json`. This file is the **source of truth** for all fields, events, and read model shape. Never invent fields not defined there.
 
 ---

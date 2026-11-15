@@ -51,6 +51,8 @@ export const DEFAULTS: GafferSettings = {
 export const SETTING_KEYS = Object.keys(DEFAULTS) as (keyof GafferSettings)[];
 export const PAGE = "Gaffer.md";
 export const PLACEHOLDER = "set-in-agent-vault";
+/** How long one board read of the slice list serves every caller. */
+const SLICES_TTL_MS = 15_000;
 
 export interface GafferEvent {
   ts: string;
@@ -427,7 +429,23 @@ export class GafferLayer {
     }
   }
 
-  async slices(): Promise<Json> {
+  /**
+   * The board's slices. Every screen and widget polls this and re-reads it on each gaffer event, so one board call
+   * (success or failure) is shared by all callers for SLICES_TTL_MS, and concurrent callers share the call in flight.
+   */
+  slices(): Promise<Json> {
+    const s = this.settings;
+    const key = `${s.baseUrl}|${s.orgId}|${s.boardId}`;
+    const hit = this.slicesCache;
+    if (hit && hit.key === key && Date.now() - hit.at < SLICES_TTL_MS) return hit.result;
+    const result = this.fetchSlices();
+    this.slicesCache = { key, at: Date.now(), result };
+    return result;
+  }
+
+  private slicesCache: { key: string; at: number; result: Promise<Json> } | null = null;
+
+  private async fetchSlices(): Promise<Json> {
     const data = (await this.board("/slicedata/slices")) as { slices?: Record<string, unknown>[] };
     const slices = (data.slices ?? []).map((x) => ({
       id: x.id,
@@ -457,6 +475,7 @@ export class GafferLayer {
         },
       ]),
     });
+    this.slicesCache = null;
     this.emit("board", `slice "${slice.title}" set to ${status} (was ${slice.status ?? "unknown"})`, { sliceId: slice.id, status });
     return { id: slice.id, title: slice.title, from: slice.status, to: status };
   }
