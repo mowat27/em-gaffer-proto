@@ -20,7 +20,7 @@ const field = (key: string, label: string, kind: "text" | "number" = "text") => 
   capability: "builder.set_setting",
 });
 
-/** The build server: one job at a time, a stub pi agent per job, the patch sent back to the gaffer. */
+/** The build server: one job at a time, a pi agent per job, the patch sent back to the gaffer. */
 export const manifest: LayerManifest = {
   name: "builder",
   kind: "harness",
@@ -28,7 +28,7 @@ export const manifest: LayerManifest = {
   origin: "local",
   title: "Builder",
   description:
-    "Runs the build server (server.ts): accepts one slice job at a time over HTTP, clones the target repository at the requested base, runs the stub pi agent in it, commits, and posts the patch back to the gaffer's callback. The CLI invocation (command, provider, model, thinking, flags) is a setting and applies to the next job; standing instructions and the prompt template are Pi files (AGENTS.md, prompts/build.md) under pi-agent, kept in step with the Builder/Agent pages.",
+    "Runs the build server (server.ts): accepts one slice job at a time over HTTP, clones the target repository at the requested base, runs the pi agent in it, commits, and posts the patch back to the gaffer's callback. The CLI invocation (command, provider, model, thinking, flags) is a setting and applies to the next job; standing instructions and the prompt template are Pi files (AGENTS.md, prompts/build.md) under pi-agent, edited directly.",
   enabledByDefault: true,
   env: [{ name: "OPENROUTER_API_KEY", required: false, secret: true, description: "Used by pi through OpenRouter (placeholder on a vault-routed machine)" }],
   vaultHosts: ["openrouter.ai"],

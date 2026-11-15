@@ -306,7 +306,7 @@ export class BuilderLayer {
       `| Flags | \`${s.pi_args}\` |`,
       `| Timeout | ${s.pi_timeoutMinutes} min |`,
       "",
-      "Standing instructions (`pi-agent/AGENTS.md`) and the per-job prompt (`pi-agent/prompts/build.md`) are Pi files, copied fresh from the Builder/Agent pages before every job; edit the pages, not a setting. `pi-agent/extensions/` and `skills/` are plain Pi folders: drop files in and they load.",
+      "Standing instructions (`pi-agent/AGENTS.md`) and the per-job prompt (`pi-agent/prompts/build.md`) are Pi files, read before every job; edit them directly, not a setting. `pi-agent/extensions/` and `skills/` are plain Pi folders: drop files in and they load.",
       "",
       "Controls: Settings (S) > Advanced > Builder, or ask the agent (builder_start, builder_stop, builder_set_setting ...). Changes apply to the next job.",
       "",
