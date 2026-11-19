@@ -1,0 +1,6 @@
+# The packaged machine config layer (ops/config.ts). It ships with builder/, so a fresh machine has no tool limit
+# unless its ~/.gaffer/config.yml, $GAFFER_CONFIG or --config sets one. Without this file the built-in limit applies:
+# observe and notify only.
+builder:
+  limit:
+    tools: { enable: ["*"], disable: [] }

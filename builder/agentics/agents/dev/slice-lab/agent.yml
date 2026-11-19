@@ -1,0 +1,28 @@
+# slice-lab (an example dev agent, design sections 8 and 12): builds slices from sample dispatches with the verified
+# workflow, diagnoses failed builds, tunes the build skills through the definitions tools and runs again. It replaces
+# today's dev loop (dev.ts and the dev bus): nothing here is special, it is an agent like any other. Copy or delete it.
+description: Build slices from sample dispatches, verify them, tune the build skills
+mode: interactive
+prompt: own:SYSTEM.md
+uses:
+  skills: [shared:build/*]
+# It has pi's file tools for its own areas (work, data); the gate keeps every write inside them.
+gates: [shared:write-scope]
+tools:
+  # Its own work: observe and runs (start the verified workflow, wait, read verdicts and journals), definitions
+  # (change skills, versioned), messaging (P6), process (the build server) and verify (judge a workspace again).
+  # files, project, outcome, capture-learning, fetch_docs and try_rules are the tools of the runs it starts: a child
+  # run never gets more than its parent (D19, G6), and the supabase-api build and the verifier need them. Only pi's
+  # own file tools are present in slice-lab itself; the others belong to extensions it does not load.
+  enable: [observe, runs, definitions, messaging, process, verify, files, project, outcome, capture-learning, fetch_docs, try_rules]
+  disable: [bash]
+areas:
+  # Its own data/ (data:), results in data/local/ (gitignored).
+  data: { write: true }
+  # The folder that holds the gaffer checkout: apps checked out beside it, e.g. area:apps/invoice-lite. Read only:
+  # the verified workflow clones its app repository from here (input.repos), never changes it.
+  apps: { path: ../../../../../.., write: false }
+  # Scratch space: notes, snapshots. Gitignored.
+  work: { path: ./work, write: true }
+runs:
+  may_start: [workflow:supabase-api*, agent:verifier]

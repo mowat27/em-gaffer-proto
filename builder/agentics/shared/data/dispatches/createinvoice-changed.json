@@ -1,0 +1,829 @@
+{
+  "requires": [
+    "repo:github.com/mowat27/invoice-lite",
+    "stack:stub"
+  ],
+  "repo": {
+    "url": "git@github.com:mowat27/invoice-lite.git",
+    "base": "a4ed0fbd5180aeb3155c6c0f60b77b1873a3ad5c"
+  },
+  "task": {
+    "sliceId": "4fb1f806-1f50-4f14-8d43-9df3a58bd51f",
+    "title": "CreateInvoice",
+    "context": "Invoicing",
+    "handover": false,
+    "attempt": 1
+  },
+  "slice": {
+    "id": "4fb1f806-1f50-4f14-8d43-9df3a58bd51f",
+    "title": "CreateInvoice",
+    "status": "Done",
+    "sliceType": "STATE_CHANGE",
+    "chapter": "Invoicing",
+    "context": "Invoicing",
+    "commands": [
+      {
+        "id": "bd0f8f36-ef5c-44e2-b202-caa1e0562e7f",
+        "title": "CreateInvoice",
+        "type": "COMMAND",
+        "fields": [
+          {
+            "name": "invoiceId",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": true,
+            "edited": false,
+            "idAttribute": true,
+            "tag": false,
+            "type": "UUID",
+            "cardinality": "Single",
+            "subfields": []
+          },
+          {
+            "name": "clientId",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": false,
+            "tag": false,
+            "type": "UUID",
+            "cardinality": "Single",
+            "subfields": []
+          },
+          {
+            "name": "amount",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": false,
+            "tag": false,
+            "type": "Decimal",
+            "cardinality": "Single",
+            "subfields": []
+          },
+          {
+            "name": "date",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": false,
+            "tag": false,
+            "type": "Date",
+            "cardinality": "Single",
+            "subfields": []
+          },
+          {
+            "name": "dueDate",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": false,
+            "tag": false,
+            "type": "Date",
+            "cardinality": "Single",
+            "subfields": []
+          }
+        ],
+        "dependencies": [
+          {
+            "id": "af5a8eba-4385-47b3-b89f-05973f4e7e21",
+            "type": "INBOUND",
+            "title": "New Invoice",
+            "elementType": "HTML_SCREEN"
+          },
+          {
+            "id": "f314dad1-f3d6-4d2b-b06b-e09fa365af72",
+            "type": "OUTBOUND",
+            "title": "InvoiceCreated",
+            "elementType": "EVENT"
+          }
+        ],
+        "modelContext": "Invoicing",
+        "lane": "Interaction",
+        "aggregate": "default",
+        "aggregateDependencies": [],
+        "triggers": [],
+        "tags": [],
+        "slice": "CreateInvoice",
+        "description": "",
+        "context": "INTERNAL",
+        "elementContext": "INTERNAL",
+        "listElement": false,
+        "todoList": false,
+        "createsAggregate": false,
+        "elementCopy": false,
+        "linkedId": "bd0f8f36-ef5c-44e2-b202-caa1e0562e7f",
+        "sketched": false,
+        "comments": []
+      }
+    ],
+    "events": [
+      {
+        "id": "f314dad1-f3d6-4d2b-b06b-e09fa365af72",
+        "title": "InvoiceCreated",
+        "type": "EVENT",
+        "fields": [
+          {
+            "name": "invoiceId",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": true,
+            "tag": false,
+            "type": "UUID",
+            "cardinality": "Single",
+            "subfields": []
+          },
+          {
+            "name": "clientId",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": false,
+            "tag": false,
+            "type": "UUID",
+            "cardinality": "Single",
+            "subfields": []
+          },
+          {
+            "name": "amount",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": false,
+            "tag": false,
+            "type": "Decimal",
+            "cardinality": "Single",
+            "subfields": []
+          },
+          {
+            "name": "date",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": false,
+            "tag": false,
+            "type": "Date",
+            "cardinality": "Single",
+            "subfields": []
+          },
+          {
+            "name": "dueDate",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": false,
+            "tag": false,
+            "type": "Date",
+            "cardinality": "Single",
+            "subfields": []
+          }
+        ],
+        "dependencies": [
+          {
+            "id": "bd0f8f36-ef5c-44e2-b202-caa1e0562e7f",
+            "type": "INBOUND",
+            "title": "CreateInvoice",
+            "elementType": "COMMAND"
+          },
+          {
+            "id": "66725644-b2c6-4639-b7f4-e11631c13e98",
+            "type": "OUTBOUND",
+            "title": "Invoices",
+            "elementType": "READMODEL"
+          }
+        ],
+        "modelContext": "Invoicing",
+        "lane": "Swimlane",
+        "aggregate": "default",
+        "aggregateDependencies": [],
+        "triggers": [],
+        "tags": [],
+        "slice": "CreateInvoice",
+        "description": "",
+        "context": "INTERNAL",
+        "elementContext": "INTERNAL",
+        "listElement": false,
+        "todoList": false,
+        "createsAggregate": false,
+        "elementCopy": false,
+        "linkedId": "f314dad1-f3d6-4d2b-b06b-e09fa365af72",
+        "sketched": false,
+        "comments": []
+      }
+    ],
+    "readmodels": [],
+    "screens": [
+      {
+        "id": "af5a8eba-4385-47b3-b89f-05973f4e7e21",
+        "title": "New Invoice",
+        "type": "HTML_SCREEN",
+        "fields": [
+          {
+            "name": "clientId",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": false,
+            "tag": false,
+            "type": "UUID",
+            "cardinality": "Single",
+            "subfields": [],
+            "mapping": "clientId"
+          },
+          {
+            "name": "amount",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": false,
+            "tag": false,
+            "type": "Decimal",
+            "cardinality": "Single",
+            "subfields": [],
+            "mapping": "amount"
+          },
+          {
+            "name": "date",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": false,
+            "tag": false,
+            "type": "Date",
+            "cardinality": "Single",
+            "subfields": [],
+            "mapping": "date"
+          },
+          {
+            "name": "dueDate",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": false,
+            "tag": false,
+            "type": "Date",
+            "cardinality": "Single",
+            "subfields": [],
+            "mapping": "dueDate"
+          }
+        ],
+        "dependencies": [
+          {
+            "id": "bd0f8f36-ef5c-44e2-b202-caa1e0562e7f",
+            "type": "OUTBOUND",
+            "title": "CreateInvoice",
+            "elementType": "COMMAND"
+          },
+          {
+            "id": "2607e949-c925-4d54-973e-de4a4d1f9554",
+            "type": "INBOUND",
+            "title": "Clients",
+            "elementType": "READMODEL"
+          }
+        ],
+        "modelContext": "Invoicing",
+        "lane": "Actor",
+        "aggregate": "default",
+        "aggregateDependencies": [],
+        "triggers": [],
+        "tags": [],
+        "slice": "CreateInvoice",
+        "description": "",
+        "context": "INTERNAL",
+        "elementContext": "INTERNAL",
+        "listElement": false,
+        "todoList": false,
+        "createsAggregate": false,
+        "elementCopy": false,
+        "linkedId": "af5a8eba-4385-47b3-b89f-05973f4e7e21",
+        "sketched": false,
+        "comments": []
+      }
+    ],
+    "processors": [],
+    "tables": [],
+    "specifications": [
+      {
+        "id": "d2b3f953-c323-45ce-859e-c068acefc9a0",
+        "title": "Create an invoice",
+        "chapter": "Invoicing",
+        "sliceName": "CreateInvoice",
+        "vertical": false,
+        "expectEmptyList": false,
+        "examples": [],
+        "given": [
+          {
+            "id": "b7d70795-13b3-4527-9fa2-255c5cbbde09",
+            "title": "ClientCreated",
+            "tags": [],
+            "index": 0,
+            "specRow": 0,
+            "type": "EVENT",
+            "fields": []
+          }
+        ],
+        "when": [
+          {
+            "id": "bd0f8f36-ef5c-44e2-b202-caa1e0562e7f",
+            "title": "CreateInvoice",
+            "tags": [],
+            "index": 0,
+            "specRow": 0,
+            "type": "COMMAND",
+            "fields": []
+          }
+        ],
+        "then": [
+          {
+            "id": "f314dad1-f3d6-4d2b-b06b-e09fa365af72",
+            "title": "InvoiceCreated",
+            "tags": [],
+            "index": 0,
+            "specRow": 0,
+            "type": "EVENT",
+            "fields": []
+          }
+        ]
+      },
+      {
+        "id": "42481470-71ac-4764-b582-144f4e871eea",
+        "title": "Unknown client is rejected",
+        "chapter": "Invoicing",
+        "sliceName": "CreateInvoice",
+        "vertical": false,
+        "expectEmptyList": false,
+        "examples": [],
+        "given": [],
+        "when": [
+          {
+            "id": "bd0f8f36-ef5c-44e2-b202-caa1e0562e7f",
+            "title": "CreateInvoice",
+            "tags": [],
+            "index": 0,
+            "specRow": 0,
+            "type": "COMMAND",
+            "fields": []
+          }
+        ],
+        "then": [
+          {
+            "id": "7f8b1b33-383b-4940-92bd-5ce1d059b45b",
+            "title": "Unknown client is rejected",
+            "description": "Client does not exist",
+            "type": "SPEC_ERROR",
+            "fields": []
+          }
+        ]
+      },
+      {
+        "id": "e0000000-0000-4000-8000-000000000201",
+        "title": "Due date before the invoice date is rejected",
+        "chapter": "Invoicing",
+        "sliceName": "CreateInvoice",
+        "vertical": false,
+        "expectEmptyList": false,
+        "examples": [],
+        "given": [
+          {
+            "id": "b7d70795-13b3-4527-9fa2-255c5cbbde09",
+            "title": "ClientCreated",
+            "tags": [],
+            "index": 0,
+            "specRow": 0,
+            "type": "EVENT",
+            "fields": []
+          }
+        ],
+        "when": [
+          {
+            "id": "bd0f8f36-ef5c-44e2-b202-caa1e0562e7f",
+            "title": "CreateInvoice",
+            "tags": [],
+            "index": 0,
+            "specRow": 0,
+            "type": "COMMAND",
+            "fields": []
+          }
+        ],
+        "then": [
+          {
+            "id": "e0000000-0000-4000-8000-000000000202",
+            "title": "Due date before the invoice date is rejected",
+            "description": "Due date must be on or after the invoice date",
+            "type": "SPEC_ERROR",
+            "fields": []
+          }
+        ]
+      }
+    ],
+    "actors": [],
+    "aggregates": [],
+    "screenImages": [],
+    "comments": [
+      "[note] Local dev DB has drifted from repo migrations (flyway history: invoices/clients/invoices client name; invoices_client_names has client_name not name), so every ClientCreated append 500s locally. Reset the local DB (supabase db reset / drop flyway history) to fix. CreateInvoice verified end-to-end on a fresh testcontainer DB instead.",
+      "[note] builder failed: pi timed out after 10 min"
+    ]
+  },
+  "changes": {
+    "verdict": "CHANGED",
+    "since": {
+      "commit": "a4ed0fbd5180aeb3155c6c0f60b77b1873a3ad5c",
+      "recordedAt": "2026-11-16T12:00:00.000Z"
+    },
+    "slice": {
+      "changed": []
+    },
+    "elements": {
+      "changed": [
+        {
+          "kind": "commands",
+          "id": "bd0f8f36-ef5c-44e2-b202-caa1e0562e7f",
+          "title": "CreateInvoice",
+          "before": {
+            "id": "bd0f8f36-ef5c-44e2-b202-caa1e0562e7f",
+            "title": "CreateInvoice",
+            "type": "COMMAND",
+            "fields": [
+              {
+                "name": "invoiceId",
+                "optional": false,
+                "showAttributes": false,
+                "technicalAttribute": false,
+                "query": false,
+                "generated": true,
+                "edited": false,
+                "idAttribute": true,
+                "tag": false,
+                "type": "UUID",
+                "cardinality": "Single",
+                "subfields": []
+              },
+              {
+                "name": "clientId",
+                "optional": false,
+                "showAttributes": false,
+                "technicalAttribute": false,
+                "query": false,
+                "generated": false,
+                "edited": false,
+                "idAttribute": false,
+                "tag": false,
+                "type": "UUID",
+                "cardinality": "Single",
+                "subfields": []
+              },
+              {
+                "name": "amount",
+                "optional": false,
+                "showAttributes": false,
+                "technicalAttribute": false,
+                "query": false,
+                "generated": false,
+                "edited": false,
+                "idAttribute": false,
+                "tag": false,
+                "type": "Decimal",
+                "cardinality": "Single",
+                "subfields": []
+              },
+              {
+                "name": "date",
+                "optional": false,
+                "showAttributes": false,
+                "technicalAttribute": false,
+                "query": false,
+                "generated": false,
+                "edited": false,
+                "idAttribute": false,
+                "tag": false,
+                "type": "Date",
+                "cardinality": "Single",
+                "subfields": []
+              }
+            ],
+            "dependencies": [
+              {
+                "id": "af5a8eba-4385-47b3-b89f-05973f4e7e21",
+                "type": "INBOUND",
+                "title": "New Invoice",
+                "elementType": "HTML_SCREEN"
+              },
+              {
+                "id": "f314dad1-f3d6-4d2b-b06b-e09fa365af72",
+                "type": "OUTBOUND",
+                "title": "InvoiceCreated",
+                "elementType": "EVENT"
+              }
+            ],
+            "modelContext": "Invoicing",
+            "lane": "Interaction",
+            "aggregate": "default",
+            "aggregateDependencies": [],
+            "triggers": [],
+            "tags": [],
+            "slice": "CreateInvoice",
+            "description": "",
+            "context": "INTERNAL",
+            "elementContext": "INTERNAL",
+            "listElement": false,
+            "todoList": false,
+            "createsAggregate": false,
+            "elementCopy": false,
+            "linkedId": "bd0f8f36-ef5c-44e2-b202-caa1e0562e7f",
+            "sketched": false,
+            "comments": []
+          }
+        },
+        {
+          "kind": "events",
+          "id": "f314dad1-f3d6-4d2b-b06b-e09fa365af72",
+          "title": "InvoiceCreated",
+          "before": {
+            "id": "f314dad1-f3d6-4d2b-b06b-e09fa365af72",
+            "title": "InvoiceCreated",
+            "type": "EVENT",
+            "fields": [
+              {
+                "name": "invoiceId",
+                "optional": false,
+                "showAttributes": false,
+                "technicalAttribute": false,
+                "query": false,
+                "generated": false,
+                "edited": false,
+                "idAttribute": true,
+                "tag": false,
+                "type": "UUID",
+                "cardinality": "Single",
+                "subfields": []
+              },
+              {
+                "name": "clientId",
+                "optional": false,
+                "showAttributes": false,
+                "technicalAttribute": false,
+                "query": false,
+                "generated": false,
+                "edited": false,
+                "idAttribute": false,
+                "tag": false,
+                "type": "UUID",
+                "cardinality": "Single",
+                "subfields": []
+              },
+              {
+                "name": "amount",
+                "optional": false,
+                "showAttributes": false,
+                "technicalAttribute": false,
+                "query": false,
+                "generated": false,
+                "edited": false,
+                "idAttribute": false,
+                "tag": false,
+                "type": "Decimal",
+                "cardinality": "Single",
+                "subfields": []
+              },
+              {
+                "name": "date",
+                "optional": false,
+                "showAttributes": false,
+                "technicalAttribute": false,
+                "query": false,
+                "generated": false,
+                "edited": false,
+                "idAttribute": false,
+                "tag": false,
+                "type": "Date",
+                "cardinality": "Single",
+                "subfields": []
+              }
+            ],
+            "dependencies": [
+              {
+                "id": "bd0f8f36-ef5c-44e2-b202-caa1e0562e7f",
+                "type": "INBOUND",
+                "title": "CreateInvoice",
+                "elementType": "COMMAND"
+              },
+              {
+                "id": "66725644-b2c6-4639-b7f4-e11631c13e98",
+                "type": "OUTBOUND",
+                "title": "Invoices",
+                "elementType": "READMODEL"
+              }
+            ],
+            "modelContext": "Invoicing",
+            "lane": "Swimlane",
+            "aggregate": "default",
+            "aggregateDependencies": [],
+            "triggers": [],
+            "tags": [],
+            "slice": "CreateInvoice",
+            "description": "",
+            "context": "INTERNAL",
+            "elementContext": "INTERNAL",
+            "listElement": false,
+            "todoList": false,
+            "createsAggregate": false,
+            "elementCopy": false,
+            "linkedId": "f314dad1-f3d6-4d2b-b06b-e09fa365af72",
+            "sketched": false,
+            "comments": []
+          }
+        },
+        {
+          "kind": "screens",
+          "id": "af5a8eba-4385-47b3-b89f-05973f4e7e21",
+          "title": "New Invoice",
+          "before": {
+            "id": "af5a8eba-4385-47b3-b89f-05973f4e7e21",
+            "title": "New Invoice",
+            "type": "HTML_SCREEN",
+            "fields": [
+              {
+                "name": "clientId",
+                "optional": false,
+                "showAttributes": false,
+                "technicalAttribute": false,
+                "query": false,
+                "generated": false,
+                "edited": false,
+                "idAttribute": false,
+                "tag": false,
+                "type": "UUID",
+                "cardinality": "Single",
+                "subfields": [],
+                "mapping": "clientId"
+              },
+              {
+                "name": "amount",
+                "optional": false,
+                "showAttributes": false,
+                "technicalAttribute": false,
+                "query": false,
+                "generated": false,
+                "edited": false,
+                "idAttribute": false,
+                "tag": false,
+                "type": "Decimal",
+                "cardinality": "Single",
+                "subfields": [],
+                "mapping": "amount"
+              },
+              {
+                "name": "date",
+                "optional": false,
+                "showAttributes": false,
+                "technicalAttribute": false,
+                "query": false,
+                "generated": false,
+                "edited": false,
+                "idAttribute": false,
+                "tag": false,
+                "type": "Date",
+                "cardinality": "Single",
+                "subfields": [],
+                "mapping": "date"
+              }
+            ],
+            "dependencies": [
+              {
+                "id": "bd0f8f36-ef5c-44e2-b202-caa1e0562e7f",
+                "type": "OUTBOUND",
+                "title": "CreateInvoice",
+                "elementType": "COMMAND"
+              },
+              {
+                "id": "2607e949-c925-4d54-973e-de4a4d1f9554",
+                "type": "INBOUND",
+                "title": "Clients",
+                "elementType": "READMODEL"
+              }
+            ],
+            "modelContext": "Invoicing",
+            "lane": "Actor",
+            "aggregate": "default",
+            "aggregateDependencies": [],
+            "triggers": [],
+            "tags": [],
+            "slice": "CreateInvoice",
+            "description": "",
+            "context": "INTERNAL",
+            "elementContext": "INTERNAL",
+            "listElement": false,
+            "todoList": false,
+            "createsAggregate": false,
+            "elementCopy": false,
+            "linkedId": "af5a8eba-4385-47b3-b89f-05973f4e7e21",
+            "sketched": false,
+            "comments": []
+          }
+        }
+      ],
+      "added": [
+        {
+          "kind": "specifications",
+          "id": "e0000000-0000-4000-8000-000000000201",
+          "title": "Due date before the invoice date is rejected"
+        }
+      ],
+      "removed": [
+        {
+          "kind": "specifications",
+          "id": "326d1e67-e9d0-4296-a31a-a6bb96131dcb",
+          "title": "Zero amount is rejected",
+          "before": {
+            "id": "326d1e67-e9d0-4296-a31a-a6bb96131dcb",
+            "title": "Zero amount is rejected",
+            "chapter": "Invoicing",
+            "sliceName": "CreateInvoice",
+            "vertical": false,
+            "expectEmptyList": false,
+            "examples": [],
+            "given": [
+              {
+                "id": "b7d70795-13b3-4527-9fa2-255c5cbbde09",
+                "title": "ClientCreated",
+                "tags": [],
+                "index": 0,
+                "specRow": 0,
+                "type": "EVENT",
+                "fields": []
+              }
+            ],
+            "when": [
+              {
+                "id": "bd0f8f36-ef5c-44e2-b202-caa1e0562e7f",
+                "title": "CreateInvoice",
+                "tags": [],
+                "index": 0,
+                "specRow": 0,
+                "type": "COMMAND",
+                "fields": []
+              }
+            ],
+            "then": [
+              {
+                "id": "8637a42a-2945-4590-ad88-703e9616dfb8",
+                "title": "Zero amount is rejected",
+                "description": "Amount must be greater than zero",
+                "type": "SPEC_ERROR",
+                "fields": []
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "sourceEvents": {
+      "changed": [],
+      "added": [],
+      "removed": []
+    }
+  },
+  "callback": "http://127.0.0.1:8787/jobs/example-createinvoice-changed"
+}

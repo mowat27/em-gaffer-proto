@@ -1,0 +1,456 @@
+{
+  "requires": [
+    "repo:github.com/mowat27/invoice-lite",
+    "stack:stub"
+  ],
+  "repo": {
+    "url": "git@github.com:mowat27/invoice-lite.git",
+    "base": "a4ed0fbd5180aeb3155c6c0f60b77b1873a3ad5c"
+  },
+  "task": {
+    "sliceId": "69e19b7e-8a8d-4e43-bcb3-fcabf370b4ed",
+    "title": "ClientDirectory",
+    "context": "Reporting",
+    "handover": false,
+    "attempt": 1
+  },
+  "slice": {
+    "id": "69e19b7e-8a8d-4e43-bcb3-fcabf370b4ed",
+    "title": "ClientDirectory",
+    "status": "Done",
+    "sliceType": "STATE_VIEW",
+    "chapter": "Reporting",
+    "context": "Reporting",
+    "commands": [],
+    "events": [],
+    "readmodels": [
+      {
+        "id": "cd529774-87e6-463f-a784-8e832b47fba8",
+        "title": "ClientDirectory",
+        "type": "READMODEL",
+        "fields": [
+          {
+            "name": "clientId",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": true,
+            "tag": false,
+            "type": "UUID",
+            "cardinality": "Single",
+            "subfields": []
+          },
+          {
+            "name": "name",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": false,
+            "tag": false,
+            "type": "String",
+            "cardinality": "Single",
+            "subfields": []
+          },
+          {
+            "name": "contactEmail",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": false,
+            "tag": false,
+            "type": "String",
+            "cardinality": "Single",
+            "subfields": []
+          }
+        ],
+        "dependencies": [
+          {
+            "id": "b7d70795-13b3-4527-9fa2-255c5cbbde09",
+            "type": "INBOUND",
+            "title": "ClientCreated",
+            "elementType": "EVENT"
+          },
+          {
+            "id": "efdad1b0-e887-43e2-b2bf-de9f997ea056",
+            "type": "OUTBOUND",
+            "title": "Client Directory",
+            "elementType": "HTML_SCREEN"
+          }
+        ],
+        "modelContext": "Reporting",
+        "lane": "Interaction",
+        "aggregate": "default",
+        "aggregateDependencies": [],
+        "triggers": [],
+        "tags": [],
+        "slice": "ClientDirectory",
+        "description": "",
+        "context": "INTERNAL",
+        "elementContext": "INTERNAL",
+        "listElement": false,
+        "todoList": false,
+        "createsAggregate": false,
+        "elementCopy": false,
+        "linkedId": "cd529774-87e6-463f-a784-8e832b47fba8",
+        "sketched": false,
+        "comments": []
+      }
+    ],
+    "screens": [
+      {
+        "id": "efdad1b0-e887-43e2-b2bf-de9f997ea056",
+        "title": "Client Directory",
+        "type": "HTML_SCREEN",
+        "fields": [
+          {
+            "name": "contactEmail",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": false,
+            "tag": false,
+            "type": "String",
+            "cardinality": "Single",
+            "subfields": [],
+            "mapping": "contactEmail"
+          }
+        ],
+        "dependencies": [
+          {
+            "id": "cd529774-87e6-463f-a784-8e832b47fba8",
+            "type": "INBOUND",
+            "title": "ClientDirectory",
+            "elementType": "READMODEL"
+          }
+        ],
+        "modelContext": "Reporting",
+        "lane": "Actor",
+        "aggregate": "default",
+        "aggregateDependencies": [],
+        "triggers": [],
+        "tags": [],
+        "slice": "ClientDirectory",
+        "description": "",
+        "context": "INTERNAL",
+        "elementContext": "INTERNAL",
+        "listElement": false,
+        "todoList": false,
+        "createsAggregate": false,
+        "elementCopy": false,
+        "linkedId": "efdad1b0-e887-43e2-b2bf-de9f997ea056",
+        "sketched": false,
+        "comments": []
+      }
+    ],
+    "processors": [],
+    "tables": [],
+    "specifications": [
+      {
+        "id": "e0000000-0000-4000-8000-000000000301",
+        "title": "Directory lists every client",
+        "chapter": "Reporting",
+        "sliceName": "ClientDirectory",
+        "vertical": false,
+        "expectEmptyList": false,
+        "examples": [
+          {
+            "clientId": "c1a2b3c4-0000-4000-8000-000000000001",
+            "name": "Great Glen Ltd",
+            "contactEmail": "accounts@great-glen.example"
+          },
+          {
+            "clientId": "c1a2b3c4-0000-4000-8000-000000000002",
+            "name": "The Lochside Lodge",
+            "contactEmail": "ellen@lochside.example"
+          }
+        ],
+        "given": [
+          {
+            "id": "b7d70795-13b3-4527-9fa2-255c5cbbde09",
+            "title": "ClientCreated",
+            "tags": [],
+            "index": 0,
+            "specRow": 0,
+            "type": "EVENT",
+            "fields": []
+          },
+          {
+            "id": "b7d70795-13b3-4527-9fa2-255c5cbbde09",
+            "title": "ClientCreated",
+            "tags": [],
+            "index": 0,
+            "specRow": 0,
+            "type": "EVENT",
+            "fields": []
+          }
+        ],
+        "when": [],
+        "then": [
+          {
+            "id": "cd529774-87e6-463f-a784-8e832b47fba8",
+            "title": "ClientDirectory",
+            "tags": [],
+            "index": 0,
+            "specRow": 0,
+            "type": "READMODEL",
+            "fields": []
+          }
+        ]
+      }
+    ],
+    "actors": [],
+    "aggregates": [],
+    "screenImages": [],
+    "comments": []
+  },
+  "sourceEvents": [
+    {
+      "owner": {
+        "sliceId": "7a920d09-c0ac-48d8-aa3a-b28e6e1e2b52",
+        "title": "CreateClient",
+        "status": "Done",
+        "sliceType": "STATE_CHANGE",
+        "chapterId": "53369ac2-3c36-4f32-bc00-7af8c5cbf6f8"
+      },
+      "event": {
+        "id": "b7d70795-13b3-4527-9fa2-255c5cbbde09",
+        "title": "ClientCreated",
+        "type": "EVENT",
+        "fields": [
+          {
+            "name": "clientId",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": true,
+            "tag": false,
+            "type": "UUID",
+            "cardinality": "Single",
+            "subfields": []
+          },
+          {
+            "name": "name",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": false,
+            "tag": false,
+            "type": "String",
+            "cardinality": "Single",
+            "subfields": []
+          },
+          {
+            "name": "contactEmail",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": false,
+            "tag": false,
+            "type": "String",
+            "cardinality": "Single",
+            "subfields": []
+          }
+        ],
+        "dependencies": [
+          {
+            "id": "2607e949-c925-4d54-973e-de4a4d1f9554",
+            "type": "OUTBOUND",
+            "title": "Clients",
+            "elementType": "READMODEL"
+          },
+          {
+            "id": "52330016-8716-479b-a34f-5545081edbfa",
+            "type": "INBOUND",
+            "title": "CreateClient",
+            "elementType": "COMMAND"
+          },
+          {
+            "id": "66725644-b2c6-4639-b7f4-e11631c13e98",
+            "type": "OUTBOUND",
+            "title": "Invoices",
+            "elementType": "READMODEL"
+          },
+          {
+            "id": "cd529774-87e6-463f-a784-8e832b47fba8",
+            "type": "OUTBOUND",
+            "title": "ClientDirectory",
+            "elementType": "READMODEL"
+          }
+        ],
+        "modelContext": "Invoicing",
+        "lane": "Swimlane",
+        "aggregate": "default",
+        "aggregateDependencies": [],
+        "triggers": [],
+        "tags": [],
+        "slice": "CreateClient",
+        "description": "",
+        "context": "INTERNAL",
+        "elementContext": "INTERNAL",
+        "listElement": false,
+        "todoList": false,
+        "createsAggregate": false,
+        "elementCopy": false,
+        "linkedId": "b7d70795-13b3-4527-9fa2-255c5cbbde09",
+        "sketched": false,
+        "comments": []
+      }
+    }
+  ],
+  "changes": {
+    "verdict": "CHANGED",
+    "since": {
+      "commit": "a4ed0fbd5180aeb3155c6c0f60b77b1873a3ad5c",
+      "recordedAt": "2026-11-16T12:00:00.000Z"
+    },
+    "slice": {
+      "changed": []
+    },
+    "elements": {
+      "changed": [
+        {
+          "kind": "readmodels",
+          "id": "cd529774-87e6-463f-a784-8e832b47fba8",
+          "title": "ClientDirectory",
+          "before": {
+            "id": "cd529774-87e6-463f-a784-8e832b47fba8",
+            "title": "ClientDirectory",
+            "type": "READMODEL",
+            "fields": [
+              {
+                "name": "clientId",
+                "optional": false,
+                "showAttributes": false,
+                "technicalAttribute": false,
+                "query": false,
+                "generated": false,
+                "edited": false,
+                "idAttribute": true,
+                "tag": false,
+                "type": "UUID",
+                "cardinality": "Single",
+                "subfields": []
+              },
+              {
+                "name": "name",
+                "optional": false,
+                "showAttributes": false,
+                "technicalAttribute": false,
+                "query": false,
+                "generated": false,
+                "edited": false,
+                "idAttribute": false,
+                "tag": false,
+                "type": "String",
+                "cardinality": "Single",
+                "subfields": []
+              }
+            ],
+            "dependencies": [
+              {
+                "id": "b7d70795-13b3-4527-9fa2-255c5cbbde09",
+                "type": "INBOUND",
+                "title": "ClientCreated",
+                "elementType": "EVENT"
+              },
+              {
+                "id": "efdad1b0-e887-43e2-b2bf-de9f997ea056",
+                "type": "OUTBOUND",
+                "title": "Client Directory",
+                "elementType": "HTML_SCREEN"
+              }
+            ],
+            "modelContext": "Reporting",
+            "lane": "Interaction",
+            "aggregate": "default",
+            "aggregateDependencies": [],
+            "triggers": [],
+            "tags": [],
+            "slice": "ClientDirectory",
+            "description": "",
+            "context": "INTERNAL",
+            "elementContext": "INTERNAL",
+            "listElement": false,
+            "todoList": false,
+            "createsAggregate": false,
+            "elementCopy": false,
+            "linkedId": "cd529774-87e6-463f-a784-8e832b47fba8",
+            "sketched": false,
+            "comments": []
+          }
+        },
+        {
+          "kind": "screens",
+          "id": "efdad1b0-e887-43e2-b2bf-de9f997ea056",
+          "title": "Client Directory",
+          "before": {
+            "id": "efdad1b0-e887-43e2-b2bf-de9f997ea056",
+            "title": "Client Directory",
+            "type": "HTML_SCREEN",
+            "fields": [],
+            "dependencies": [
+              {
+                "id": "cd529774-87e6-463f-a784-8e832b47fba8",
+                "type": "INBOUND",
+                "title": "ClientDirectory",
+                "elementType": "READMODEL"
+              }
+            ],
+            "modelContext": "Reporting",
+            "lane": "Actor",
+            "aggregate": "default",
+            "aggregateDependencies": [],
+            "triggers": [],
+            "tags": [],
+            "slice": "ClientDirectory",
+            "description": "",
+            "context": "INTERNAL",
+            "elementContext": "INTERNAL",
+            "listElement": false,
+            "todoList": false,
+            "createsAggregate": false,
+            "elementCopy": false,
+            "linkedId": "efdad1b0-e887-43e2-b2bf-de9f997ea056",
+            "sketched": false,
+            "comments": []
+          }
+        }
+      ],
+      "added": [
+        {
+          "kind": "specifications",
+          "id": "e0000000-0000-4000-8000-000000000301",
+          "title": "Directory lists every client"
+        }
+      ],
+      "removed": []
+    },
+    "sourceEvents": {
+      "changed": [],
+      "added": [],
+      "removed": []
+    }
+  },
+  "callback": "http://127.0.0.1:8787/jobs/example-clientdirectory-changed"
+}

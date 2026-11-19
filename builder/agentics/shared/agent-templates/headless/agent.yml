@@ -1,0 +1,10 @@
+# {{id}}: made with agent_create (builder agent new --template headless). An agent that runs without a terminal: as a
+# workflow step, or `builder run {{id}} --input '{"args": ["..."]}'`. It starts with its /task prompt template and
+# ends when pi does; its final message is the run's output. Enable more groups or tools as it needs them.
+description: {{description}}
+mode: headless
+prompt: own:prompts/task.md
+uses:
+  prompts: [own:prompts/*]
+tools:
+  enable: [read, grep, find, ls]

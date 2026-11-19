@@ -1,0 +1,756 @@
+{
+  "requires": [
+    "repo:github.com/mowat27/invoice-lite",
+    "stack:stub"
+  ],
+  "repo": {
+    "url": "git@github.com:mowat27/invoice-lite.git",
+    "base": "a4ed0fbd5180aeb3155c6c0f60b77b1873a3ad5c"
+  },
+  "task": {
+    "sliceId": "7a920d09-c0ac-48d8-aa3a-b28e6e1e2b52",
+    "title": "CreateClient",
+    "context": "Invoicing",
+    "handover": false,
+    "attempt": 1
+  },
+  "slice": {
+    "id": "7a920d09-c0ac-48d8-aa3a-b28e6e1e2b52",
+    "title": "CreateClient",
+    "status": "Done",
+    "sliceType": "STATE_CHANGE",
+    "chapter": "Invoicing",
+    "context": "Invoicing",
+    "commands": [
+      {
+        "id": "52330016-8716-479b-a34f-5545081edbfa",
+        "title": "CreateClient",
+        "type": "COMMAND",
+        "fields": [
+          {
+            "name": "clientId",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": true,
+            "edited": false,
+            "idAttribute": true,
+            "tag": false,
+            "type": "UUID",
+            "cardinality": "Single",
+            "subfields": []
+          },
+          {
+            "name": "name",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": false,
+            "tag": false,
+            "type": "String",
+            "cardinality": "Single",
+            "subfields": []
+          },
+          {
+            "name": "contactEmail",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": false,
+            "tag": false,
+            "type": "String",
+            "cardinality": "Single",
+            "subfields": []
+          },
+          {
+            "name": "phone",
+            "optional": true,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": false,
+            "tag": false,
+            "type": "String",
+            "cardinality": "Single",
+            "subfields": []
+          }
+        ],
+        "dependencies": [
+          {
+            "id": "69d5cc84-9e1a-4739-8272-f396d02eaf2f",
+            "type": "INBOUND",
+            "title": "New Client",
+            "elementType": "HTML_SCREEN"
+          },
+          {
+            "id": "b7d70795-13b3-4527-9fa2-255c5cbbde09",
+            "type": "OUTBOUND",
+            "title": "ClientCreated",
+            "elementType": "EVENT"
+          }
+        ],
+        "modelContext": "Invoicing",
+        "lane": "Interaction",
+        "aggregate": "default",
+        "aggregateDependencies": [],
+        "triggers": [],
+        "tags": [],
+        "slice": "CreateClient",
+        "description": "",
+        "context": "INTERNAL",
+        "elementContext": "INTERNAL",
+        "listElement": false,
+        "todoList": false,
+        "createsAggregate": false,
+        "elementCopy": false,
+        "linkedId": "52330016-8716-479b-a34f-5545081edbfa",
+        "sketched": false,
+        "comments": []
+      }
+    ],
+    "events": [
+      {
+        "id": "b7d70795-13b3-4527-9fa2-255c5cbbde09",
+        "title": "ClientCreated",
+        "type": "EVENT",
+        "fields": [
+          {
+            "name": "clientId",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": true,
+            "tag": false,
+            "type": "UUID",
+            "cardinality": "Single",
+            "subfields": []
+          },
+          {
+            "name": "name",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": false,
+            "tag": false,
+            "type": "String",
+            "cardinality": "Single",
+            "subfields": []
+          },
+          {
+            "name": "contactEmail",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": false,
+            "tag": false,
+            "type": "String",
+            "cardinality": "Single",
+            "subfields": []
+          },
+          {
+            "name": "phone",
+            "optional": true,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": false,
+            "tag": false,
+            "type": "String",
+            "cardinality": "Single",
+            "subfields": []
+          }
+        ],
+        "dependencies": [
+          {
+            "id": "2607e949-c925-4d54-973e-de4a4d1f9554",
+            "type": "OUTBOUND",
+            "title": "Clients",
+            "elementType": "READMODEL"
+          },
+          {
+            "id": "52330016-8716-479b-a34f-5545081edbfa",
+            "type": "INBOUND",
+            "title": "CreateClient",
+            "elementType": "COMMAND"
+          },
+          {
+            "id": "66725644-b2c6-4639-b7f4-e11631c13e98",
+            "type": "OUTBOUND",
+            "title": "Invoices",
+            "elementType": "READMODEL"
+          },
+          {
+            "id": "cd529774-87e6-463f-a784-8e832b47fba8",
+            "type": "OUTBOUND",
+            "title": "ClientDirectory",
+            "elementType": "READMODEL"
+          }
+        ],
+        "modelContext": "Invoicing",
+        "lane": "Swimlane",
+        "aggregate": "default",
+        "aggregateDependencies": [],
+        "triggers": [],
+        "tags": [],
+        "slice": "CreateClient",
+        "description": "",
+        "context": "INTERNAL",
+        "elementContext": "INTERNAL",
+        "listElement": false,
+        "todoList": false,
+        "createsAggregate": false,
+        "elementCopy": false,
+        "linkedId": "b7d70795-13b3-4527-9fa2-255c5cbbde09",
+        "sketched": false,
+        "comments": []
+      }
+    ],
+    "readmodels": [],
+    "screens": [
+      {
+        "id": "69d5cc84-9e1a-4739-8272-f396d02eaf2f",
+        "title": "New Client",
+        "type": "HTML_SCREEN",
+        "fields": [
+          {
+            "name": "name",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": false,
+            "tag": false,
+            "type": "String",
+            "cardinality": "Single",
+            "subfields": [],
+            "mapping": "name"
+          },
+          {
+            "name": "contactEmail",
+            "optional": false,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": false,
+            "tag": false,
+            "type": "String",
+            "cardinality": "Single",
+            "subfields": [],
+            "mapping": "contactEmail"
+          },
+          {
+            "name": "phone",
+            "optional": true,
+            "showAttributes": false,
+            "technicalAttribute": false,
+            "query": false,
+            "generated": false,
+            "edited": false,
+            "idAttribute": false,
+            "tag": false,
+            "type": "String",
+            "cardinality": "Single",
+            "subfields": [],
+            "mapping": "phone"
+          }
+        ],
+        "dependencies": [
+          {
+            "id": "52330016-8716-479b-a34f-5545081edbfa",
+            "type": "OUTBOUND",
+            "title": "CreateClient",
+            "elementType": "COMMAND"
+          }
+        ],
+        "modelContext": "Invoicing",
+        "lane": "Actor",
+        "aggregate": "default",
+        "aggregateDependencies": [],
+        "triggers": [],
+        "tags": [],
+        "slice": "CreateClient",
+        "description": "",
+        "context": "INTERNAL",
+        "elementContext": "INTERNAL",
+        "listElement": false,
+        "todoList": false,
+        "createsAggregate": false,
+        "elementCopy": false,
+        "linkedId": "69d5cc84-9e1a-4739-8272-f396d02eaf2f",
+        "sketched": false,
+        "comments": []
+      }
+    ],
+    "processors": [],
+    "tables": [],
+    "specifications": [
+      {
+        "id": "86ddc8ae-ecf0-4624-bc81-d72530eeb10e",
+        "title": "Create a client",
+        "chapter": "Invoicing",
+        "sliceName": "CreateClient",
+        "vertical": false,
+        "expectEmptyList": false,
+        "examples": [],
+        "given": [],
+        "when": [
+          {
+            "id": "52330016-8716-479b-a34f-5545081edbfa",
+            "title": "CreateClient",
+            "tags": [],
+            "index": 0,
+            "specRow": 0,
+            "type": "COMMAND",
+            "fields": [
+              {
+                "name": "clientId"
+              },
+              {
+                "name": "name",
+                "example": "Great GlenLtd"
+              },
+              {
+                "name": "contactEmail"
+              }
+            ],
+            "expectEmptyList": false
+          }
+        ],
+        "then": [
+          {
+            "id": "b7d70795-13b3-4527-9fa2-255c5cbbde09",
+            "title": "ClientCreated",
+            "tags": [],
+            "index": 0,
+            "specRow": 0,
+            "type": "EVENT",
+            "fields": [
+              {
+                "name": "clientId"
+              },
+              {
+                "name": "name"
+              },
+              {
+                "name": "contactEmail"
+              }
+            ],
+            "expectEmptyList": false
+          }
+        ]
+      },
+      {
+        "id": "57646f9f-23a8-48b5-8757-1b1f6a751111",
+        "title": "Empty name is rejected",
+        "chapter": "Invoicing",
+        "sliceName": "CreateClient",
+        "vertical": false,
+        "expectEmptyList": false,
+        "examples": [],
+        "given": [],
+        "when": [
+          {
+            "id": "52330016-8716-479b-a34f-5545081edbfa",
+            "title": "CreateClient",
+            "tags": [],
+            "index": 0,
+            "specRow": 0,
+            "type": "COMMAND",
+            "fields": [
+              {
+                "name": "clientId"
+              },
+              {
+                "name": "name"
+              },
+              {
+                "name": "contactEmail"
+              }
+            ],
+            "expectEmptyList": false
+          }
+        ],
+        "then": [
+          {
+            "id": "fc521ea5-0abd-4124-9569-feeb29b8398b",
+            "title": "Empty name is rejected",
+            "description": "Client name is required",
+            "type": "SPEC_ERROR",
+            "fields": []
+          }
+        ]
+      },
+      {
+        "id": "b338899e-44e9-42ef-902d-f47c85deb47c",
+        "title": "Invalid contact email is rejected",
+        "chapter": "Invoicing",
+        "sliceName": "CreateClient",
+        "vertical": false,
+        "expectEmptyList": false,
+        "examples": [],
+        "given": [],
+        "when": [
+          {
+            "id": "52330016-8716-479b-a34f-5545081edbfa",
+            "title": "CreateClient",
+            "tags": [],
+            "index": 0,
+            "specRow": 0,
+            "type": "COMMAND",
+            "fields": []
+          }
+        ],
+        "then": [
+          {
+            "id": "d3358e00-4a5d-44b7-be36-6103753e5166",
+            "title": "Invalid contact email is rejected",
+            "description": "Contact email must be a valid email address",
+            "type": "SPEC_ERROR",
+            "fields": []
+          }
+        ]
+      },
+      {
+        "id": "e0000000-0000-4000-8000-000000000101",
+        "title": "Create a client with a phone number",
+        "chapter": "Invoicing",
+        "sliceName": "CreateClient",
+        "vertical": false,
+        "expectEmptyList": false,
+        "examples": [],
+        "given": [],
+        "when": [
+          {
+            "id": "52330016-8716-479b-a34f-5545081edbfa",
+            "title": "CreateClient",
+            "tags": [],
+            "index": 0,
+            "specRow": 0,
+            "type": "COMMAND",
+            "fields": []
+          }
+        ],
+        "then": [
+          {
+            "id": "b7d70795-13b3-4527-9fa2-255c5cbbde09",
+            "title": "ClientCreated",
+            "tags": [],
+            "index": 0,
+            "specRow": 0,
+            "type": "EVENT",
+            "fields": []
+          }
+        ]
+      }
+    ],
+    "actors": [],
+    "aggregates": [],
+    "screenImages": [],
+    "comments": [
+      "[decision] CreateClient has no create-once guard: no spec covers a repeated CreateClient on the same clientId, so a second POST appends another ClientCreated. Add a spec if duplicates must be rejected.",
+      "[limitation] No behavioral tests: this UI stack has no test runner; specs are covered by rendering backend 409 messages inline (samples 2/3 exercise the invalid inputs).",
+      "[decision] Email validity is a pragmatic local@domain.tld regex check; name is rejected when blank after trimming."
+    ]
+  },
+  "changes": {
+    "verdict": "CHANGED",
+    "since": {
+      "commit": "a4ed0fbd5180aeb3155c6c0f60b77b1873a3ad5c",
+      "recordedAt": "2026-11-16T12:00:00.000Z"
+    },
+    "slice": {
+      "changed": []
+    },
+    "elements": {
+      "changed": [
+        {
+          "kind": "commands",
+          "id": "52330016-8716-479b-a34f-5545081edbfa",
+          "title": "CreateClient",
+          "before": {
+            "id": "52330016-8716-479b-a34f-5545081edbfa",
+            "title": "CreateClient",
+            "type": "COMMAND",
+            "fields": [
+              {
+                "name": "clientId",
+                "optional": false,
+                "showAttributes": false,
+                "technicalAttribute": false,
+                "query": false,
+                "generated": true,
+                "edited": false,
+                "idAttribute": true,
+                "tag": false,
+                "type": "UUID",
+                "cardinality": "Single",
+                "subfields": []
+              },
+              {
+                "name": "name",
+                "optional": false,
+                "showAttributes": false,
+                "technicalAttribute": false,
+                "query": false,
+                "generated": false,
+                "edited": false,
+                "idAttribute": false,
+                "tag": false,
+                "type": "String",
+                "cardinality": "Single",
+                "subfields": []
+              },
+              {
+                "name": "contactEmail",
+                "optional": false,
+                "showAttributes": false,
+                "technicalAttribute": false,
+                "query": false,
+                "generated": false,
+                "edited": false,
+                "idAttribute": false,
+                "tag": false,
+                "type": "String",
+                "cardinality": "Single",
+                "subfields": []
+              }
+            ],
+            "dependencies": [
+              {
+                "id": "69d5cc84-9e1a-4739-8272-f396d02eaf2f",
+                "type": "INBOUND",
+                "title": "New Client",
+                "elementType": "HTML_SCREEN"
+              },
+              {
+                "id": "b7d70795-13b3-4527-9fa2-255c5cbbde09",
+                "type": "OUTBOUND",
+                "title": "ClientCreated",
+                "elementType": "EVENT"
+              }
+            ],
+            "modelContext": "Invoicing",
+            "lane": "Interaction",
+            "aggregate": "default",
+            "aggregateDependencies": [],
+            "triggers": [],
+            "tags": [],
+            "slice": "CreateClient",
+            "description": "",
+            "context": "INTERNAL",
+            "elementContext": "INTERNAL",
+            "listElement": false,
+            "todoList": false,
+            "createsAggregate": false,
+            "elementCopy": false,
+            "linkedId": "52330016-8716-479b-a34f-5545081edbfa",
+            "sketched": false,
+            "comments": []
+          }
+        },
+        {
+          "kind": "events",
+          "id": "b7d70795-13b3-4527-9fa2-255c5cbbde09",
+          "title": "ClientCreated",
+          "before": {
+            "id": "b7d70795-13b3-4527-9fa2-255c5cbbde09",
+            "title": "ClientCreated",
+            "type": "EVENT",
+            "fields": [
+              {
+                "name": "clientId",
+                "optional": false,
+                "showAttributes": false,
+                "technicalAttribute": false,
+                "query": false,
+                "generated": false,
+                "edited": false,
+                "idAttribute": true,
+                "tag": false,
+                "type": "UUID",
+                "cardinality": "Single",
+                "subfields": []
+              },
+              {
+                "name": "name",
+                "optional": false,
+                "showAttributes": false,
+                "technicalAttribute": false,
+                "query": false,
+                "generated": false,
+                "edited": false,
+                "idAttribute": false,
+                "tag": false,
+                "type": "String",
+                "cardinality": "Single",
+                "subfields": []
+              },
+              {
+                "name": "contactEmail",
+                "optional": false,
+                "showAttributes": false,
+                "technicalAttribute": false,
+                "query": false,
+                "generated": false,
+                "edited": false,
+                "idAttribute": false,
+                "tag": false,
+                "type": "String",
+                "cardinality": "Single",
+                "subfields": []
+              }
+            ],
+            "dependencies": [
+              {
+                "id": "2607e949-c925-4d54-973e-de4a4d1f9554",
+                "type": "OUTBOUND",
+                "title": "Clients",
+                "elementType": "READMODEL"
+              },
+              {
+                "id": "52330016-8716-479b-a34f-5545081edbfa",
+                "type": "INBOUND",
+                "title": "CreateClient",
+                "elementType": "COMMAND"
+              },
+              {
+                "id": "66725644-b2c6-4639-b7f4-e11631c13e98",
+                "type": "OUTBOUND",
+                "title": "Invoices",
+                "elementType": "READMODEL"
+              },
+              {
+                "id": "cd529774-87e6-463f-a784-8e832b47fba8",
+                "type": "OUTBOUND",
+                "title": "ClientDirectory",
+                "elementType": "READMODEL"
+              }
+            ],
+            "modelContext": "Invoicing",
+            "lane": "Swimlane",
+            "aggregate": "default",
+            "aggregateDependencies": [],
+            "triggers": [],
+            "tags": [],
+            "slice": "CreateClient",
+            "description": "",
+            "context": "INTERNAL",
+            "elementContext": "INTERNAL",
+            "listElement": false,
+            "todoList": false,
+            "createsAggregate": false,
+            "elementCopy": false,
+            "linkedId": "b7d70795-13b3-4527-9fa2-255c5cbbde09",
+            "sketched": false,
+            "comments": []
+          }
+        },
+        {
+          "kind": "screens",
+          "id": "69d5cc84-9e1a-4739-8272-f396d02eaf2f",
+          "title": "New Client",
+          "before": {
+            "id": "69d5cc84-9e1a-4739-8272-f396d02eaf2f",
+            "title": "New Client",
+            "type": "HTML_SCREEN",
+            "fields": [
+              {
+                "name": "name",
+                "optional": false,
+                "showAttributes": false,
+                "technicalAttribute": false,
+                "query": false,
+                "generated": false,
+                "edited": false,
+                "idAttribute": false,
+                "tag": false,
+                "type": "String",
+                "cardinality": "Single",
+                "subfields": [],
+                "mapping": "name"
+              },
+              {
+                "name": "contactEmail",
+                "optional": false,
+                "showAttributes": false,
+                "technicalAttribute": false,
+                "query": false,
+                "generated": false,
+                "edited": false,
+                "idAttribute": false,
+                "tag": false,
+                "type": "String",
+                "cardinality": "Single",
+                "subfields": [],
+                "mapping": "contactEmail"
+              }
+            ],
+            "dependencies": [
+              {
+                "id": "52330016-8716-479b-a34f-5545081edbfa",
+                "type": "OUTBOUND",
+                "title": "CreateClient",
+                "elementType": "COMMAND"
+              }
+            ],
+            "modelContext": "Invoicing",
+            "lane": "Actor",
+            "aggregate": "default",
+            "aggregateDependencies": [],
+            "triggers": [],
+            "tags": [],
+            "slice": "CreateClient",
+            "description": "",
+            "context": "INTERNAL",
+            "elementContext": "INTERNAL",
+            "listElement": false,
+            "todoList": false,
+            "createsAggregate": false,
+            "elementCopy": false,
+            "linkedId": "69d5cc84-9e1a-4739-8272-f396d02eaf2f",
+            "sketched": false,
+            "comments": []
+          }
+        }
+      ],
+      "added": [
+        {
+          "kind": "specifications",
+          "id": "e0000000-0000-4000-8000-000000000101",
+          "title": "Create a client with a phone number"
+        }
+      ],
+      "removed": []
+    },
+    "sourceEvents": {
+      "changed": [],
+      "added": [],
+      "removed": []
+    }
+  },
+  "callback": "http://127.0.0.1:8787/jobs/example-createclient-changed"
+}

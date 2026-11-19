@@ -1,0 +1,20 @@
+# The supabase-api builder's agent: implements one slice in a Supabase API app and hands it over with done.
+# Model settings are pi's own settings.json beside this file; APPEND_SYSTEM.md is its standing instructions.
+description: Implement one slice in a Supabase API app from its scaffold, then hand it over with done
+mode: headless
+prompt: own:prompts/implement.md
+uses:
+  skills: [shared:build/*]
+  extensions: [shared:context, shared:project-tools, shared:outcome, shared:learn]
+  prompts: [own:prompts/*]
+# The slice rules (blocked paths, slice scope, append-only migrations) apply in runs that have a dispatch; writes,
+# protected config and the learnings file always.
+gates: [shared:blocked-paths, shared:write-scope, shared:append-only-migrations, shared:learnings-file]
+# context_get (an ops/core tool, registered through ops/pi-extension.ts) reads the scaffold report and the job from
+# the workflow's context store; shared:context puts the slice summary in the prompt.
+tools:
+  enable: [files, project, outcome, capture-learning, context_get]
+  disable: [bash]
+# Enforced by the write-scope gate, relative to the workspace. supabase/functions/** and supabase/config.toml are the
+# webhook slice's edge function and its registration, which the slice-scope rule allows.
+writes: [src/**, supabase/migrations/**, supabase/functions/**, supabase/config.toml, LEARNINGS.md, .scratch/**]

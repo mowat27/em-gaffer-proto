@@ -1,0 +1,3 @@
+# Defaults for every agent under dev/, merged under each agent.yml (maps merge, lists replace). Dev agents are worked
+# with directly, in the terminal that launches them.
+mode: interactive

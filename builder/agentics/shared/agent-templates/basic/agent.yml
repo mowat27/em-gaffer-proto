@@ -1,0 +1,10 @@
+# {{id}}: made with agent_create (builder agent new) from the basic template. An agent you work with in the
+# terminal: `builder run {{id}}`. It reads and observes; enable more groups or tools as it needs them (ops/groups.ts),
+# within the machine limit.
+description: {{description}}
+mode: interactive
+prompt: own:SYSTEM.md
+uses:
+  prompts: [own:prompts/*]
+tools:
+  enable: [read, grep, find, ls, observe]

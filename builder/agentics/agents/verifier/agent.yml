@@ -1,0 +1,17 @@
+# The verifier: checks a slice build with code checks and Jev (checks.ts, run in a fresh process by run.ts) and decides
+# pass or fail. Its commands are prompt templates: /verify <workspace> [slice] [base], /list-rules, /change-rules <change>.
+# Its model may change only checks.ts (the write-scope gate enforces writes) and has no shell.
+# `verify` is the tool core's (ops/core/verify.ts, registered by the pi adapter), the same verification the verified
+# workflow's verify step runs; its own extension adds try_rules and fetch_docs and shows the verdicts.
+description: Verify a slice build with code checks and Jev, list the rules, and change them on request
+mode: interactive
+prompt: own:SYSTEM.md
+uses:
+  skills: [shared:verify/*]
+  extensions: [own:extensions/verifier.ts]
+  prompts: [own:prompts/*]
+gates: [shared:write-scope]
+tools:
+  enable: [read, grep, find, ls, edit, write, fetch_docs, try_rules, verify]
+# own: because the verifier works from any directory: its checks.ts is in its own directory, not the workspace.
+writes: [own:checks.ts]
