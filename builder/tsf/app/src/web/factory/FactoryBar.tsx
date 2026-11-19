@@ -1,16 +1,19 @@
 /**
- * The top bar's factory strip: the builder's stage dot and quick actions to set the builder's model and thinking
- * effort. Everything goes through the same layer queries and actions the screens and the agent use.
+ * The top bar's factory strip: the builder's stage dot (the machine feed) and quick pickers for an agent's model and
+ * thinking effort. A pick is a versioned `agent_update` of the agent's settings.json, through the builder layer's
+ * set_model action (the builder CLI), the same path the Builder screen and the agent use.
  */
 import { useMemo } from "react";
-import { api } from "../api/client.ts";
+import type { Json } from "../../shared/types.ts";
 import { useModels } from "../state/queries.ts";
+import { MODEL_AGENT, type AgentModel } from "./BuilderView.tsx";
 import { builderDot } from "./FactoryNav.tsx";
 import { useLayerAction, useLayerQuery } from "./useLayer.ts";
 import { setView } from "./viewStore.ts";
 
 interface BuilderStatus {
   running: boolean;
+  state: string;
   lastEvent: { kind: string } | null;
 }
 
@@ -18,40 +21,23 @@ const EFFORT = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
 
 export function FactoryBar() {
   const builder = useLayerQuery<BuilderStatus>("builder", "status", {}, 5000);
-  const health = useLayerQuery<{ ok: boolean; busy: boolean }>("builder", "health", {}, 4000);
-  const bSettings = useLayerQuery<{ pi_provider: string; pi_model: string; pi_thinking: string }>("builder", "settings");
-  const bAct = useLayerAction("builder");
+  const agent = useLayerQuery<AgentModel>("builder", "model", { agent: MODEL_AGENT });
+  const act = useLayerAction("builder");
   const models = useModels();
 
-  const b = builder.data;
-  const stages = [{ label: "Builder", dot: builderDot(b, !!health.data?.busy), view: "builder" as const }];
+  const stages = [{ label: "Builder", dot: builderDot(builder.data), view: "builder" as const }];
 
   const modelList = models.data ?? [];
-  const provider = bSettings.data?.pi_provider ?? "";
+  const provider = agent.data?.provider ?? "";
   const modelOptions = useMemo(() => {
     const own = modelList.filter((m) => m.provider === provider);
     return (own.length ? own : modelList).map((m) => ({ value: m.id, label: m.name || m.id })).sort((a, b) => a.label.localeCompare(b.label));
   }, [modelList, provider]);
-  const model = bSettings.data?.pi_model ?? "";
-  const effort = bSettings.data?.pi_thinking ?? "";
+  const model = agent.data?.model ?? "";
+  const effort = agent.data?.thinking ?? "";
 
-  const set = (key: string, value: string): void => {
-    void (async () => {
-      const saved = await bAct.run("set_setting", { key, value });
-      if (saved === null) return;
-      const piKey: Record<string, string> = {
-        pi_provider: "defaultProvider",
-        pi_model: "defaultModel",
-        pi_thinking: "defaultThinkingLevel",
-      };
-      if (piKey[key]) {
-        const current = await api.builderAgent.read("settings.json");
-        const settings = JSON.parse(current.content) as Record<string, unknown>;
-        settings[piKey[key]] = value;
-        await api.builderAgent.write("settings.json", `${JSON.stringify(settings, null, 2)}\n`);
-      }
-      bSettings.refresh();
-    })();
+  const set = (key: "model" | "thinking", value: string): void => {
+    void act.run("set_model", { agent: MODEL_AGENT, [key]: value } as Json).then(() => agent.refresh());
   };
 
   return (
@@ -70,7 +56,7 @@ export function FactoryBar() {
       <div className="tsf-fxbar-actions">
         <label className="tsf-fxbar-field">
           <span>Model</span>
-          <select className="tsf-fx-mini-select" value={model} aria-label="Builder model" disabled={bAct.busy !== null} onChange={(e) => set("pi_model", e.target.value)}>
+          <select className="tsf-fx-mini-select" value={model} aria-label={`${MODEL_AGENT} model`} disabled={act.busy !== null || !agent.data} onChange={(e) => set("model", e.target.value)}>
             {!modelOptions.some((m) => m.value === model) && model && <option value={model}>{model}</option>}
             {modelOptions.map((m) => (
               <option key={m.value} value={m.value}>
@@ -81,7 +67,7 @@ export function FactoryBar() {
         </label>
         <label className="tsf-fxbar-field">
           <span>Effort</span>
-          <select className="tsf-fx-mini-select" value={effort} aria-label="Builder thinking effort" disabled={bAct.busy !== null} onChange={(e) => set("pi_thinking", e.target.value)}>
+          <select className="tsf-fx-mini-select" value={effort} aria-label={`${MODEL_AGENT} thinking effort`} disabled={act.busy !== null || !agent.data} onChange={(e) => set("thinking", e.target.value)}>
             <option value="">default</option>
             {EFFORT.map((x) => (
               <option key={x} value={x}>
@@ -90,8 +76,8 @@ export function FactoryBar() {
             ))}
           </select>
         </label>
-        {bAct.error && (
-          <span className="tsf-fxbar-error" role="alert" title={bAct.error}>
+        {(act.error || agent.error) && (
+          <span className="tsf-fxbar-error" role="alert" title={act.error ?? agent.error ?? ""}>
             failed
           </span>
         )}

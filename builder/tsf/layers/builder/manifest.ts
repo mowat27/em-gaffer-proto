@@ -1,74 +1,37 @@
 import type { LayerManifest } from "../../app/src/shared/types.ts";
 
-const cap = (name: string, kind: "query" | "action", summary: string, mutates: boolean) => ({
+const cap = (name: string, kind: "query" | "action", summary: string, mutates: boolean, tool = `builder_${name}`) => ({
   id: `builder.${name}`,
   summary,
   kind,
   handler: name,
-  tool: `builder_${name}`,
+  tool,
   control: `builder.${name}`,
   mutates,
 });
 
-const field = (key: string, label: string, kind: "text" | "number" = "text") => ({
-  kind,
-  label,
-  query: "settings",
-  field: key,
-  action: "set_setting",
-  actionInput: { key, value: "$value" },
-  capability: "builder.set_setting",
-});
-
-/** The build server: one job at a time, a pi agent per job, the patch sent back to the gaffer. */
+/**
+ * The builder, as a client of its CLI: status from the machine feed, every action a `builder` command with --json. No
+ * settings: the server's live in the machine config, each agent's model in its settings.json (design section 13).
+ */
 export const manifest: LayerManifest = {
   name: "builder",
   kind: "harness",
-  version: "0.1.0",
+  version: "0.2.0",
   origin: "local",
   title: "Builder",
   description:
-    "Runs the build server (server.ts): accepts one slice job at a time over HTTP, clones the target repository at the requested base, runs the pi agent in it, commits, and posts the patch back to the gaffer's callback. The CLI invocation (command, provider, model, thinking, flags) is a setting and applies to the next job; standing instructions and the prompt template are Pi files (AGENTS.md, prompts/build.md) under pi-agent, edited directly.",
+    "Watches and drives the builder through its CLI (builder/cli/builder.ts, --json): the machine feed for status, the build server's start, stop and restart, runs and their journals, the merged machine config, and any builder tool. The server's settings are machine config edited by the operator; an agent's model is its settings.json, changed as a versioned definition.",
   enabledByDefault: true,
   env: [{ name: "OPENROUTER_API_KEY", required: false, secret: true, description: "Used by pi through OpenRouter (placeholder on a vault-routed machine)" }],
   vaultHosts: ["openrouter.ai"],
   ui: {
-    settingsPanels: [
-      {
-        id: "builder.panel",
-        title: "Builder",
-        section: "advanced",
-        controls: [
-          { kind: "value", label: "Status", query: "status", field: "summary", capability: "builder.status" },
-          { kind: "value", label: "Server says", query: "health", field: "summary", capability: "builder.health" },
-          { kind: "value", label: "Last event", query: "events", field: "last", capability: "builder.events" },
-          { kind: "button", label: "Start build server", action: "start", capability: "builder.start" },
-          { kind: "button", label: "Stop build server", action: "stop", confirm: "Stop the build server? A job in progress is abandoned.", capability: "builder.stop" },
-          field("host", "Listen host"),
-          field("port", "Listen port", "number"),
-          field("capabilities", "Capabilities (comma-separated requires it meets)"),
-          field("workspaceDir", "Workspace directory"),
-          field("appDir", "App directory in the target repository (. = root)"),
-          field("jobTimeoutMinutes", "Job timeout (minutes)", "number"),
-          field("pi_command", "pi command"),
-          field("pi_agentDir", "pi agent dir (settings.json, AGENTS.md, prompts/, extensions/, skills/; empty = ~/.pi/agent)"),
-          field("pi_provider", "pi provider"),
-          field("pi_model", "pi model"),
-          field("pi_thinking", "pi thinking level"),
-          field("pi_args", "pi flags"),
-          field("pi_timeoutMinutes", "pi timeout (minutes)", "number"),
-          { kind: "value", label: "Settings (JSON)", query: "get_settings", field: "json", capability: "builder.get_settings" },
-          { kind: "value", label: "Server log (tail)", query: "log", field: "tail", capability: "builder.log" },
-          { kind: "value", label: "Last job log", query: "job_log", field: "tail", capability: "builder.job_log" },
-          { kind: "button", label: "Clear events", action: "clear_events", confirm: "Clear the builder event log?", capability: "builder.clear_events" },
-        ],
-      },
-    ],
+    settingsPanels: [],
     widgets: [
       {
         id: "builder.status_widget",
         title: "Builder status",
-        description: "The build server's state and its last event.",
+        description: "The build server's state from the machine feed, and its last event.",
         navbars: ["global", "agent"],
         defaultOptions: {},
         defaultPlacements: [{ navbar: "global", slot: "center" }],
@@ -78,18 +41,23 @@ export const manifest: LayerManifest = {
     hotkeys: [],
   },
   capabilities: [
-    cap("status", "query", "The build server's state and the pi configuration for the next job", false),
-    cap("health", "query", "Ask the running build server for its status (busy, current job, pi config it loaded)", false),
-    cap("get_settings", "query", "The builder settings", false),
-    cap("set_setting", "action", "Change one builder setting (pi_* keys change the agent invocation for the next job)", true),
-    cap("start", "action", "Start the build server", true),
-    cap("stop", "action", "Stop the build server", true),
-    cap("events", "query", "Recent builder events (newest first)", false),
-    cap("clear_events", "action", "Clear the builder event log", true),
-    cap("log", "query", "The tail of the build server's log", false),
-    cap("job_log", "query", "The pi output of one job (default: the latest)", false),
-    cap("sessions", "query", "The pi session logs, newest first, by start time and job name", false),
-    cap("session_summary", "query", "Summary metrics for one pi session (default: the latest)", false),
-    cap("session_entries", "query", "Entries of one pi session, filtered by type, tool and text and sorted by timestamp", false),
+    cap("status", "query", "The builder's state from the machine feed: the server, its current job and the last one", false),
+    cap("events", "query", "Machine feed events, newest first", false),
+    cap("runs", "query", "Runs, newest first (builder runs)", false),
+    cap("run", "query", "One run's record (builder tool run_get)", false, "builder_tool"),
+    cap("run_log", "query", "A run's journal, or its log (builder logs)", false, "builder_logs"),
+    cap("sessions", "query", "The runs with a story, newest first: jobs and direct runs, with duration and totals (builder tool run_stories)", false, "builder_tool"),
+    cap("story", "query", "One run's whole story from the journals: prompts, thinking, replies, tool calls, tokens (builder tool run_story)", false, "builder_tool"),
+    cap("log_tail", "query", "The end of a run's log or the build server's, secrets hidden (builder tool run_log)", false, "builder_tool"),
+    cap("config", "query", "The merged machine config and the layer of each value (builder config)", false),
+    cap("tools", "query", "The builder tools this machine allows (builder tools)", false),
+    cap("model", "query", "An agent's provider, model and thinking (builder resolve)", false, "builder_set_model"),
+    cap("notifications", "query", "The operator's notifications, newest first (builder tool notifications_list, and those posted here)", false, "builder_tool"),
+    cap("notification", "action", "Receive a notification from a builder's tsf notify sink (POST /api/layers/builder/action/notification)", false, "builder_tool"),
+    cap("start", "action", "Start the build server (builder server start)", true),
+    cap("stop", "action", "Stop the build server (builder server stop)", true),
+    cap("restart", "action", "Restart the build server (builder server restart)", true),
+    cap("set_model", "action", "Change an agent's model in its settings.json (agent_update, versioned)", true),
+    cap("tool", "action", "Call any builder tool (builder tool <name>)", true),
   ],
 };

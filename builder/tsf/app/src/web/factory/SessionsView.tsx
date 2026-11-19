@@ -1,37 +1,103 @@
-/** Builder > Sessions: pick a pi session log and read it as a list of entries, with metrics, sort, a text filter and the raw event. */
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+/**
+ * Builder > Sessions: the story of a run, from its journals (`builder tool run_story`), as the previous design's pi
+ * session view showed it. A build-duration chart over the runs with a story (jobs and runs started directly), a picker,
+ * the run's headline numbers, filters by message type and by tool, a sort order, and each entry: the thinking, the
+ * text, the tool calls with their arguments, the tool output, the tokens of each response and the raw journal events.
+ * A job's story is its whole tree of runs (the job, its agent, the tool summarisers) in one list.
+ */
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { RefreshCw } from "lucide-react";
 import { Alert, Button, Card, Field, Input, Kpi, KpiGrid, Select } from "@pw/ui/react";
-import { api, errorMessage } from "../api/client.ts";
-import {
-  KIND_LABEL,
-  argSummary,
-  clip,
-  filterEntries,
-  fmtDuration,
-  fmtNum,
-  metricsOf,
-  num,
-  parseSession,
-  parts,
-  rec,
-  str,
-  textOf,
-  type Entry,
-  type Kind,
-  type Rec,
-} from "../../../../../pi-session.ts";
+import { StatusChip } from "./common.tsx";
+import { useLayerQuery } from "./useLayer.ts";
 
-interface SessionInfo {
-  id: string;
-  started: string;
-  dir: string;
-  jobId: string | null;
-  name: string | null;
-  size: number;
+type Kind = "run" | "step" | "meta" | "system" | "user" | "assistant" | "tool" | "tool-error" | "other";
+
+const KIND_LABEL: Record<Kind, string> = {
+  run: "run",
+  step: "step",
+  meta: "config",
+  system: "system",
+  user: "user",
+  assistant: "assistant",
+  tool: "tool result",
+  "tool-error": "tool error",
+  other: "other",
+};
+
+/** The entry colours of the session list (the chips and entries use data-kind). */
+const STYLE: Record<Kind, string> = { run: "session", step: "session", meta: "meta", system: "system", user: "user", assistant: "assistant", tool: "tool", "tool-error": "tool-error", other: "other" };
+
+interface Usage {
+  model: string;
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
+  cost: number;
 }
-interface SessionRun extends SessionInfo {
+interface Entry {
+  n: number;
+  ts: string;
+  runId: string;
+  agent?: string;
+  step?: string;
+  kind: Kind;
+  tools: string[];
+  line?: string;
+  text?: string;
+  thinking?: string;
+  sections?: Record<string, string | null>;
+  toolsAdded?: string[];
+  toolsRemoved?: string[];
+  calls?: { id: string; name: string; input: unknown }[];
+  usage?: Usage;
+  thinkingLevel?: string;
+  stopReason?: string;
+  tool?: string;
+  input?: unknown;
+  output?: string;
+  ms?: number;
+  outcome?: string;
+  gates?: { gate: string; decision: string; reason?: string }[];
+  raw: unknown[];
+}
+interface Metrics {
+  entries: number;
   durationMs: number;
+  turns: number;
+  toolCalls: number;
+  toolErrors: number;
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
+  cost: number;
+  model: string;
+  models: string[];
+  thinking: string;
+  topTools: [string, number][];
+}
+interface Row {
+  id: string;
+  kind: string;
+  target: string;
+  state: string;
+  startedAt: string;
+  endedAt?: string;
+  durationMs: number;
+  job?: string;
+  jobId?: string;
+  name?: string;
+  slice?: string;
+  outcome?: string;
+  reason?: string;
+}
+interface Story extends Row {
+  runId: string;
+  runs: { runId: string; parent: string | null; agent?: string; step?: string; events: number }[];
+  metrics: Metrics;
+  entries: Entry[];
 }
 
 const PERIODS = [
@@ -41,143 +107,163 @@ const PERIODS = [
   { value: "all", label: "All time", ms: Infinity },
 ] as const;
 
-const fmtClock = (ts: number): string => {
+const LIVE = new Set(["starting", "running"]);
+
+export function fmtDuration(ms: number): string {
+  const s = Math.round(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  return m < 60 ? `${m}m ${String(s % 60).padStart(2, "0")}s` : `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`;
+}
+export const fmtNum = (n: number): string => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 10_000 ? `${Math.round(n / 1000)}k` : String(Math.round(n)));
+const str = (v: unknown): string => (v === undefined || v === null ? "" : typeof v === "string" ? v : JSON.stringify(v));
+const rec = (v: unknown): Record<string, unknown> => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
+
+/** A tool call's arguments in a few words: the command, the path, or the JSON. */
+export function argSummary(name: string, input: unknown): string {
+  const a = rec(input);
+  if (name === "bash" && typeof a.command === "string") return a.command;
+  const path = str(a.path) || str(a.file_path);
+  if (path) return path;
+  if (typeof input === "string") return input;
+  const json = JSON.stringify(input ?? {});
+  return json === "{}" ? "" : json;
+}
+
+const fmtClock = (ts: string): string => {
   const d = new Date(ts);
   return `${d.toLocaleTimeString([], { hour12: false })}.${String(d.getMilliseconds()).padStart(3, "0")}`;
 };
 
+/** Text cut to `max` characters, with a button to show it all. */
+function Clip({ text, max = 600, className = "tsf-ss-text" }: { text: string; max?: number; className?: string }) {
+  const [all, setAll] = useState(false);
+  if (!text) return null;
+  const long = text.length > max;
+  return (
+    <span className={className}>
+      {all || !long ? text : `${text.slice(0, max)}…`}
+      {long && (
+        <>
+          {" "}
+          <button type="button" className="tsf-link-button" onClick={() => setAll((v) => !v)}>
+            {all ? "Show less" : `Show all (${fmtNum(text.length)} chars)`}
+          </button>
+        </>
+      )}
+    </span>
+  );
+}
+
+const usageLine = (u: Usage): string =>
+  `${fmtNum(u.input)} in · ${fmtNum(u.output)} out · ${fmtNum(u.cacheRead)} cached${u.cacheWrite ? ` · ${fmtNum(u.cacheWrite)} cache write` : ""} · $${u.cost.toFixed(4)}`;
+
 /** The readable body of one entry. */
-function Body({ entry }: { entry: Entry }): ReactNode {
-  const { obj } = entry;
-  const message = rec(obj.message);
-  switch (entry.kind) {
-    case "session":
-      return <span className="tsf-ss-line">session v{String(obj.version ?? "?")} in <code>{str(obj.cwd)}</code></span>;
-    case "meta":
-      return <span className="tsf-ss-line">{str(obj.type) === "model_change" ? `model ${str(obj.provider)}/${str(obj.modelId)}` : `thinking level ${str(obj.thinkingLevel)}`}</span>;
-    case "system":
-      return <span className="tsf-ss-line">system prompt sections: {Object.keys(rec(message.sections)).join(", ") || "(none)"}</span>;
+function Body({ entry: e }: { entry: Entry }): ReactNode {
+  switch (e.kind) {
+    case "system": {
+      const names = Object.keys(e.sections ?? {});
+      return (
+        <>
+          <span className="tsf-ss-line">system prompt sections: {names.join(", ") || "(none)"}</span>
+          {e.text && <Clip text={e.text} />}
+          {e.toolsAdded?.length ? <span className="tsf-ss-dim tsf-ss-line">tools added: {e.toolsAdded.join(", ")}</span> : null}
+          {e.toolsRemoved?.length ? <span className="tsf-ss-dim tsf-ss-line">tools removed: {e.toolsRemoved.join(", ")}</span> : null}
+          {names.map((name) => (
+            <details key={name} className="tsf-ss-raw">
+              <summary>{name}</summary>
+              <pre className="tsf-fx-pre">{e.sections?.[name] ?? "(removed)"}</pre>
+            </details>
+          ))}
+        </>
+      );
+    }
     case "user":
-      return <span className="tsf-ss-text">{clip(textOf(message))}</span>;
+      return (
+        <>
+          {e.line && <span className="tsf-ss-dim tsf-ss-line">{e.line}</span>}
+          <Clip text={e.text ?? ""} />
+        </>
+      );
+    case "assistant":
+      return (
+        <>
+          {e.thinking && <Clip text={e.thinking} max={400} className="tsf-ss-text tsf-ss-thinking" />}
+          {e.text && <Clip text={e.text} />}
+          {(e.calls ?? []).map((c) => (
+            <span key={c.id} className="tsf-ss-call">
+              <strong>{c.name}</strong> <code>{argSummary(c.name, c.input).slice(0, 300)}</code>
+            </span>
+          ))}
+          {e.line && <span className="tsf-ss-line">{e.line}</span>}
+          {e.usage && <span className="tsf-ss-dim tsf-ss-line">{usageLine(e.usage)}</span>}
+        </>
+      );
     case "tool":
     case "tool-error":
       return (
         <>
           <span className="tsf-ss-line">
-            <strong>{str(message.toolName)}</strong>
-            {num(message.durationMs) > 0 && <span className="tsf-ss-dim"> · {num(message.durationMs)}ms</span>}
+            <strong>{e.tool}</strong>
+            {e.ms ? <span className="tsf-ss-dim"> · {e.ms}ms</span> : null}
+            {e.outcome && e.outcome !== "ok" ? <span className="tsf-ss-dim"> · {e.outcome}</span> : null}
+            {e.input !== undefined && argSummary(e.tool ?? "", e.input) ? <code> {argSummary(e.tool ?? "", e.input).slice(0, 200)}</code> : null}
           </span>
-          <span className="tsf-ss-text">{clip(textOf(message), 400) || "(no output)"}</span>
-        </>
-      );
-    case "assistant": {
-      const usage = rec(message.usage);
-      return (
-        <>
-          {parts(message).map((p, i) => {
-            if (p.type === "thinking") return <span key={i} className="tsf-ss-text tsf-ss-thinking">{clip(str(p.thinking), 400)}</span>;
-            if (p.type === "text") return <span key={i} className="tsf-ss-text">{clip(str(p.text))}</span>;
-            if (p.type === "toolCall") {
-              return (
-                <span key={i} className="tsf-ss-call">
-                  <strong>{str(p.name)}</strong> <code>{clip(argSummary(str(p.name), rec(p.arguments)), 300)}</code>
-                </span>
-              );
-            }
-            return null;
-          })}
-          {num(usage.totalTokens) > 0 && (
-            <span className="tsf-ss-dim tsf-ss-line">
-              {fmtNum(num(usage.input))} in · {fmtNum(num(usage.output))} out · {fmtNum(num(usage.cacheRead))} cached · ${num(rec(usage.cost).total).toFixed(4)}
+          {(e.gates ?? []).map((g, i) => (
+            <span key={i} className="tsf-ss-dim tsf-ss-line">
+              gate {g.gate}: {g.decision}
+              {g.reason ? ` (${g.reason})` : ""}
             </span>
-          )}
+          ))}
+          {e.outcome === "running" ? <span className="tsf-ss-dim tsf-ss-line">(running)</span> : <Clip text={e.output || "(no output)"} max={400} />}
         </>
       );
-    }
     default:
-      return <span className="tsf-ss-line">{str(obj.type)}</span>;
+      return <span className="tsf-ss-line">{e.line}</span>;
   }
 }
 
-/** The raw event, rendered only once the panel is opened. */
-function Raw({ obj }: { obj: Rec }) {
+/** The raw journal events, rendered only once the panel is opened. */
+function Raw({ events }: { events: unknown[] }) {
   const [open, setOpen] = useState(false);
   return (
-    <details className="tsf-ss-raw" onToggle={(e) => setOpen(e.currentTarget.open)}>
-      <summary>Raw event</summary>
-      {open && <pre className="tsf-fx-pre">{JSON.stringify(obj, null, 2)}</pre>}
+    <details className="tsf-ss-raw" onToggle={(ev) => setOpen(ev.currentTarget.open)}>
+      <summary>Raw event{events.length > 1 ? `s (${events.length})` : ""}</summary>
+      {open && <pre className="tsf-fx-pre">{events.map((x) => JSON.stringify(x, null, 2)).join("\n")}</pre>}
     </details>
   );
 }
 
+const label = (r: Row): string => `${new Date(r.startedAt).toLocaleString()} · ${r.job ?? r.name ?? r.target}${r.slice ? ` · ${r.slice}` : ""} · ${fmtDuration(r.durationMs)}${LIVE.has(r.state) ? " · running" : r.outcome === "failed" ? " · failed" : ""}`;
+
 export function SessionsView() {
-  const [sessions, setSessions] = useState<SessionInfo[]>([]);
-  const [runs, setRuns] = useState<SessionRun[]>([]);
+  const sessions = useLayerQuery<{ total: number; runs: Row[] }>("builder", "sessions", { limit: 300 }, 10000);
   const [period, setPeriod] = useState<(typeof PERIODS)[number]["value"]>("7d");
   const [selected, setSelected] = useState("");
-  const [entries, setEntries] = useState<Entry[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [newestFirst, setNewestFirst] = useState(true);
   const [filter, setFilter] = useState("");
   const [kinds, setKinds] = useState<Set<Kind>>(new Set());
   const [toolSel, setToolSel] = useState<Set<string>>(new Set());
 
-  const loadSession = useCallback((id: string) => {
-    if (!id) {
-      setEntries([]);
-      return Promise.resolve();
-    }
-    setLoading(true);
-    return api.builderAgent.session(id).then(
-      (file) => {
-        setEntries(parseSession(file.content));
-        setError(null);
-      },
-      (err: unknown) => setError(errorMessage(err)),
-    ).finally(() => setLoading(false));
-  }, []);
-
-  const refresh = useCallback(() => {
-    api.builderAgent.sessions().then(
-      (r) => {
-        setSessions(r.sessions);
-        setSelected((cur) => (r.sessions.some((s) => s.id === cur) ? cur : (r.sessions[0]?.id ?? "")));
-        setError(null);
-      },
-      (err: unknown) => setError(errorMessage(err)),
-    );
-  }, []);
-
-  useEffect(refresh, [refresh]);
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all(sessions.map(async (session) => {
-      const file = await api.builderAgent.session(session.id);
-      return { ...session, durationMs: metricsOf(parseSession(file.content)).durationMs };
-    })).then((next) => {
-      if (!cancelled) setRuns(next);
-    }).catch((err: unknown) => {
-      if (!cancelled) setError(errorMessage(err));
-    });
-    return () => { cancelled = true; };
-  }, [sessions]);
+  const runs = sessions.data?.runs ?? [];
   const filteredRuns = useMemo(() => {
     const active = PERIODS.find((p) => p.value === period) ?? PERIODS[1];
-    return runs.filter((run) => Date.parse(run.started) >= Date.now() - active.ms);
+    return runs.filter((r) => Date.parse(r.startedAt) >= Date.now() - active.ms);
   }, [runs, period]);
   useEffect(() => {
-    if (filteredRuns.length && !filteredRuns.some((run) => run.id === selected)) setSelected(filteredRuns[0].id);
+    if (filteredRuns.length && !filteredRuns.some((r) => r.id === selected)) setSelected(filteredRuns[0].id);
   }, [filteredRuns, selected]);
   useEffect(() => {
     setKinds(new Set());
     setToolSel(new Set());
   }, [selected]);
-  useEffect(() => {
-    void loadSession(selected);
-  }, [selected, loadSession]);
+  const run = runs.find((r) => r.id === selected);
+  const live = !!run && LIVE.has(run.state);
+  const story = useLayerQuery<Story>("builder", "story", { run: selected || "latest" }, live ? 3000 : 0);
+  const current = story.data && story.data.runId === selected ? story.data : null;
+  const entries = current?.entries ?? [];
+  const metrics = current?.metrics;
 
-  const metrics = useMemo(() => metricsOf(entries), [entries]);
   const kindCounts = useMemo(() => {
     const counts = new Map<Kind, number>();
     for (const e of entries) counts.set(e.kind, (counts.get(e.kind) ?? 0) + 1);
@@ -188,57 +274,72 @@ export function SessionsView() {
     for (const e of entries) for (const t of e.tools) counts.set(t, (counts.get(t) ?? 0) + 1);
     return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   }, [entries]);
-  const shown = useMemo(() => filterEntries(entries, { kinds, tools: toolSel, text: filter, newestFirst }), [entries, filter, kinds, toolSel, newestFirst]);
+  const shown = useMemo(() => {
+    const needle = filter.trim().toLowerCase();
+    const rows = entries.filter(
+      (e) => (kinds.size === 0 || kinds.has(e.kind)) && (toolSel.size === 0 || e.tools.some((t) => toolSel.has(t))) && (needle === "" || JSON.stringify(e).toLowerCase().includes(needle)),
+    );
+    return newestFirst ? [...rows].reverse() : rows;
+  }, [entries, filter, kinds, toolSel, newestFirst]);
+  const multiRun = (current?.runs.length ?? 0) > 1;
   const filtering = filter.trim() !== "" || kinds.size > 0 || toolSel.size > 0;
   const toggle = <T,>(set: Set<T>, value: T): Set<T> => {
     const next = new Set(set);
     if (!next.delete(value)) next.add(value);
     return next;
   };
-
-  const label = (s: SessionInfo): string => `${new Date(s.started).toLocaleString()} · ${s.name ?? "manual"} · ${Math.max(1, Math.round(s.size / 1024))} KB`;
-  const maxDuration = Math.max(1, ...filteredRuns.map((run) => run.durationMs));
+  const maxDuration = Math.max(1, ...filteredRuns.map((r) => r.durationMs));
+  const error = sessions.error ?? story.error;
 
   return (
     <div className="tsf-ss" data-testid="sessions-view">
       {error && (
-        <Alert tone="error" soft onDismiss={() => setError(null)}>
+        <Alert tone="error" soft>
           {error}
         </Alert>
       )}
 
       <Card
         title="Build duration"
-        description="Each bar is a session: start time on the x-axis and Pi runtime on the y-axis. Select a bar to open its log."
-        actions={<div className="tsf-ss-period"><Select aria-label="Time period" value={period} onChange={(e) => setPeriod(e.target.value as typeof period)}>{PERIODS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</Select></div>}
+        description="Each bar is a run: a job, or a run started directly. Start time on the x-axis and duration on the y-axis. Select a bar to open its story."
+        actions={
+          <div className="tsf-ss-period">
+            <Select aria-label="Time period" value={period} onChange={(e) => setPeriod(e.target.value as typeof period)}>
+              {PERIODS.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+        }
       >
-        {filteredRuns.length > 0 ? <div className="tsf-ss-histogram" role="list" aria-label={`Build duration by session start time; maximum duration ${fmtDuration(maxDuration)}`}>
-          <span className="tsf-ss-axis-label">{fmtDuration(maxDuration)}</span>
-          {filteredRuns.slice().reverse().map((run) => {
-            const height = Math.max(8, Math.round((run.durationMs / maxDuration) * 100));
-            const title = `${new Date(run.started).toLocaleString()}: ${fmtDuration(run.durationMs)} · ${run.name ?? "manual"}`;
-            return <button key={run.id} type="button" role="listitem" className="tsf-ss-bar" aria-pressed={selected === run.id} title={title} onClick={() => setSelected(run.id)}>
-              <span className="tsf-ss-bar-fill" style={{ height: `${height}%` }} />
-              <span className="tsf-ss-bar-label">{new Date(run.started).toLocaleDateString([], { month: "short", day: "numeric" })}</span>
-            </button>;
-          })}
-        </div> : <p className="tsf-fx-muted">No sessions in this period.</p>}
+        {filteredRuns.length > 0 ? (
+          <div className="tsf-ss-histogram" role="list" aria-label={`Build duration by start time; maximum duration ${fmtDuration(maxDuration)}`}>
+            <span className="tsf-ss-axis-label">{fmtDuration(maxDuration)}</span>
+            {filteredRuns
+              .slice()
+              .reverse()
+              .map((r) => {
+                const height = Math.max(8, Math.round((r.durationMs / maxDuration) * 100));
+                return (
+                  <button key={r.id} type="button" role="listitem" className="tsf-ss-bar" aria-pressed={selected === r.id} title={label(r)} onClick={() => setSelected(r.id)}>
+                    <span className="tsf-ss-bar-fill" style={{ height: `${height}%` }} />
+                    <span className="tsf-ss-bar-label">{new Date(r.startedAt).toLocaleDateString([], { month: "short", day: "numeric" })}</span>
+                  </button>
+                );
+              })}
+          </div>
+        ) : (
+          <p className="tsf-fx-muted">No runs in this period.</p>
+        )}
       </Card>
 
       <Card
         title="Session log"
-        description="Pi session files under builder/pi-agent/sessions, named by when they started. The time period applies to the chart and session picker."
+        description="The run's story from its journals: for a job, the job, its agent and the tool summarisers in one list. The time period applies to the chart and the picker."
         actions={
-          <Button
-            size="sm"
-            variant="ghost"
-            icon={RefreshCw}
-            loading={loading}
-            onClick={() => {
-              refresh();
-              void loadSession(selected);
-            }}
-          >
+          <Button size="sm" variant="ghost" icon={RefreshCw} loading={story.loading || sessions.loading} onClick={() => (sessions.refresh(), story.refresh())}>
             Refresh
           </Button>
         }
@@ -246,22 +347,30 @@ export function SessionsView() {
         <Field label="Session">
           {(p) => (
             <Select {...p} value={selected} onChange={(e) => setSelected(e.target.value)} disabled={filteredRuns.length === 0}>
-              {filteredRuns.length === 0 && <option value="">No sessions in this period</option>}
-              {filteredRuns.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {label(s)}
+              {filteredRuns.length === 0 && <option value="">No runs in this period</option>}
+              {filteredRuns.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {label(r)}
                 </option>
               ))}
             </Select>
           )}
         </Field>
+        {run && (
+          <p className="tsf-fx-muted" style={{ marginTop: "var(--pw-sp-2)" }}>
+            <StatusChip state={live ? "busy" : run.outcome === "done" || run.state === "done" ? "ok" : run.state === "stopped" ? "stopped" : "error"} label={run.state} /> <span className="tsf-fx-mono">{run.id}</span>
+            {current && current.runs.length > 1 && <> · {current.runs.length} runs: {current.runs.map((r) => r.agent ?? r.step ?? (r.parent ? r.runId : "job")).join(", ")}</>}
+            {live && " · read again every 3 s"}
+            {run.reason && <> · {run.reason}</>}
+          </p>
+        )}
       </Card>
 
-      {entries.length > 0 && (
+      {metrics && entries.length > 0 && (
         <>
           <KpiGrid>
             <Kpi label="Entries" value={metrics.entries} />
-            <Kpi label="Duration" value={fmtDuration(metrics.durationMs)} />
+            <Kpi label="Duration" value={fmtDuration(run?.durationMs ?? metrics.durationMs)} />
             <Kpi label="Assistant turns" value={metrics.turns} />
             <Kpi label="Tool calls" value={metrics.toolCalls} />
             <Kpi label="Tool errors" value={metrics.toolErrors} />
@@ -270,7 +379,13 @@ export function SessionsView() {
             <Kpi label="Cost" value={`$${metrics.cost.toFixed(3)}`} />
           </KpiGrid>
           <p className="tsf-fx-muted">
-            {metrics.model && <>Model <code>{metrics.model}</code>. </>}
+            {metrics.model && (
+              <>
+                Model <code>{metrics.model}</code>
+                {metrics.thinking ? `, thinking ${metrics.thinking}` : ""}
+                {metrics.models.length > 1 ? ` (also ${metrics.models.slice(1).join(", ")})` : ""}.{" "}
+              </>
+            )}
             {metrics.topTools.length > 0 && <>Tools: {metrics.topTools.map(([name, count]) => `${name} ${count}`).join(" · ")}.</>}
           </p>
 
@@ -288,7 +403,7 @@ export function SessionsView() {
           <div className="tsf-ss-chips" role="group" aria-label="Filter by message type">
             <span className="tsf-ss-chips-label">Type</span>
             {kindCounts.map(([k, count]) => (
-              <button key={k} type="button" className="tsf-ss-chip" data-kind={k} aria-pressed={kinds.has(k)} onClick={() => setKinds((cur) => toggle(cur, k))}>
+              <button key={k} type="button" className="tsf-ss-chip" data-kind={STYLE[k]} aria-pressed={kinds.has(k)} onClick={() => setKinds((cur) => toggle(cur, k))}>
                 {KIND_LABEL[k]} <span className="tsf-ss-chip-count">{count}</span>
               </button>
             ))}
@@ -325,23 +440,25 @@ export function SessionsView() {
 
           <ol className="tsf-ss-list" aria-label="Session entries">
             {shown.map((e) => (
-              <li key={e.n} className="tsf-ss-entry" data-kind={e.kind}>
+              <li key={e.n} className="tsf-ss-entry" data-kind={STYLE[e.kind]}>
                 <div className="tsf-ss-head">
                   <span className="tsf-ss-kind">{KIND_LABEL[e.kind]}</span>
-                  <span className="tsf-ss-time" title={new Date(e.ts).toISOString()}>
+                  <span className="tsf-ss-time" title={e.ts}>
                     {fmtClock(e.ts)}
                   </span>
+                  {multiRun && (e.agent || e.step) && <span className="tsf-ss-dim">{e.agent ?? e.step}</span>}
                   <span className="tsf-ss-n">#{e.n}</span>
                 </div>
                 <div className="tsf-ss-body">
                   <Body entry={e} />
                 </div>
-                <Raw obj={e.obj} />
+                <Raw events={e.raw} />
               </li>
             ))}
           </ol>
         </>
       )}
+      {current && entries.length === 0 && <p className="tsf-fx-muted">This run has no journal events.</p>}
     </div>
   );
 }

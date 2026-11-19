@@ -280,15 +280,17 @@ export function RecentEvents({ events, n = 5, onMore, showSource = false }: { ev
   );
 }
 
-export type ScreenTab = "dashboard" | "timeline" | "logs" | "sessions";
+export type ScreenTab = "dashboard" | "timeline" | "logs" | "sessions" | "ops" | "config";
 
 /** The tab strip at the top of a factory screen. */
-export function ScreenTabs({ value, onChange, logs = true, sessions = false }: { value: ScreenTab; onChange: (t: ScreenTab) => void; logs?: boolean; sessions?: boolean }) {
+export function ScreenTabs({ value, onChange, logs = true, sessions = true, ops = true, config = true }: { value: ScreenTab; onChange: (t: ScreenTab) => void; logs?: boolean; sessions?: boolean; ops?: boolean; config?: boolean }) {
   const items = [
     { id: "dashboard", label: "Dashboard" },
     { id: "timeline", label: "Timeline" },
     ...(logs ? [{ id: "logs", label: "Logs" }] : []),
     ...(sessions ? [{ id: "sessions", label: "Sessions" }] : []),
+    ...(ops ? [{ id: "ops", label: "Ops" }] : []),
+    ...(config ? [{ id: "config", label: "Config" }] : []),
   ];
   return <Tabs items={items} value={value} onChange={(id) => onChange(id as ScreenTab)} label="Screen sections" className="tsf-fx-tabs" />;
 }

@@ -114,7 +114,7 @@ function Branch({
   );
 }
 
-/** A left-pane tree over Pi's real config directory, alongside the normal Pages tree. */
+/** A left-pane tree over the builder's definitions (builder/agentics, read only), alongside the normal Pages tree. */
 export function PiAgentTree() {
   const [files, setFiles] = useState<File[]>([]);
   const [collapsed, setCollapsed] = useState<Set<string>>(loadCollapsed);
@@ -135,10 +135,10 @@ export function PiAgentTree() {
     setView("pi-agent");
   };
   return (
-    <section className="tsf-pi-tree" aria-label="Pi agent files">
+    <section className="tsf-pi-tree" aria-label="Agentics files">
       <div className="tsf-pi-tree-head">
-        <h3>Pi agent</h3>
-        <IconButton size="sm" label="Refresh Pi agent files" icon={RefreshCw} onClick={() => { void refresh(); }} />
+        <h3>Agentics</h3>
+        <IconButton size="sm" label="Refresh agentics files" icon={RefreshCw} onClick={() => { void refresh(); }} />
       </div>
       <Branch node={directory(files)} prefix="" selected={selected} collapsed={collapsed} onToggle={toggle} onOpen={open} />
     </section>

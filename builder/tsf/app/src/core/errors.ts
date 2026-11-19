@@ -35,12 +35,21 @@ function errorName(err: unknown): string | undefined {
 }
 
 /**
+ * A project layer imports types only (it loads from a fresh copy and resolves nothing from the app, T15), so it cannot
+ * throw this class: an Error named "ServiceError" with a known code counts as one.
+ */
+function isServiceErrorLike(err: unknown): err is Error & { code: ErrorCode } {
+  const code = (err as { code?: unknown } | null)?.code;
+  return err instanceof Error && err.name === "ServiceError" && typeof code === "string" && code in STATUS;
+}
+
+/**
  * Map any thrown value to the JSON error response. pi-durable's `ConversationBusy` and `ConversationIdle` are `busy`
  * (409), `SessionFailed` and `ReadOnlySession` are `unavailable`; anything else is `internal` with a fixed message, so
  * a stack or path never reaches the client (the logger records the real error).
  */
 export function toHttp(err: unknown): { status: number; body: ApiError } {
-  if (err instanceof ServiceError) {
+  if (err instanceof ServiceError || isServiceErrorLike(err)) {
     return { status: STATUS[err.code], body: { error: { code: err.code, message: err.message } } };
   }
   const name = errorName(err);

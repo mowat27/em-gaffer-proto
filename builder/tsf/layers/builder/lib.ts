@@ -1,380 +1,427 @@
 /**
- * The builder layer's state and work: settings (the build server's config, including the pi invocation), the server
- * process, the events file the server appends to, and the Builder page. Node built-ins only.
+ * The builder layer's work, all through the builder CLI with --json (design section 13, D22): the same path as a
+ * terminal, and it works with nothing else running. The layer keeps no settings and owns no process: the build server
+ * is started and stopped with `builder server start|stop|restart`, its settings live in the machine config layers
+ * (`builder config` shows them, the operator edits them), and each agent's model lives in its settings.json.
+ *
+ *   status        the machine feed: `builder events --json -f` (replay, then follow), kept in memory. The server's
+ *                 state is its last server.start, server.state and server.stop; a server.start whose pid is gone
+ *                 without a server.stop reads as stopped.
+ *   runs, logs    `builder runs`, `builder logs <run>`, `builder tool <name>`
+ *   model picker  `builder resolve agent:<id>` reads an agent's model; `builder tool agent_get` and `agent_update`
+ *                 change its settings.json, a versioned definition change (not a server setting)
+ *   notifications `builder tool notifications_list` (control/notifications.jsonl), plus those a builder's `tsf`
+ *                 notify sink posted to this TSF (kept in memory: a builder on another machine), newest first
+ *
+ * Node built-ins only. Nothing in builder/ imports this layer.
  */
-import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, statSync, writeFileSync, watchFile, unwatchFile } from "node:fs";
-import { spawn } from "node:child_process";
-import { join, resolve } from "node:path";
+import { execFile, spawn, type ChildProcess } from "node:child_process";
+import { join } from "node:path";
 import type { LayerContext } from "../../app/src/agent/layer-context.ts";
 import type { Json } from "../../app/src/shared/types.ts";
 
-/** Flat settings (one control each); `pi_*` keys become the server's `pi` object. */
-export interface BuilderSettings {
-  host: string;
-  port: number;
-  workspaceDir: string;
-  /** The app inside the target repository, relative to its root ("." = the root). */
-  appDir: string;
-  capabilities: string;
-  jobTimeoutMinutes: number;
-  callbackRetries: number;
-  pi_command: string;
-  pi_agentDir: string;
-  pi_provider: string;
-  pi_model: string;
-  pi_thinking: string;
-  pi_args: string;
-  pi_timeoutMinutes: number;
+/** One line of `builder events --json`: the machine feed (builder/runtime/feed.ts). */
+export interface FeedEvent {
+  seq: number;
+  ts: string;
+  kind: string;
+  runId?: string;
+  jobId?: string;
+  step?: string;
+  data: Record<string, unknown>;
 }
 
-export const DEFAULTS: BuilderSettings = {
-  host: "127.0.0.1",
-  port: 8788,
-  workspaceDir: "jobs",
-  appDir: ".",
-  capabilities: "stack:stub",
-  jobTimeoutMinutes: 20,
-  callbackRetries: 8,
-  pi_command: "~/.pi/agent/bin/pi",
-  pi_agentDir: "pi-agent",
-  pi_provider: "openrouter",
-  pi_model: "anthropic/claude-sonnet-5.5",
-  pi_thinking: "low",
-  // Context files, prompt templates, extensions and skills stay on: they are what AGENTS.md, prompts/build.md
-  // and anything dropped into the agent dir's extensions/skills folders depend on.
-  pi_args: "--no-session --no-mcp --no-themes",
-  pi_timeoutMinutes: 10,
-};
-
-export const SETTING_KEYS = Object.keys(DEFAULTS) as (keyof BuilderSettings)[];
-export const PAGE = "Builder.md";
-
-export interface BuilderEvent {
+/** A feed event as the screens show it (the web app's FactoryEvent). */
+export interface ShownEvent {
+  seq: number;
   ts: string;
   source: string;
   kind: string;
   msg: string;
   jobId?: string;
+  runId?: string;
+  step?: string;
+  name?: string;
   slice?: string;
-  [k: string]: unknown;
 }
 
+/** The agent the model picker changes by default: the agent of supabase-api's implement step. */
+export const MODEL_AGENT = "supabase-api";
+/** Feed events kept in memory (the screens show the newest few hundred). */
+const KEEP = 1000;
+/** Notifications posted by a tsf sink, kept in memory. */
+const KEEP_NOTIFICATIONS = 200;
+
+/** A notification as notify_operator records it (builder/ops/core/notify.ts). */
+export interface Notification {
+  id: string;
+  ts: string;
+  severity: string;
+  summary: string;
+  runId?: string;
+  jobId?: string;
+  link?: string;
+  from?: string;
+  instance?: string | null;
+  seq?: number;
+}
+
+const asNotification = (v: unknown): Notification | null => {
+  const o = v as Partial<Notification> | null;
+  return o && typeof o === "object" && typeof o.id === "string" && typeof o.ts === "string" && typeof o.summary === "string" && typeof o.severity === "string" ? (o as Notification) : null;
+};
+
+/** The CLI's error codes as the app's error codes (HTTP statuses for the screens). */
+const APP_CODE: Record<string, string> = { usage: "invalid", invalid: "invalid", unknown: "not_found", refused: "forbidden", unavailable: "unavailable" };
+
+/**
+ * A CLI command that failed: its `{ error: { code, message } }` (`cliCode`: usage, unknown, invalid, refused,
+ * unavailable, failed). Named ServiceError with an app code, so the screens show its message (the layer imports types
+ * only and cannot throw the app's class).
+ */
+export class CliError extends Error {
+  readonly code: string;
+  readonly cliCode: string;
+  constructor(cliCode: string, message: string) {
+    super(message);
+    this.name = "ServiceError";
+    this.cliCode = cliCode;
+    this.code = APP_CODE[cliCode] ?? "upstream";
+  }
+}
+
+const str = (v: unknown): string => (v === undefined || v === null ? "" : typeof v === "string" ? v : JSON.stringify(v));
+const clip = (s: string, n = 160): string => {
+  const t = s.replace(/\s+/g, " ").trim();
+  return t.length > n ? `${t.slice(0, n - 1)}…` : t;
+};
+
+/** What a feed event says, in a few words. */
+export function describe(e: FeedEvent): string {
+  const d = e.data;
+  switch (e.kind) {
+    case "server.start":
+      return `build server on http://${str(d.host)}:${str(d.port)} (pid ${str(d.pid)}), builder ${str(d.builder)}`;
+    case "server.state":
+      return d.state === "busy" ? `busy: ${str(d.name) || str(d.jobId)}${d.step ? ` at ${str(d.step)}` : ""}` : str(d.state);
+    case "server.stop":
+      return `stopped (${str(d.signal) || "exit"})${d.abandoned ? `, job ${str(d.abandoned)} abandoned` : ""}`;
+    case "run.start":
+      return `${d.agent ? `agent ${str(d.agent)}` : d.workflow ? `workflow ${str(d.workflow)}` : str(d.kind)}, ${str(d.mode)}${d.model ? `, pi ${str(d.model)}${d.thinking ? ` (thinking ${str(d.thinking)})` : ""}` : ""}${d.step ? `, step ${str(d.step)}` : ""}${d.parent ? `, child of ${str(d.parent)}` : ""}`;
+    case "run.end":
+      return `${str(d.state) || str(d.outcome)}${d.reason ? `: ${clip(str(d.reason), 200)}` : ""}${d.said ? `, pi finished: ${clip(str(d.said), 120)}` : ""}`;
+    case "job.result":
+      return `${str(d.outcome)}${d.reason ? `: ${clip(str(d.reason), 200)}` : ""}${typeof d.commits === "number" ? `, ${d.commits} commit(s)` : ""}${typeof d.patchBytes === "number" ? `, patch ${d.patchBytes} bytes` : ""}`;
+    case "step.start":
+      return `${str(d.stepKind)}${d.agent ? ` agent ${str(d.agent)}` : ""}${d.childRunId ? `, run ${str(d.childRunId)}` : ""}`;
+    case "step.end":
+      return `${str(d.status)}${typeof d.ms === "number" ? ` in ${Math.round(d.ms / 1000)}s` : ""}${d.reason ? `: ${clip(str(d.reason), 200)}` : ""}`;
+    case "job.accepted":
+      return `${str(d.slice)}, attempt ${str(d.attempt)}, builder ${str(d.builder)}`;
+    case "control.received":
+    case "control.applied":
+      return `${str(d.action)}${d.by ? ` from ${str(d.by)}` : ""}`;
+    case "config.loaded":
+      return d.ok === false ? `failed: ${clip(str(d.error))}` : `${Array.isArray(d.layers) ? d.layers.length : "?"} layer(s)`;
+    case "notification":
+      return `${str(d.severity)}: ${clip(str(d.summary))}`;
+    default:
+      return clip(d.msg !== undefined ? str(d.msg) : JSON.stringify(d));
+  }
+}
+
+export function shown(e: FeedEvent): ShownEvent {
+  const name = typeof e.data.name === "string" ? e.data.name : undefined;
+  const slice = typeof e.data.slice === "string" ? e.data.slice : undefined;
+  return {
+    seq: e.seq,
+    ts: e.ts,
+    source: "feed",
+    kind: e.kind,
+    msg: describe(e),
+    ...(e.jobId ? { jobId: e.jobId } : {}),
+    ...(e.runId ? { runId: e.runId } : {}),
+    ...(e.step ? { step: e.step } : {}),
+    ...(name ? { name } : {}),
+    ...(slice ? { slice } : {}),
+  };
+}
+
+function alive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    return (err as NodeJS.ErrnoException).code === "EPERM";
+  }
+}
+
+const asFeedEvent = (v: unknown): FeedEvent | null => {
+  const o = v as Partial<FeedEvent> | null;
+  return o && typeof o === "object" && typeof o.seq === "number" && typeof o.kind === "string" && typeof o.ts === "string" ? ({ ...o, data: o.data && typeof o.data === "object" ? o.data : {} } as FeedEvent) : null;
+};
+
 export class BuilderLayer {
-  readonly dir: string;
-  readonly settingsFile: string;
-  readonly configFile: string;
-  readonly eventsFile: string;
-  readonly runLog: string;
-  readonly pidFile: string;
-  private settings: BuilderSettings;
+  /** builder/ */
+  readonly root: string;
+  readonly cliPath: string;
+  private feed: FeedEvent[] = [];
+  /** The server's own events (server.*), kept apart so a long feed never pushes its last start out. */
+  private server: FeedEvent[] = [];
+  private lastSeq = 0;
+  private followError: string | null = null;
   private renderTimer: NodeJS.Timeout | null = null;
-  private lastSize = -1;
-  private lastRunning = false;
+  private readonly models = new Map<string, { at: number; value: Json }>();
+  /** Notifications a builder's tsf sink posted (notification action), newest last. */
+  private received: Notification[] = [];
 
-  constructor(private readonly ctx: LayerContext) {
-    this.dir = join(ctx.paths.dataDir, "layers", "builder");
-    mkdirSync(this.dir, { recursive: true });
-    this.settingsFile = join(this.dir, "settings.json");
-    this.configFile = join(this.dir, "config.json");
-    this.eventsFile = join(this.dir, "events.jsonl");
-    this.runLog = join(this.dir, "server.log");
-    this.pidFile = join(this.dir, "server.pid");
-    this.settings = this.load();
-    this.writeConfig();
+  private readonly ctx: LayerContext;
+
+  constructor(ctx: LayerContext) {
+    this.ctx = ctx;
+    this.root = ctx.paths.projectRoot;
+    this.cliPath = join(this.root, "cli", "builder.ts");
   }
 
-  private load(): BuilderSettings {
-    try {
-      return { ...DEFAULTS, ...(JSON.parse(readFileSync(this.settingsFile, "utf8")) as Partial<BuilderSettings>) };
-    } catch {
-      return { ...DEFAULTS };
-    }
-  }
-
-  getSettings(): BuilderSettings {
-    return { ...this.settings };
-  }
-
-  setSetting(key: string, value: unknown): BuilderSettings {
-    if (!SETTING_KEYS.includes(key as keyof BuilderSettings)) throw new Error(`unknown setting "${key}" (one of ${SETTING_KEYS.join(", ")})`);
-    const k = key as keyof BuilderSettings;
-    const current = this.settings[k];
-    let v: unknown = value;
-    if (typeof current === "number") {
-      v = Number(value);
-      if (!Number.isFinite(v as number)) throw new Error(`${key} must be a number`);
-    } else {
-      v = String(value ?? "").trim();
-    }
-    this.settings = { ...this.settings, [k]: v };
-    writeFileSync(this.settingsFile, JSON.stringify(this.settings, null, 2));
-    this.writeConfig();
-    return this.getSettings();
-  }
-
-  serverDir(): string {
-    return this.ctx.paths.projectRoot;
-  }
-
-  url(): string {
-    return `http://${this.settings.host}:${this.settings.port}`;
-  }
-
-  /** The server reads this at start (host, port) and again at every job (everything else, pi included). */
-  writeConfig(): void {
-    const s = this.settings;
-    const config = {
-      host: s.host,
-      port: s.port,
-      workspaceDir: resolve(this.ctx.paths.projectRoot, s.workspaceDir),
-      appDir: s.appDir || ".",
-      capabilities: s.capabilities
-        .split(",")
-        .map((x) => x.trim())
-        .filter(Boolean),
-      jobTimeoutMinutes: s.jobTimeoutMinutes,
-      callbackRetries: s.callbackRetries,
-      eventsFile: this.eventsFile,
-      pi: {
-        command: s.pi_command,
-        agentDir: s.pi_agentDir,
-        provider: s.pi_provider,
-        model: s.pi_model,
-        thinking: s.pi_thinking,
-        args: s.pi_args,
-        timeoutMinutes: s.pi_timeoutMinutes,
-      },
-    };
-    writeFileSync(this.configFile, JSON.stringify(config, null, 2));
-  }
-
-  pid(): number | null {
-    try {
-      const pid = Number(readFileSync(this.pidFile, "utf8").trim());
-      if (!pid) return null;
-      process.kill(pid, 0);
-      return pid;
-    } catch {
-      return null;
-    }
-  }
-
-  running(): boolean {
-    return this.pid() !== null;
-  }
-
-  start(): Json {
-    const pid = this.pid();
-    if (pid) return { started: false, pid, reason: "already running" };
-    const script = join(this.serverDir(), "server.ts");
-    if (!existsSync(script)) throw new Error(`${script} is missing`);
-    this.writeConfig();
-    const fd = openSync(this.runLog, "a");
-    const child = spawn(process.execPath, [script], {
-      cwd: this.ctx.paths.projectRoot,
-      detached: true,
-      stdio: ["ignore", fd, fd],
-      env: { ...process.env, BUILDER_CONFIG: this.configFile },
+  /** Run `builder <args> --json`: its JSON answer (one document, or one value per line with `lines`). */
+  cli(args: string[], o: { lines?: boolean; timeoutMs?: number } = {}): Promise<Json> {
+    return new Promise((resolve, reject) => {
+      execFile(process.execPath, [this.cliPath, ...args, "--json"], { cwd: this.root, env: process.env, timeout: o.timeoutMs ?? 120_000, maxBuffer: 64 * 1024 * 1024 }, (err, stdout, stderr) => {
+        const text = String(stdout).trim();
+        let value: unknown;
+        try {
+          value = o.lines ? text.split("\n").filter(Boolean).map((l) => JSON.parse(l) as unknown) : text ? JSON.parse(text) : null;
+        } catch {
+          value = undefined;
+        }
+        const e = (value as { error?: { code?: unknown; message?: unknown } } | null)?.error;
+        if (e && typeof e === "object" && !Array.isArray(value)) return reject(new CliError(String(e.code ?? "error"), `builder ${args[0]}: ${String(e.message ?? "failed")}`));
+        if (err && value === undefined) return reject(new CliError("error", `builder ${args.join(" ")}: ${String(stderr).trim().split("\n").slice(-3).join(" ") || err.message}`));
+        resolve((value ?? null) as Json);
+      });
     });
-    closeSync(fd);
-    child.unref();
-    writeFileSync(this.pidFile, String(child.pid));
-    this.emit("start", `build server started (pid ${child.pid}) on ${this.url()}`, { pid: child.pid });
-    return { started: true, pid: child.pid, url: this.url() };
   }
 
-  stop(): Json {
-    const pid = this.pid();
-    if (!pid) return { stopped: false, reason: "not running" };
-    try {
-      process.kill(-pid, "SIGTERM");
-    } catch {
-      try {
-        process.kill(pid, "SIGTERM");
-      } catch {
-        /* gone */
+  /** `builder tool <name> <args>`. */
+  tool(name: string, args: Record<string, unknown> = {}): Promise<Json> {
+    return this.cli(["tool", name, JSON.stringify(args)]);
+  }
+
+  private add(events: FeedEvent[]): void {
+    let changed = false;
+    for (const e of events) {
+      if (e.seq <= this.lastSeq) continue;
+      this.lastSeq = e.seq;
+      this.feed.push(e);
+      if (e.kind.startsWith("server.") && !this.server.some((x) => x.seq === e.seq)) this.server.push(e);
+      changed = true;
+    }
+    if (this.feed.length > KEEP) this.feed = this.feed.slice(-KEEP);
+    if (this.server.length > 50) this.server = this.server.slice(-50);
+    if (changed) this.scheduleRender();
+  }
+
+  /**
+   * Follow the machine feed: the server's recent events once, then `builder events --json -f` replaying the newest
+   * KEEP and following. A follower that ends is started again after 5 s from the last seq it saw.
+   */
+  follow(): () => void {
+    let stopped = false;
+    let child: ChildProcess | null = null;
+    let retry: NodeJS.Timeout | null = null;
+    const start = () => {
+      if (stopped) return;
+      const from = this.lastSeq ? ["--since", String(this.lastSeq)] : ["--last", String(KEEP)];
+      child = spawn(process.execPath, [this.cliPath, "events", "--json", "-f", ...from], { cwd: this.root, env: process.env, stdio: ["ignore", "pipe", "pipe"] });
+      let buf = "";
+      let err = "";
+      child.stdout?.on("data", (d: Buffer) => {
+        buf += d.toString("utf8");
+        const got: FeedEvent[] = [];
+        for (let nl = buf.indexOf("\n"); nl >= 0; nl = buf.indexOf("\n")) {
+          const line = buf.slice(0, nl);
+          buf = buf.slice(nl + 1);
+          try {
+            const e = asFeedEvent(JSON.parse(line));
+            if (e) got.push(e);
+          } catch {
+            /* not a feed line */
+          }
+        }
+        if (got.length) {
+          this.followError = null;
+          this.add(got);
+        }
+      });
+      child.stderr?.on("data", (d: Buffer) => (err = (err + d.toString("utf8")).slice(-1000)));
+      child.on("error", (e) => (err = e.message));
+      child.on("exit", (code) => {
+        child = null;
+        if (stopped) return;
+        this.followError = `builder events stopped (exit ${code}): ${err.trim().split("\n").pop() ?? ""}`;
+        this.scheduleRender();
+        retry = setTimeout(start, 5000);
+      });
+    };
+    void this.cli(["events", "--kind", "server.*", "--last", "20"], { lines: true })
+      .then((v) => {
+        const seed = (Array.isArray(v) ? v : []).map(asFeedEvent).filter((e): e is FeedEvent => !!e);
+        this.server = seed;
+      })
+      .catch((e: unknown) => (this.followError = (e as Error).message))
+      .finally(start);
+    // A server that dies without its server.stop: its pid is checked every few seconds.
+    let wasRunning = false;
+    const pidTimer = setInterval(() => {
+      const running = this.serverState().running;
+      if (running !== wasRunning) {
+        wasRunning = running;
+        this.scheduleRender();
       }
-    }
-    const until = Date.now() + 5000;
-    while (Date.now() < until && this.pid()) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100);
-    if (this.pid()) {
-      try {
-        process.kill(-pid, "SIGKILL");
-      } catch {
-        /* ignore */
-      }
-    }
-    rmSync(this.pidFile, { force: true });
-    this.emit("stop", `build server stopped (pid ${pid})`, { pid });
-    return { stopped: true, pid };
-  }
-
-  async health(): Promise<Json> {
-    try {
-      const res = await fetch(`${this.url()}/status`, { signal: AbortSignal.timeout(3000) });
-      return (await res.json()) as Json;
-    } catch (err) {
-      return { ok: false, error: (err as Error).message };
-    }
-  }
-
-  logTail(lines = 60): string {
-    try {
-      return readFileSync(this.runLog, "utf8").split("\n").slice(-lines).join("\n");
-    } catch {
-      return "";
-    }
-  }
-
-  jobLog(jobId: string, lines = 200): string {
-    const file = join(resolve(this.ctx.paths.projectRoot, this.settings.workspaceDir), "logs", `${jobId}.log`);
-    try {
-      return readFileSync(file, "utf8").split("\n").slice(-lines).join("\n");
-    } catch {
-      return `no log for job ${jobId}`;
-    }
-  }
-
-  emit(kind: string, msg: string, data: Record<string, unknown> = {}): void {
-    appendFileSync(this.eventsFile, JSON.stringify({ ts: new Date().toISOString(), source: "layer", kind, msg, ...data }) + "\n");
-  }
-
-  events(limit = 50): BuilderEvent[] {
-    let text = "";
-    try {
-      text = readFileSync(this.eventsFile, "utf8");
-    } catch {
-      return [];
-    }
-    const out: BuilderEvent[] = [];
-    for (const l of text.split("\n").filter(Boolean).slice(-limit)) {
-      try {
-        out.push(JSON.parse(l) as BuilderEvent);
-      } catch {
-        /* skip */
-      }
-    }
-    return out.reverse();
-  }
-
-  clearEvents(): void {
-    writeFileSync(this.eventsFile, "");
-  }
-
-  status(): Json {
-    const pid = this.pid();
-    const s = this.settings;
-    const last = this.events(1)[0];
-    return {
-      running: pid !== null,
-      pid,
-      url: this.url(),
-      capabilities: s.capabilities,
-      pi: { command: s.pi_command, agentDir: s.pi_agentDir, provider: s.pi_provider, model: s.pi_model, thinking: s.pi_thinking, args: s.pi_args },
-      workspaceDir: resolve(this.ctx.paths.projectRoot, s.workspaceDir),
-      summary: `Builder ${pid ? "running" : "stopped"}${last ? ` · ${last.kind}` : ""}`,
-      lastEvent: last ?? null,
+    }, 3000);
+    // The follower ends with the factory, not at the next feed line it can no longer write.
+    const kill = () => child?.kill();
+    process.once("exit", kill);
+    return () => {
+      stopped = true;
+      if (retry) clearTimeout(retry);
+      clearInterval(pidTimer);
+      process.off("exit", kill);
+      kill();
     };
   }
 
-  renderPage(): string {
-    const st = this.status() as Record<string, unknown>;
-    const s = this.settings;
-    const events = this.events(60);
-    const rows = events.map((e) => `| ${e.ts.replace("T", " ").slice(0, 19)} | ${e.source} | \`${e.kind}\` | ${e.slice ? `${e.slice}: ` : ""}${md(e.msg)} |`);
-    return [
-      "# Builder",
-      "",
-      `**${st.running ? `Running (pid ${st.pid}) on ${this.url()}` : "Stopped"}**`,
-      "",
-      "| Setting | Value |",
-      "|---|---|",
-      `| Listen | ${this.url()} (POST /slices, GET /status) |`,
-      `| Capabilities | repo:<any reachable>, ${s.capabilities || "(none)"} |`,
-      `| Workspaces | \`${s.workspaceDir}/<jobId>\` (the newest few are kept after a job; logs in \`${s.workspaceDir}/logs\`) |`,
-      `| App directory | \`${s.appDir || "."}\` in the target repository |`,
-      `| Job timeout | ${s.jobTimeoutMinutes} min |`,
-      "",
-      "## pi agent (next build)",
-      "",
-      "| Setting | Value |",
-      "|---|---|",
-      `| Command | \`${s.pi_command}\` |`,
-      `| Agent dir | ${s.pi_agentDir ? `\`${s.pi_agentDir}\` (settings.json, AGENTS.md, prompts/, extensions/, skills/)` : "pi default (~/.pi/agent)"} |`,
-      `| Provider / model | ${s.pi_provider} / ${s.pi_model} |`,
-      `| Thinking | ${s.pi_thinking || "(pi default)"} |`,
-      `| Flags | \`${s.pi_args}\` |`,
-      `| Timeout | ${s.pi_timeoutMinutes} min |`,
-      "",
-      "Standing instructions (`pi-agent/AGENTS.md`) and the per-job prompt (`pi-agent/prompts/build.md`) are Pi files, read before every job; edit them directly, not a setting. `pi-agent/extensions/` and `skills/` are plain Pi folders: drop files in and they load.",
-      "",
-      "Controls: Settings (S) > Advanced > Builder, or ask the agent (builder_start, builder_stop, builder_set_setting ...). Changes apply to the next job.",
-      "",
-      `## Events (newest first, ${events.length} shown)`,
-      "",
-      "| Time | Source | Kind | Message |",
-      "|---|---|---|---|",
-      ...(rows.length ? rows : ["| | | | no events yet |"]),
-      "",
-    ].join("\n");
+  private serverState(): { running: boolean; start: FeedEvent | null; state: FeedEvent | null; stop: FeedEvent | null } {
+    let start: FeedEvent | null = null;
+    let state: FeedEvent | null = null;
+    let stop: FeedEvent | null = null;
+    for (const e of [...this.server].sort((a, b) => a.seq - b.seq)) {
+      if (e.kind === "server.start") {
+        start = e;
+        state = null;
+        stop = null;
+      } else if (e.kind === "server.state") state = e;
+      else if (e.kind === "server.stop") stop = e;
+    }
+    const pid = start && !stop ? Number(start.data.pid) : NaN;
+    return { running: Number.isInteger(pid) && pid > 0 && alive(pid), start, state, stop };
   }
 
-  async writePage(): Promise<void> {
-    const content = this.renderPage();
-    const svc = this.ctx.service();
+  /** The builder's state from the feed: the server, its current job and the last one. */
+  status(): Json {
+    const { running, start, state } = this.serverState();
+    const s = running ? (typeof state?.data.state === "string" ? state.data.state : "idle") : "stopped";
+    const accepted = (jobId: string) => [...this.feed].reverse().find((e) => e.kind === "job.accepted" && e.jobId === jobId);
+    const d = state?.data ?? {};
+    const current = running && typeof d.jobId === "string" ? d.jobId : null;
+    const a = current ? accepted(current) : undefined;
+    const job = current
+      ? { jobId: current, name: str(d.name), runId: str(d.runId), step: str(d.step), slice: str(a?.data.slice), attempt: a?.data.attempt ?? null, startedAt: a?.ts ?? state?.ts ?? null }
+      : null;
+    const result = [...this.feed].reverse().find((e) => e.kind === "job.result");
+    const lastJob = result
+      ? { jobId: result.jobId ?? null, name: str(accepted(result.jobId ?? "")?.data.name) || null, slice: str(accepted(result.jobId ?? "")?.data.slice) || null, outcome: str(result.data.outcome), reason: str(result.data.reason) || null, endedAt: result.ts }
+      : null;
+    const last = this.feed.at(-1);
+    const url = running && start ? `http://${str(start.data.host)}:${str(start.data.port)}` : null;
+    const summary = `Builder ${s === "stopped" ? "stopped" : s === "busy" && job ? `busy: ${job.name || job.jobId} at ${job.step}` : s}${last ? ` · ${last.kind}` : ""}`;
+    return {
+      running,
+      state: s,
+      pid: running && start ? Number(start.data.pid) : null,
+      url,
+      builder: start ? str(start.data.builder) : null,
+      runsDir: start ? str(start.data.runsDir) : null,
+      job,
+      lastJob,
+      lastEvent: last ? shown(last) : null,
+      followError: this.followError,
+      summary,
+    } as unknown as Json;
+  }
+
+  /** The newest feed events first, as the screens show them (what `builder events -f` has delivered so far). */
+  events(limit = 120, kind?: string): ShownEvent[] {
+    const match = (e: FeedEvent) => !kind || (kind.endsWith("*") ? e.kind.startsWith(kind.slice(0, -1)) : e.kind === kind);
+    return this.feed.filter(match).slice(-limit).reverse().map(shown);
+  }
+
+  /** An agent's model as its next run would use it (`builder resolve`), read again after 30 s or a change. */
+  async model(agent = MODEL_AGENT): Promise<Json> {
+    const cached = this.models.get(agent);
+    if (cached && Date.now() - cached.at < 30_000) return cached.value;
+    const r = (await this.cli(["resolve", `agent:${agent}`, "--workspace", "none"])) as { agent?: { dir?: string }; settings?: { provider?: string; model?: string; thinking?: string } } | null;
+    const s = r?.settings ?? {};
+    const value: Json = { agent, provider: s.provider ?? "", model: s.model ?? "", thinking: s.thinking ?? "", dir: r?.agent?.dir ?? null };
+    this.models.set(agent, { at: Date.now(), value });
+    return value;
+  }
+
+  /**
+   * Change an agent's model: its settings.json with defaultProvider, defaultModel and defaultThinkingLevel replaced, as
+   * a versioned definition change (`agent_get` for the file and its version, `agent_update` with it as expectedVersion).
+   */
+  async setModel(input: { agent?: string; provider?: string; model?: string; thinking?: string }): Promise<Json> {
+    const agent = input.agent || MODEL_AGENT;
+    const got = (await this.tool("agent_get", { id: agent, file: "settings.json" }).catch((err: unknown) => {
+      // An agent without a settings.json yet: start one (agent_get still gives the version).
+      if (err instanceof CliError && /settings\.json is not in/.test(err.message)) return this.tool("agent_get", { id: agent });
+      throw err;
+    })) as { version?: unknown; content?: unknown } | null;
+    let settings: Record<string, unknown> = {};
     try {
-      await svc.updatePage({ path: PAGE, content }, { by: "system" });
-    } catch (err) {
-      if ((err as { code?: string }).code === "not_found") await svc.createPage({ path: PAGE, content }, { by: "system" });
-      else throw err;
+      if (typeof got?.content === "string") settings = JSON.parse(got.content) as Record<string, unknown>;
+    } catch {
+      throw new CliError("failed", `agent ${agent}: its settings.json is not JSON`);
     }
+    if (input.provider !== undefined) settings.defaultProvider = input.provider;
+    if (input.model !== undefined) settings.defaultModel = input.model;
+    if (input.thinking !== undefined) {
+      if (input.thinking) settings.defaultThinkingLevel = input.thinking;
+      else delete settings.defaultThinkingLevel;
+    }
+    const out = await this.tool("agent_update", {
+      id: agent,
+      expectedVersion: typeof got?.version === "string" ? got.version : null,
+      files: { "settings.json": `${JSON.stringify(settings, null, 2)}\n` },
+      reason: "model picker in the builder TSF",
+    });
+    this.models.delete(agent);
+    this.scheduleRender();
+    return out;
+  }
+
+  /** A notification a builder's tsf notify sink posted. */
+  receive(input: unknown): Json {
+    const n = asNotification(input);
+    if (!n) throw new CliError("invalid", "notification: the input is not a notification (id, ts, severity, summary)");
+    if (!this.received.some((x) => x.id === n.id)) this.received = [...this.received, n].slice(-KEEP_NOTIFICATIONS);
+    this.scheduleRender();
+    return { ok: true, id: n.id };
+  }
+
+  /** The operator's notifications, newest first: this machine's (`notifications_list`) and those posted to this TSF. */
+  async notifications(limit = 100): Promise<Json> {
+    let recorded: Notification[] = [];
+    let error: string | null = null;
+    try {
+      const r = (await this.tool("notifications_list", { limit })) as { notifications?: unknown[] } | null;
+      recorded = (r?.notifications ?? []).map(asNotification).filter((n): n is Notification => !!n);
+    } catch (err) {
+      error = (err as Error).message;
+    }
+    const seen = new Set(recorded.map((n) => n.id));
+    const all = [...recorded, ...this.received.filter((n) => !seen.has(n.id))].sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, limit);
+    return { count: all.length, error, notifications: all } as unknown as Json;
   }
 
   scheduleRender(): void {
     if (this.renderTimer) return;
     this.renderTimer = setTimeout(() => {
       this.renderTimer = null;
-      // The Builder screen in the web app renders this state; the Markdown page is no longer written.
       this.ctx.bus.publish({ type: "layer.changed", layer: "builder", by: "system" });
     }, 400);
   }
-
-  watch(): () => void {
-    if (!existsSync(this.eventsFile)) writeFileSync(this.eventsFile, "");
-    const check = () => {
-      let size = -1;
-      try {
-        size = statSync(this.eventsFile).size;
-      } catch {
-        size = -1;
-      }
-      if (size !== this.lastSize) {
-        this.lastSize = size;
-        this.scheduleRender();
-      }
-    };
-    watchFile(this.eventsFile, { interval: 1000 }, check);
-    const pidTimer = setInterval(() => {
-      const running = this.running();
-      if (running !== this.lastRunning) {
-        this.lastRunning = running;
-        if (!running && existsSync(this.pidFile)) {
-          rmSync(this.pidFile, { force: true });
-          this.emit("exit", "build server process is gone");
-        }
-        this.scheduleRender();
-      }
-    }, 2000);
-    check();
-    return () => {
-      unwatchFile(this.eventsFile, check);
-      clearInterval(pidTimer);
-    };
-  }
-}
-
-function md(s: string): string {
-  return s.replace(/\|/g, "\\|").replace(/\n/g, " ");
 }
 
 export function text(v: unknown, max = 4000): string {

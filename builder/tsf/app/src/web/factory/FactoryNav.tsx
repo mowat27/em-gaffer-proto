@@ -1,28 +1,27 @@
-/** The left pane's factory section: Builder with a live status dot, above the Pi agent tree and the page tree. */
+/** The left pane's factory section: Builder with a live status dot (the machine feed), above the agent tree and the page tree. */
 import { Hammer } from "lucide-react";
 import { useLayerQuery } from "./useLayer.ts";
 import { setView, useView, type View } from "./viewStore.ts";
 
 interface BuilderStatus {
   running: boolean;
+  state: string;
   lastEvent: { kind: string } | null;
 }
 
-export function builderDot(s: BuilderStatus | null, busy: boolean): string {
+export function builderDot(s: BuilderStatus | null): string {
   if (!s) return "unknown";
   if (!s.running) return "stopped";
-  if (busy) return "busy";
-  if (/fail/.test(s.lastEvent?.kind ?? "")) return "error";
+  if (s.state === "busy") return "busy";
+  if (s.state === "draining") return "warn";
+  if (/fail|gone|abandoned/.test(s.lastEvent?.kind ?? "")) return "error";
   return "running";
 }
 
 export function FactoryNav() {
   const view = useView();
   const builder = useLayerQuery<BuilderStatus>("builder", "status", {}, 5000);
-  const health = useLayerQuery<{ ok: boolean; busy: boolean }>("builder", "health", {}, 4000);
-  const items: { id: View; label: string; icon: typeof Hammer; dot?: string }[] = [
-    { id: "builder", label: "Builder", icon: Hammer, dot: builderDot(builder.data, !!health.data?.busy) },
-  ];
+  const items: { id: View; label: string; icon: typeof Hammer; dot?: string }[] = [{ id: "builder", label: "Builder", icon: Hammer, dot: builderDot(builder.data) }];
   return (
     <nav className="tsf-fx-nav" aria-label="Factory">
       <h3 className="tsf-fx-nav-title">Factory</h3>

@@ -29,6 +29,13 @@ describe("toHttp", () => {
     expect(toHttp(idle).status).toBe(409);
   });
 
+  it("maps a project layer's own ServiceError (an Error named so, with a known code) like the class", () => {
+    const layer = Object.assign(new Error("builder tool: agent_update is not available"), { name: "ServiceError", code: "unavailable" });
+    expect(toHttp(layer)).toEqual({ status: 503, body: { error: { code: "unavailable", message: "builder tool: agent_update is not available" } } });
+    const unknownCode = Object.assign(new Error("/Users/secret"), { name: "ServiceError", code: "teapot" });
+    expect(toHttp(unknownCode)).toEqual({ status: 500, body: { error: { code: "internal", message: "internal error" } } });
+  });
+
   it("maps a failed session to unavailable 503", () => {
     const failed = Object.assign(new Error("session failed: disk"), { name: "SessionFailed" });
     expect(toHttp(failed).status).toBe(503);

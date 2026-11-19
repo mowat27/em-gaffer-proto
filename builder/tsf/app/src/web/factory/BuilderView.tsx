@@ -1,68 +1,126 @@
-/** Builder screen: controls, the current job, the pi agent configuration, server settings, timeline and job log. */
-import { useMemo, useState } from "react";
-import { Play, RefreshCw, Square } from "lucide-react";
-import { Alert, Button, Card } from "@pw/ui/react";
+/**
+ * Builder screen: the build server's state, its current and last job (the machine feed, `builder events`), its controls
+ * (`builder server start|stop|restart`), an agent's model (a versioned `agent_update` of its settings.json), the
+ * timeline, the job and server logs, each run's story from its journals (Sessions), the operator's notifications (Ops)
+ * and the machine config. Everything goes through the builder layer, which calls the builder CLI.
+ * The server has no settings here: they are machine config, edited by the operator in a layer.
+ */
+import { useEffect, useMemo, useState } from "react";
+import { Play, RefreshCw, RotateCw, Square } from "lucide-react";
+import { Alert, Button, Card, Field, Select } from "@pw/ui/react";
 import type { Json } from "../../shared/types.ts";
 import { api, errorMessage } from "../api/client.ts";
 import { useModels } from "../state/queries.ts";
-import { Pre, RecentEvents, ScreenTabs, SettingsForm, StatusChip, Timeline, ago, type FactoryEvent, type ScreenTab } from "./common.tsx";
+import { Pre, RecentEvents, ScreenTabs, StatusChip, Timeline, ago, type FactoryEvent, type ScreenTab } from "./common.tsx";
+import { OpsView } from "./OpsView.tsx";
 import { SessionsView } from "./SessionsView.tsx";
 import { useLayerAction, useLayerQuery } from "./useLayer.ts";
-import { setView } from "./viewStore.ts";
 
-interface BuilderStatus {
+export interface BuilderStatus {
   running: boolean;
+  state: "stopped" | "idle" | "busy" | "draining";
   pid: number | null;
-  url: string;
-  workspaceDir: string;
+  url: string | null;
+  builder: string | null;
+  job: { jobId: string; name: string; runId: string; step: string; slice: string; attempt: number | null; startedAt: string | null } | null;
+  lastJob: { jobId: string | null; name: string | null; slice: string | null; outcome: string; reason: string | null; endedAt: string } | null;
   lastEvent: FactoryEvent | null;
-}
-interface Health {
-  ok: boolean;
-  busy: boolean;
-  job: { jobId: string; name?: string; title: string; context: string; attempt: number; step: string; startedAt: number } | null;
-  lastJob: { jobId: string; name?: string; title: string; outcome: string; endedAt: number } | null;
-  pi?: { provider: string; model: string; thinking: string; agentDir: string };
-  error?: string;
+  followError: string | null;
+  summary: string;
 }
 
-const THINKING = ["", "off", "minimal", "low", "medium", "high", "xhigh", "max"];
+export interface AgentModel {
+  agent: string;
+  provider: string;
+  model: string;
+  thinking: string;
+}
 
-export function BuilderView() {
-  const status = useLayerQuery<BuilderStatus>("builder", "status", {}, 5000);
-  const health = useLayerQuery<Health>("builder", "health", {}, 4000);
-  const settings = useLayerQuery<Record<string, Json>>("builder", "settings");
-  const events = useLayerQuery<{ events: FactoryEvent[] }>("builder", "events", { limit: 120 });
-  const jobLog = useLayerQuery<{ jobId: string | null; tail: string }>("builder", "job_log", { lines: 300 }, 5000);
-  const log = useLayerQuery<{ tail: string }>("builder", "log", { lines: 120 }, 10000);
+/** The agent the model picker changes: the agent of supabase-api's implement step. */
+export const MODEL_AGENT = "supabase-api";
+export const THINKING = ["", "off", "minimal", "low", "medium", "high", "xhigh", "max"];
+
+interface Instance {
+  instance: string | null;
+  version: string | null;
+  runsDir: string;
+  layers: string[];
+  config: Record<string, Json>;
+  sources: Record<string, string>;
+}
+
+/** The value at a dotted path. */
+const at = (o: unknown, path: string): unknown => path.split(".").reduce<unknown>((v, k) => (v && typeof v === "object" ? (v as Record<string, unknown>)[k] : undefined), o);
+
+function ConfigView() {
+  const config = useLayerQuery<Instance>("builder", "config");
+  const c = config.data;
+  return (
+    <Card title="Machine config" description="builder config: the merged layers, lowest first, and the layer each value came from. To change a value, edit a layer (~/.gaffer/config.yml, $GAFFER_CONFIG or --config) and run builder config reload; no tool changes it.">
+      {config.error && (
+        <Alert tone="error" soft>
+          {config.error}
+        </Alert>
+      )}
+      {c && (
+        <>
+          <dl className="tsf-fx-kv">
+            <dt>Instance</dt>
+            <dd>{c.instance ?? "(none)"}</dd>
+            <dt>Version</dt>
+            <dd className="tsf-fx-mono">{c.version ?? "(unknown)"}</dd>
+            <dt>Runs</dt>
+            <dd className="tsf-fx-mono">{c.runsDir}</dd>
+            <dt>Layers</dt>
+            <dd>{c.layers.map((l, i) => <div key={l}>{`${i + 1}. ${l}`}</div>)}</dd>
+          </dl>
+          <table className="tsf-fx-table" style={{ marginTop: "var(--pw-sp-3)" }}>
+            <thead>
+              <tr>
+                <th>Key</th>
+                <th>Value</th>
+                <th>Layer</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.keys(c.sources)
+                .sort()
+                .map((k) => (
+                  <tr key={k}>
+                    <td className="tsf-fx-mono">{k}</td>
+                    <td className="tsf-fx-mono">{JSON.stringify(at(c.config, k))}</td>
+                    <td>{c.sources[k]}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </>
+      )}
+    </Card>
+  );
+}
+
+function ModelCard() {
+  const model = useLayerQuery<AgentModel>("builder", "model", { agent: MODEL_AGENT });
   const act = useLayerAction("builder");
-  const [tab, setTab] = useState<ScreenTab>("dashboard");
-  const [refreshing, setRefreshing] = useState(false);
   const models = useModels();
-
-  const s = status.data;
-  const h = health.data;
-  const restartNeeded = (changed: string[]): boolean => changed.some((k) => k === "host" || k === "port");
+  const [draft, setDraft] = useState<Partial<AgentModel>>({});
+  const [refreshing, setRefreshing] = useState(false);
   const [note, setNote] = useState<string | null>(null);
-
-  const providerVal = String(settings.data?.pi_provider ?? "");
+  useEffect(() => setDraft({}), [model.data]);
+  const cur = { ...model.data, ...draft } as Partial<AgentModel>;
   const modelList = models.data ?? [];
   const providers = useMemo(() => [...new Set(modelList.map((m) => m.provider))], [modelList]);
-  const providerModels = modelList.filter((m) => m.provider === providerVal);
-  const modelOptions = (providerModels.length ? providerModels : modelList)
-    .map((m) => ({ value: m.id, label: m.name === m.id ? m.id : `${m.name} (${m.id})` }))
-    .sort((a, b) => a.label.localeCompare(b.label));
-
-  const syncPiRuntime = async (changes: Record<string, Json>): Promise<void> => {
-    const map: Record<string, string> = { pi_provider: "defaultProvider", pi_model: "defaultModel", pi_thinking: "defaultThinkingLevel" };
-    const updates = Object.entries(changes).filter(([key, value]) => map[key] && typeof value === "string");
-    if (!updates.length) return;
-    const current = await api.builderAgent.read("settings.json");
-    const config = JSON.parse(current.content) as Record<string, unknown>;
-    for (const [key, value] of updates) config[map[key]] = value;
-    await api.builderAgent.write("settings.json", `${JSON.stringify(config, null, 2)}\n`);
+  const own = modelList.filter((m) => m.provider === cur.provider);
+  const options = (own.length ? own : modelList).map((m) => ({ value: m.id, label: m.name === m.id ? m.id : `${m.name} (${m.id})` })).sort((a, b) => a.label.localeCompare(b.label));
+  const dirty = Object.keys(draft).length > 0;
+  const save = async () => {
+    const out = await act.run("set_model", { agent: MODEL_AGENT, ...draft } as Json);
+    if (out !== null) {
+      setDraft({});
+      model.refresh();
+    }
   };
-
   const refreshModels = (): void => {
     setRefreshing(true);
     api.models
@@ -70,17 +128,111 @@ export function BuilderView() {
       .catch((err) => setNote(`Model list not refreshed: ${errorMessage(err)}`))
       .finally(() => setRefreshing(false));
   };
+  const select = (key: keyof AgentModel, label: string, opts: { value: string; label: string }[]) => (
+    <Field label={label}>
+      {(p) => (
+        <Select {...p} value={String(cur[key] ?? "")} onChange={(e) => setDraft((d) => ({ ...d, [key]: e.target.value }))} disabled={!model.data || act.busy !== null}>
+          {!opts.some((o) => o.value === String(cur[key] ?? "")) && <option value={String(cur[key] ?? "")}>{String(cur[key] ?? "") || "(pi default)"}</option>}
+          {opts.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </Select>
+      )}
+    </Field>
+  );
+  return (
+    <Card
+      title={`Model: ${MODEL_AGENT}`}
+      description={`The agent's settings.json. Saving is a versioned change (agent_update); it applies from the agent's next run.`}
+      actions={
+        <Button size="sm" variant="ghost" icon={RefreshCw} loading={refreshing} onClick={refreshModels}>
+          Refresh models
+        </Button>
+      }
+    >
+      {(model.error || act.error || note) && (
+        <Alert tone={note && !model.error && !act.error ? "info" : "error"} soft onDismiss={() => (act.clearError(), setNote(null))}>
+          {model.error ?? act.error ?? note}
+        </Alert>
+      )}
+      <div className="tsf-fx-fields">
+        {select("provider", "Provider", providers.map((p) => ({ value: p, label: p })))}
+        {select("model", "Model", options)}
+        {select("thinking", "Thinking", THINKING.map((t) => ({ value: t, label: t || "(pi default)" })))}
+      </div>
+      <div className="tsf-fx-form-actions">
+        <Button size="sm" variant="primary" icon={Play} loading={act.busy === "set_model"} disabled={!dirty} onClick={() => void save()}>
+          Save model
+        </Button>
+        {dirty && (
+          <Button size="sm" variant="ghost" onClick={() => setDraft({})}>
+            Discard
+          </Button>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+interface LogTail {
+  runId: string;
+  kind: string;
+  state: string;
+  job?: string;
+  text: string;
+}
+
+/** The latest job's log (its steps' commands, the pi command, prompt and output) and the build server's, secrets hidden. */
+function LogsView({ job }: { job: string | null }) {
+  const jobLog = useLayerQuery<LogTail>("builder", "log_tail", { run: job ?? "latest", lines: 300 }, 5000);
+  const serverLog = useLayerQuery<LogTail>("builder", "log_tail", { run: "server", lines: 120 }, 10000);
+  return (
+    <>
+      <Card title={jobLog.data?.job ? `Job log ${jobLog.data.job}` : "Job log"} description="The latest job's log: its steps' commands, the pi command, prompt and output.">
+        {jobLog.error && (
+          <Alert tone="error" soft>
+            {jobLog.error}
+          </Alert>
+        )}
+        <Pre text={jobLog.data?.text ?? ""} max={300} />
+      </Card>
+      <Card title="Server log" description="The build server's own output.">
+        {serverLog.error && (
+          <Alert tone="error" soft>
+            {serverLog.error}
+          </Alert>
+        )}
+        <Pre text={serverLog.data?.text ?? ""} max={120} />
+      </Card>
+    </>
+  );
+}
+
+export function BuilderView() {
+  const status = useLayerQuery<BuilderStatus>("builder", "status", {}, 5000);
+  const events = useLayerQuery<{ events: FactoryEvent[] }>("builder", "events", { limit: 200 });
+  const act = useLayerAction("builder");
+  const [tab, setTab] = useState<ScreenTab>("dashboard");
+  const s = status.data;
+  const chip = !s ? null : s.state === "stopped" ? { state: "stopped" as const, label: "Stopped" } : s.state === "busy" ? { state: "busy" as const, label: "Building" } : s.state === "draining" ? { state: "warn" as const, label: "Draining" } : { state: "idle" as const, label: `Idle (pid ${s.pid})` };
 
   return (
     <div className="tsf-fx-screen" data-testid="builder-view">
       <div className="tsf-fx-head">
         <h1>Builder</h1>
-        {s && <StatusChip state={!s.running ? "stopped" : h?.busy ? "busy" : "idle"} label={!s.running ? "Stopped" : h?.busy ? "Building" : `Idle (pid ${s.pid})`} />}
+        {chip && <StatusChip state={chip.state} label={chip.label} />}
         <div className="tsf-fx-actions">
           {s?.running ? (
-            <Button size="sm" variant="secondary" icon={Square} loading={act.busy === "stop"} onClick={() => void act.run("stop")}>
-              Stop
-            </Button>
+            <>
+              <Button size="sm" variant="secondary" icon={RotateCw} loading={act.busy === "restart"} onClick={() => void act.run("restart")}>
+                Restart
+              </Button>
+              <Button size="sm" variant="secondary" icon={Square} loading={act.busy === "stop"} onClick={() => void act.run("stop")}>
+                Stop
+              </Button>
+            </>
           ) : (
             <Button size="sm" variant="primary" icon={Play} loading={act.busy === "start"} onClick={() => void act.run("start")}>
               Start
@@ -88,8 +240,8 @@ export function BuilderView() {
           )}
         </div>
         <p className="tsf-fx-head-sub">
-          The build server (<code>builder/server.ts</code>): one job at a time, a fresh clone at the requested base, the pi agent run inside it, the commits sent back as a patch. No board
-          access, no write access to the repository.
+          The build server (<code>builder server run</code>): one slice job at a time on <code>POST /slices</code>, each job a workflow run of the active builder, the patch sent back to the gaffer. Status is the machine feed (
+          <code>builder events</code>); the buttons run <code>builder server start|stop|restart</code>. Its settings are machine config.
         </p>
       </div>
 
@@ -98,122 +250,74 @@ export function BuilderView() {
           {act.error}
         </Alert>
       )}
-      {note && (
-        <Alert tone="info" soft onDismiss={() => setNote(null)}>
-          {note}
+      {s?.followError && (
+        <Alert tone="warning" soft>
+          {s.followError}
         </Alert>
       )}
 
-      <ScreenTabs value={tab} onChange={setTab} sessions />
+      <ScreenTabs value={tab} onChange={setTab} />
 
+      {tab === "logs" && <LogsView job={s?.job?.jobId ?? s?.lastJob?.jobId ?? null} />}
       {tab === "sessions" && <SessionsView />}
+      {tab === "ops" && <OpsView />}
+      {tab === "config" && <ConfigView />}
 
       {tab === "timeline" && (
-        <Card title="Timeline" description={s?.lastEvent ? `Last event ${ago(s.lastEvent.ts)}` : "Nothing yet"} actions={<Button size="sm" variant="ghost" onClick={() => void act.run("clear_events")}>Clear</Button>}>
+        <Card title="Timeline" description={s?.lastEvent ? `The machine feed, newest first. Last event ${ago(s.lastEvent.ts)}` : "Nothing yet"}>
           <Timeline events={events.data?.events ?? []} limit={200} />
         </Card>
       )}
 
-      {tab === "logs" && (
-        <>
-          <Card title={jobLog.data?.jobId ? `Job log ${jobLog.data.jobId.slice(0, 8)}` : "Job log"} description="The pi command, prompt and output of the latest job.">
-            <Pre text={jobLog.data?.tail ?? ""} />
-          </Card>
-          <Card title="Server log" description="The build server's own output.">
-            <Pre text={log.data?.tail ?? ""} />
-          </Card>
-        </>
-      )}
-
       {tab === "dashboard" && (
-      <div className="tsf-fx-cols">
-        <Card title="Current job" description={s?.url ? `POST ${s.url}/slices` : ""}>
-          {h?.busy && h.job ? (
-            <dl className="tsf-fx-kv">
-              <dt>Slice</dt>
-              <dd>
-                {h.job.context}/{h.job.title} (attempt {h.job.attempt})
-              </dd>
-              <dt>Step</dt>
-              <dd>
-                <StatusChip state="busy" label={h.job.step} />
-              </dd>
-              <dt>Started</dt>
-              <dd>{ago(h.job.startedAt)}</dd>
-              <dt>Job</dt>
-              <dd>{h.job.name ? `${h.job.name} ` : ""}<span className="tsf-fx-mono">{h.job.jobId}</span></dd>
-            </dl>
-          ) : h?.lastJob ? (
-            <dl className="tsf-fx-kv">
-              <dt>Idle</dt>
-              <dd>waiting for a dispatch</dd>
-              <dt>Last job</dt>
-              <dd>
-                {h.lastJob.name ? `${h.lastJob.name}, ` : ""}{h.lastJob.title}: <StatusChip state={h.lastJob.outcome === "done" ? "ok" : "error"} label={h.lastJob.outcome} /> {ago(h.lastJob.endedAt)}
-              </dd>
-            </dl>
-          ) : (
-            <p className="tsf-fx-muted">{s?.running ? (h?.ok ? "Idle, no job yet." : `Server not answering: ${h?.error ?? ""}`) : "Start the server to accept jobs."}</p>
-          )}
-          {h?.pi && (
-            <p className="tsf-fx-muted" style={{ marginTop: "var(--pw-sp-3)" }}>
-              Loaded pi config: {h.pi.provider}/{h.pi.model}
-              {h.pi.thinking ? `, thinking ${h.pi.thinking}` : ""}
-            </p>
-          )}
-        </Card>
+        <div className="tsf-fx-cols">
+          <Card title="Current job" description={s?.url ? `POST ${s.url}/slices${s.builder ? `, builder ${s.builder}` : ""}` : ""}>
+            {s?.job ? (
+              <dl className="tsf-fx-kv">
+                <dt>Slice</dt>
+                <dd>
+                  {s.job.slice || "?"}
+                  {s.job.attempt !== null ? ` (attempt ${s.job.attempt})` : ""}
+                </dd>
+                <dt>Step</dt>
+                <dd>
+                  <StatusChip state="busy" label={s.job.step || "starting"} />
+                </dd>
+                <dt>Started</dt>
+                <dd>{ago(s.job.startedAt)}</dd>
+                <dt>Job</dt>
+                <dd>
+                  {s.job.name ? `${s.job.name} ` : ""}
+                  <span className="tsf-fx-mono">{s.job.jobId}</span>
+                </dd>
+                <dt>Run</dt>
+                <dd className="tsf-fx-mono">{s.job.runId}</dd>
+              </dl>
+            ) : s?.lastJob ? (
+              <dl className="tsf-fx-kv">
+                <dt>{s.running ? "Idle" : "Stopped"}</dt>
+                <dd>{s.running ? "waiting for a dispatch" : "start the server to accept jobs"}</dd>
+                <dt>Last job</dt>
+                <dd>
+                  {s.lastJob.name ? `${s.lastJob.name}, ` : ""}
+                  {s.lastJob.slice ?? ""}: <StatusChip state={s.lastJob.outcome === "done" ? "ok" : "error"} label={s.lastJob.outcome} /> {ago(s.lastJob.endedAt)}
+                </dd>
+                {s.lastJob.reason && (
+                  <>
+                    <dt>Reason</dt>
+                    <dd>{s.lastJob.reason}</dd>
+                  </>
+                )}
+              </dl>
+            ) : (
+              <p className="tsf-fx-muted">{s?.running ? "Idle, no job yet." : "Start the server to accept jobs."}</p>
+            )}
+          </Card>
 
-        <Card title="Server" description="Host and port need a stop and start; the rest applies to the next job.">
-          <SettingsForm
-            layer="builder"
-            values={settings.data}
-            fields={[
-              { key: "host", label: "Listen host" },
-              { key: "port", label: "Listen port", kind: "number" },
-              { key: "capabilities", label: "Capabilities", help: "requires entries it meets, comma-separated" },
-              { key: "workspaceDir", label: "Workspace directory", mono: true },
-              { key: "jobTimeoutMinutes", label: "Job timeout (minutes)", kind: "number" },
-            ]}
-            saveLabel="Save server"
-            onSaved={(changed) => {
-              if (restartNeeded(changed)) setNote("Host or port changed: stop and start the server to apply it.");
-            }}
-          />
-        </Card>
+          <ModelCard />
 
-        <Card
-          title="pi agent"
-          description="The CLI invocation. Saved values apply to the next job; no restart needed."
-          actions={
-            <Button size="sm" variant="ghost" icon={RefreshCw} loading={refreshing} onClick={refreshModels}>
-              Refresh models
-            </Button>
-          }
-        >
-          <SettingsForm
-            layer="builder"
-            values={settings.data}
-            fields={[
-              { key: "pi_provider", label: "Provider", kind: providers.length ? { select: providers } : "text" },
-              { key: "pi_model", label: "Model", mono: true, kind: modelOptions.length ? { select: modelOptions } : "text", help: modelOptions.length ? undefined : "No models loaded; refresh or check the provider layer." },
-              { key: "pi_thinking", label: "Thinking", kind: { select: THINKING } },
-              { key: "pi_timeoutMinutes", label: "Timeout (minutes)", kind: "number" },
-              { key: "pi_command", label: "pi command", mono: true, help: "The pi binary; the factory already runs under the vault" },
-              { key: "pi_agentDir", label: "Agent dir", mono: true, help: "PI_CODING_AGENT_DIR: settings.json, AGENTS.md, prompts/, extensions/, skills/; empty = ~/.pi/agent" },
-              { key: "pi_args", label: "Flags", mono: true, wide: true, help: "Shell-style; placed before -p" },
-            ]}
-            saveLabel="Save agent"
-            onSaved={(_changed, changes) => {
-              void syncPiRuntime(changes).catch((err) => setNote(`Pi settings were saved but could not be synchronised: ${errorMessage(err)}`));
-            }}
-          />
-          <p className="tsf-fx-muted" style={{ marginTop: "var(--pw-sp-3)" }}>
-            Instructions, prompts, extensions and skills are real files in <code>builder/pi-agent/</code>, read directly by Pi for each job. Open <button type="button" className="tsf-link-button" onClick={() => setView("pi-agent")}>Pi agent</button> to browse their current contents.
-          </p>
-        </Card>
-
-        <RecentEvents events={events.data?.events ?? []} onMore={() => setTab("timeline")} />
-      </div>
+          <RecentEvents events={events.data?.events ?? []} onMore={() => setTab("timeline")} />
+        </div>
       )}
     </div>
   );
