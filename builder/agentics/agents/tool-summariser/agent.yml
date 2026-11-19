@@ -1,0 +1,8 @@
+# The tool summariser: a sidecar (engine/sidecars.ts). A workflow starts it on every batch of tool calls its rule
+# counts (supabase-api: every 10 tool.end events), headless, in no workspace, with the batch's previews as the
+# argument of its /summarise template. Its final text becomes the workflow run's sidecar.output event. A cheap model
+# with thinking low (settings.json; the model refuses "off") and no tools: it only reads what it is given.
+description: Summarise a batch of tool calls in two lines
+mode: headless
+prompt: own:prompts/summarise.md
+tools: { enable: [] }

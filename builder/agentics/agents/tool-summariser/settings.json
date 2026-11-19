@@ -1,0 +1,8 @@
+{
+  "$schema": "https://pi.dev/schemas/settings.schema.json",
+  "quietStartup": true,
+  "defaultProvider": "openrouter",
+  "defaultModel": "google/gemini-3.5-flash-lite",
+  "defaultThinkingLevel": "low",
+  "defaultProjectTrust": "never"
+}

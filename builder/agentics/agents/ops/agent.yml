@@ -1,0 +1,40 @@
+# ops (design section 10): observes, operates and changes the builder. An ordinary agent in durable mode: a turn starts
+# when the operator writes to it (POST /messages on its API, builder attach), when a job fails (the job.failed trigger)
+# and once a day (the cron trigger). It never connects to the build server or a running job: it reads journals and
+# context from files, writes the control inbox, changes definitions through the definitions tools and the builder's
+# code with its file tools on a git branch. SYSTEM.md is its playbook, MEMORY.md what it has learned, state/ (gitignored)
+# its session and what its triggers have seen.
+#
+# On a VM: vm/install.sh --ops installs builder-ops.service, which runs it in interactive mode (pi's TUI) inside a
+# tmux session (vm/ops-tmux.sh; attach with `just builder ops`), with OPS_API_TOKEN in ~/.gaffer/ops.env. There its
+# triggers are not armed and each start is a new session. On the laptop: OPS_API_TOKEN=... builder run ops --dir .
+# --journal (in builder/), durable.
+description: Observe, operate and change the builder; investigate failed jobs and report to the operator
+mode: durable
+prompt: own:SYSTEM.md
+uses:
+  skills: [shared:authoring/*]
+tools:
+  enable: [observe, operate, process, runs, definitions, files, git, notify]
+# write-scope: no agent writes the machine config, and the file tools write only the writable areas below. Definitions
+# (agentics/) are not among them: they change only through the definitions tools, which validate them, keep the
+# previous version and refuse to widen this agent or a run above it (E25, G6, G8).
+gates: [shared:write-scope]
+areas:
+  # builder/ as a whole, read only.
+  builder: { path: ../../.., write: false }
+  # The builder's code, fixed in place on a git branch.
+  cli: { path: ../../../cli, write: true }
+  engine: { path: ../../../engine, write: true }
+  ops: { path: ../../../ops, write: true }
+  runtime: { path: ../../../runtime, write: true }
+  server: { path: ../../../server, write: true }
+  test: { path: ../../../test, write: true }
+  tsf: { path: ../../../tsf, write: true }
+  vm: { path: ../../../vm, write: true }
+runs:
+  may_start: ["*"] # operator parity. Narrow it on a locked-down instance
+api: { listen: 127.0.0.1:8090, token: env:OPS_API_TOKEN }
+triggers:
+  - { on: job.failed }
+  - { cron: daily, prompt: "review the last day's jobs" }

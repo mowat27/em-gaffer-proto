@@ -1,0 +1,3 @@
+# ops's durable state (its pi session, what its triggers have seen) and pi's model cache.
+/state/
+/models-store.json
