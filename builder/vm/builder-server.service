@@ -1,0 +1,30 @@
+# The build server as a systemd unit: `builder server run` in the foreground. vm/install.sh fills in the @...@ values
+# and installs it as /etc/systemd/system/builder-server.service. Its settings come only from the machine config
+# (~/.gaffer/config.yml of the user it runs as). The process tools (server_start, server_stop, server_restart) and
+# `just builder server ...` drive it through systemctl; `systemctl status builder-server` and
+# `journalctl -u builder-server` show it whatever an agent has done.
+[Unit]
+Description=Gaffer builder: build server (builder server run)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@USER@
+WorkingDirectory=@BUILDER@
+Environment=PATH=@PATH@
+# Model providers are reached through the Agent Vault proxy.
+EnvironmentFile=-/etc/agent-vault.env
+ExecStart=@NODE@ @BUILDER@/cli/builder.ts server run
+Restart=on-failure
+RestartSec=3
+# 3: another build server already runs on the runs directory; starting again would not change that.
+RestartPreventExitStatus=3
+# SIGTERM goes to the server only: the job run it started notices and stops itself, and the next start fails that
+# job with `builder restarted during <step>` (E13). The process tools drain first, so they never abandon a job.
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

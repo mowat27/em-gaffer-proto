@@ -1,13 +1,35 @@
-set shell := ["zsh", "-cu"]
+set shell := ["bash", "-cu"]
 set positional-arguments
+
+# The Agent Vault wrapper for model provider keys, where this machine has one (the laptop). A VM's units read the
+# vault's environment file instead.
+vault := `command -v av || true`
+cli := source_directory() / "cli" / "builder.ts"
 
 # List recipes
 default:
     @just --list
 
+# Start an agent or workflow and wait for it (an interactive agent runs pi here; paths are from where you are): run <agent|workflow> [builder run options]
+[no-cd]
+run *ARGS:
+    {{vault}} node "{{cli}}" run "$@"
+
+# The build server, under systemd's builder-server unit or as a detached run (stop and restart drain first): server start|stop|restart [--force] [--timeout s]
+server *ARGS:
+    {{vault}} node "{{cli}}" server "$@"
+
+# A new agent from a template (agent_create): agent new <path> [--template t]
+agent *ARGS:
+    node "{{cli}}" agent "$@"
+
+# Attach to the ops agent (pi's TUI in the tmux session builder-ops.service runs, on a VM installed with --ops); Ctrl-b d detaches
+ops:
+    tmux -L ops attach -t ops
+
 # TSF: Tiny Software Factory, an Empty Factory with a durable agent (start, stop, status, logs, push)
 mod tsf
 
-# Run the builder's TSF on a persistent exe.dev VM (see vm/vm.sh): vm launch <vm> | vm key <vm> <owner/repo>
+# The builder on an exe.dev VM, an ephemeral tailnet node unless --keep (see vm/vm.sh): vm launch <vm> [--config f] [--ops] [--tsf] [--keep] | vm key <vm> <owner/repo> | vm rejoin <vm> [--keep]
 vm *ARGS:
     @bash vm/vm.sh "$@"

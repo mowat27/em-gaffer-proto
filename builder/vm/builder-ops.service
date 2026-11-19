@@ -1,0 +1,34 @@
+# The ops agent as a systemd unit (optional: vm.sh launch --ops): the agent in agentics/agents/ops in pi's TUI, inside a
+# detached tmux session (vm/ops-tmux.sh run: `builder run ops --mode interactive --dir <builder> --journal` on the
+# socket `tmux -L ops`, session `ops`). Attach with `just builder ops` from ~ on the VM; Ctrl-b d detaches and the
+# agent keeps running. The unit lasts as long as that command: quitting pi ends the run with exit 0 and the unit stops
+# (Restart=on-failure restarts only a run that failed). Each start is a new session: an interactive run keeps its
+# session in its run folder. Triggers (job.failed, cron) are armed only in durable mode, so they do not run here.
+# The agent's API (127.0.0.1:8090, OPS_API_TOKEN from @HOME@/.gaffer/ops.env, written once by vm/install.sh --ops)
+# still listens, so this unit and a durable ops run cannot both run. vm/install.sh fills in the @...@ values.
+[Unit]
+Description=Gaffer builder: ops agent in tmux (builder run ops --mode interactive)
+After=network-online.target builder-server.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@USER@
+WorkingDirectory=@BUILDER@
+Environment=PATH=@PATH@
+Environment=NODE=@NODE@
+EnvironmentFile=-/etc/agent-vault.env
+EnvironmentFile=-@HOME@/.gaffer/ops.env
+# Where ops-tmux.sh keeps the run's exit code while tmux holds it (/run/builder-ops).
+RuntimeDirectory=builder-ops
+ExecStart=/bin/bash @BUILDER@/vm/ops-tmux.sh run
+# Stop the run through the builder first (it records how it ended), then end the tmux session.
+ExecStop=/bin/bash @BUILDER@/vm/ops-tmux.sh stop
+Restart=on-failure
+RestartSec=10
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
