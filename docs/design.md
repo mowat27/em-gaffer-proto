@@ -10,7 +10,7 @@ Slices are built by a specialised builder agent on a separate VM. A gaffer conne
 |---|---|---|
 | Gaffer | The gaffer kit installed in the gaffer's own clone of the target repository: the shared eventmodelers runner plus `gaffer.js` | Yes. Every kit-specific part lives here, including the files the kit format requires but the gaffer doesn't use (an empty `CLAUDE.md` and `AGENTS.md`) |
 | Builder | A service on a separate VM that implements one slice per job | No |
-| Target repository | The application code | No. It never contains `.build-kit/` or `.eventmodelers/` |
+| Target repository | The application code, and the gaffer's build baselines in `.gaffer/slices/` | No. It never contains `.build-kit/` or `.eventmodelers/` |
 
 ```
 Eventmodelers board <--platform contract--> shared runner --spawns--> gaffer.js --POST /slices--> builder (VM)
@@ -31,7 +31,8 @@ Eventmodelers board <--platform contract--> shared runner --spawns--> gaffer.js 
 - The system is fully AFK. No component ever asks a human a question.
 - The runner blocks while a slice is being built. A turn is limited to 60 minutes (`turnTimeoutMinutes`).
 - Several gaffers can work the same board. The board's atomic claim hands each slice to exactly one of them.
-- The target repository never contains kit files.
+- The target repository never contains kit files. It holds the gaffer's build baselines in `.gaffer/slices/`, written only by the gaffer.
+- Every change to a slice goes through the board.
 - The builder has no board access and no write access to the target repository.
 - The board token is never shown in a UI or written to a log.
 
@@ -115,21 +116,34 @@ Inputs come from the runner (section 3).
 
 Build turn:
 
-1. Record `base` as `git rev-parse HEAD` on main.
-2. Start the callback listener on the Tailscale address and create a new `jobId`.
-3. POST `/slices` and handle the response as [contract.md](contract.md) describes.
-4. Wait for the callback with a timeout just under the 60-minute turn limit. When the timeout is reached, fail the turn (see below).
-5. Accept only the callback for the current `jobId`.
-6. On `done`:
-   1. Apply the patch on a `feature/<slice>` branch with `git am -3`.
-   2. Run the gate: the build, then the slice's tests.
-   3. Fast-forward main and push it.
-   4. Run `eventmodelers slice-status Done`, or `Waiting` when `Handover: on`.
-   5. Exit 0.
-7. On `failed`:
-   1. Post the reason on the slice with `eventmodelers info "<reason>" --kind note`.
-   2. Fail the turn.
-8. When `git am` or the gate fails, fail the turn.
+1. Load the full slice from the board. For a read model (`STATE_VIEW`) slice, also load the definition of each event its read models project from the slice that owns it, in any scope on the board ([contract.md](contract.md), "Source events"). When the slice or a source event cannot be loaded, fail the turn.
+2. When the slice is empty (a `STATE_CHANGE` slice with no command or no event, a `STATE_VIEW` slice with no read model), post the reason on the slice, run `eventmodelers slice-status Blocked` and exit 0.
+3. Record `base` as `git rev-parse HEAD` on main.
+4. Compare the slice and its source events with the baseline at `base` (see "Baselines" below). The verdict is `NEW`, `CHANGED` or `UNCHANGED`.
+5. On `UNCHANGED`, dispatch nothing: run the gate on `base`, run `eventmodelers slice-status Done` (or `Waiting` when `Handover: on`) and exit 0.
+6. Start the callback listener on the Tailscale address and create a new `jobId`.
+7. POST `/slices` with `changes` and handle the response as [contract.md](contract.md) describes.
+8. Wait for the callback with a timeout just under the 60-minute turn limit. When the timeout is reached, fail the turn (see below).
+9. Accept only the callback for the current `jobId`.
+10. On `done`:
+    1. Apply the patch on a `feature/<slice>` branch with `git am -3`.
+    2. Fail the turn when the patch touches `.gaffer/`.
+    3. Commit the new baseline on the feature branch.
+    4. Run the gate: the build, then the slice's tests.
+    5. Fast-forward main and push it.
+    6. Run `eventmodelers slice-status Done`, or `Waiting` when `Handover: on`.
+    7. Exit 0.
+11. On `failed`:
+    1. Post the reason on the slice with `eventmodelers info "<reason>" --kind note`.
+    2. Fail the turn.
+12. When `git am` or the gate fails, fail the turn.
+
+Baselines:
+
+- After every successful build the gaffer commits `.gaffer/slices/<sliceId>.json` with the code, as a separate commit `gaffer: record <slice> baseline`. It holds the `slice` and `sourceEvents` that were dispatched, as JSON with sorted keys.
+- The next build reads the baseline from `base`. Each branch therefore carries its own baselines, a merge brings them with the code, and two branches that rebuilt the same slice conflict on its baseline as they do on its code.
+- Only the gaffer writes `.gaffer/`. A failed turn leaves the previous baseline in place.
+- This replaces the build kits' `eventmodelers build-baseline check|record`, which records board node hashes in `.build-kit/`. The gaffer compares content, keeps the previous definitions so the builder can see what changed, and keeps kit files out of the target repository.
 
 A failed turn exits 0 without recording a status. The shared runner retries a non-zero exit in place for ever, without counting it, so the slice would never reach Blocked. An exit 0 without a status is a failed attempt: the runner puts the slice back to Planned and sets it to Blocked, with a comment, after 5.
 
@@ -151,7 +165,7 @@ Repository and host:
 
 ## 9. Example board
 
-"Invoice Lite", board id `fe92ad7f-3eba-4a40-8528-d2f16d6081a3`, has one chapter, Invoicing, with four slices:
+"Invoice Lite", board id `fe92ad7f-3eba-4a40-8528-d2f16d6081a3`, has the chapter Invoicing with four slices, plus a Reporting chapter added to test cross-scope source events ([prototype.md](prototype.md)):
 
 | Slice | Type |
 |---|---|
