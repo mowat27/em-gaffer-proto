@@ -1,0 +1,81 @@
+{
+  "kind": "state-view",
+  "verdict": "CHANGED",
+  "files": [
+    {
+      "path": "src/slices/Invoicing/Invoices/Invoices.test.ts",
+      "action": "created"
+    },
+    {
+      "path": "src/slices/Invoicing/Invoices/InvoicesProjection.ts",
+      "action": "created"
+    },
+    {
+      "path": "src/slices/Invoicing/Invoices/routes.ts",
+      "action": "created"
+    },
+    {
+      "path": "src/slices/Invoicing/InvoicingEvents.ts",
+      "action": "created"
+    },
+    {
+      "path": "supabase/migrations/V1__invoices.sql",
+      "action": "created"
+    }
+  ],
+  "injections": [
+    {
+      "target": "src/common/loadPostgresEventstore.ts",
+      "key": "slices/Invoicing/Invoices/InvoicesProjection",
+      "action": "inserted"
+    },
+    {
+      "target": "src/common/loadPostgresEventstore.ts",
+      "key": " InvoicesProjection,",
+      "action": "inserted"
+    },
+    {
+      "target": "src/slices/Invoicing/InvoicingEvents.ts",
+      "key": "export type ClientCreated =",
+      "action": "present"
+    },
+    {
+      "target": "src/slices/Invoicing/InvoicingEvents.ts",
+      "key": "export type InvoiceCreated =",
+      "action": "present"
+    },
+    {
+      "target": "src/slices/Invoicing/InvoicingEvents.ts",
+      "key": "| ClientCreated",
+      "action": "present"
+    },
+    {
+      "target": "src/slices/Invoicing/InvoicingEvents.ts",
+      "key": "| InvoiceCreated",
+      "action": "present"
+    }
+  ],
+  "tasks": [],
+  "markers": [
+    {
+      "path": "src/slices/Invoicing/Invoices/Invoices.test.ts",
+      "line": 55,
+      "text": "// BUILD: given. Set the events' data, and add events, so they give the expected rows (see the note)"
+    },
+    {
+      "path": "src/slices/Invoicing/Invoices/Invoices.test.ts",
+      "line": 105,
+      "text": "// BUILD: given. Set the events' data so they give the expected rows"
+    },
+    {
+      "path": "src/slices/Invoicing/Invoices/InvoicesProjection.ts",
+      "line": 42,
+      "text": "// BUILD: evolve ClientCreated. ClientCreated has no invoiceId, the key of Invoices: write the statements it implies (an update by another column, a lookup table in this slice's migration), or return []"
+    },
+    {
+      "path": "src/slices/Invoicing/Invoices/InvoicesProjection.ts",
+      "line": 46,
+      "text": "// BUILD: evolve InvoiceCreated. InvoiceCreated has no clientName or status: add client_name and status to the insert as the slice describes (a lookup, a default), or change the statement if InvoiceCreated does not create or update a row"
+    }
+  ]
+}

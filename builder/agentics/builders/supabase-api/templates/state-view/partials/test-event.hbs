@@ -1,0 +1,13 @@
+            {
+                type: '{{type}}',
+{{#if data.length}}
+                data: {
+{{#each data}}
+                    {{prop}}: {{value}},
+{{/each}}
+                },
+{{else}}
+                data: {},
+{{/if}}
+                metadata: {},
+            },

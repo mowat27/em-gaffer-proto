@@ -1,0 +1,129 @@
+import type {Request, Response, Router} from 'express';
+import type {WebApiSetup} from '@event-driven-io/emmett-expressjs';
+import {requireUser} from '../../../supabase/requireUser';
+import {type {{commandType}}, {{handleName~}} } from './{{pascal slice}}Command';
+
+export const api = (): WebApiSetup => (router: Router): void => {
+
+    /**
+     * @openapi
+     * {{route.openapiPath}}:
+     *   post:
+     *     tags: [{{route.tag}}]
+     *     summary: {{route.summary}}
+{{#if route.description}}
+     *     description: {{route.description}}
+{{/if}}
+     *     security:
+     *       - bearerAuth: []
+     *     parameters:
+     *       - in: path
+     *         name: {{route.param}}
+     *         required: true
+     *         schema:
+{{#each route.paramSchema}}
+     *           {{this}}
+{{/each}}
+     *         description: Stream id this command is applied to
+     *       - in: header
+     *         name: correlation_id
+     *         required: false
+     *         schema:
+     *           type: string
+{{#if route.body.length}}
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+{{#if route.required.length}}
+     *             required: [{{#each route.required}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}]
+{{/if}}
+     *             properties:
+{{#each route.body}}
+     *               {{prop}}:
+{{#each schema}}
+     *                 {{this}}
+{{/each}}
+{{/each}}
+{{/if}}
+     *     responses:
+     *       '201':
+     *         description: Accepted — {{route.appended}} appended
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 ok:
+     *                   type: boolean
+     *                 next_expected_stream_version:
+     *                   type: string
+     *                 last_event_global_position:
+     *                   type: string
+     *       '401':
+     *         description: Not authenticated
+{{#if errors.length}}
+     *       '409':
+     *         description: |
+{{#each errors}}
+     *           {{doc}}
+{{/each}}
+{{/if}}
+     *       '500':
+     *         description: Server error
+     */
+    router.post('{{route.path}}', async (req: Request, res: Response) => {
+        const auth = await requireUser(req, res);
+        if (auth.error) return;
+
+{{#if route.marker}}
+        // {{route.marker}}
+{{/if}}
+        const id = req.params.{{route.param}};
+        const correlationId = req.header('correlation_id') ?? id;
+
+        try {
+            const command: {{commandType}} = {
+                type: '{{command.type}}',
+                data: {
+{{#each route.data}}
+                    {{prop}}: {{value}},
+{{/each}}
+                },
+                metadata: {
+                    correlation_id: correlationId,
+                    causation_id: id,
+                },
+            };
+
+            const result = await {{handleName}}(id, command);
+
+            res.set('correlation_id', correlationId);
+            res.set('causation_id', id);
+
+            return res.status(201).json({
+                ok: true,
+                next_expected_stream_version: result.nextExpectedStreamVersion?.toString(),
+                last_event_global_position: result.lastEventGlobalPosition?.toString(),
+            });
+        } catch (err: any) {
+            const errorMessage = errorMapping(err?.code);
+            if (errorMessage) {
+                return res.status(409).json({error: errorMessage});
+            }
+            console.error(err);
+            return res.status(500).json({ok: false, error: 'Server error'});
+        }
+    });
+};
+
+const errorMapping = (code: string): string | null => {
+    switch (code) {
+{{#each errors}}
+        case {{codeLiteral}}: return {{messageLiteral}};
+{{/each}}
+        default: return null;
+    }
+};

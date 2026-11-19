@@ -1,0 +1,62 @@
+{
+  "kind": "state-change",
+  "verdict": "NEW",
+  "files": [
+    {
+      "path": "src/slices/Invoicing/CreateClient/CreateClient.test.ts",
+      "action": "created"
+    },
+    {
+      "path": "src/slices/Invoicing/CreateClient/CreateClientCommand.ts",
+      "action": "created"
+    },
+    {
+      "path": "src/slices/Invoicing/CreateClient/routes.ts",
+      "action": "created"
+    },
+    {
+      "path": "src/slices/Invoicing/InvoicingEvents.ts",
+      "action": "created"
+    }
+  ],
+  "injections": [
+    {
+      "target": "src/slices/Invoicing/InvoicingEvents.ts",
+      "key": "ClientCreated",
+      "action": "present"
+    },
+    {
+      "target": "src/slices/Invoicing/InvoicingEvents.ts",
+      "key": "Event<'ClientCreated'",
+      "action": "inserted"
+    }
+  ],
+  "tasks": [],
+  "markers": [
+    {
+      "path": "src/slices/Invoicing/CreateClient/CreateClient.test.ts",
+      "line": 20,
+      "text": "// BUILD: test data. The specification gives no example for contactEmail: replace the placeholders with values that fit it."
+    },
+    {
+      "path": "src/slices/Invoicing/CreateClient/CreateClient.test.ts",
+      "line": 47,
+      "text": "// BUILD: test data. Give the command values that break only \"Empty name is rejected\" (Client name is required)."
+    },
+    {
+      "path": "src/slices/Invoicing/CreateClient/CreateClient.test.ts",
+      "line": 64,
+      "text": "// BUILD: test data. Give the command values that break only \"Invalid contact email is rejected\" (Contact email must be a valid email address)."
+    },
+    {
+      "path": "src/slices/Invoicing/CreateClient/CreateClientCommand.ts",
+      "line": 33,
+      "text": "// BUILD: decide. \"Empty name is rejected\": throw {code: 'empty_name_is_rejected', message: 'Client name is required'} when the command breaks this rule."
+    },
+    {
+      "path": "src/slices/Invoicing/CreateClient/CreateClientCommand.ts",
+      "line": 34,
+      "text": "// BUILD: decide. \"Invalid contact email is rejected\": throw {code: 'invalid_contact_email_is_rejected', message: 'Contact email must be a valid email address'} when the command breaks this rule."
+    }
+  ]
+}

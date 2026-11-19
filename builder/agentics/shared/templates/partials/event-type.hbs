@@ -1,0 +1,9 @@
+{{!-- One event type of the context's events file, shared by the state-change and state-view sets. Context (EventTypeShape in view-model/common.ts): name, type (the event's type string), fields [{prop, optional, ts}], typeMarker (a BUILD: marker or null). --}}
+{{#if typeMarker}}
+// {{typeMarker}}
+{{/if}}
+export type {{name}} = Event<'{{type}}', {
+{{#each fields}}
+    {{prop}}{{#if optional}}?{{/if}}: {{ts}};
+{{/each}}
+}, CommonMeta>;

@@ -1,0 +1,8 @@
+---
+target: 'src/slices/{{@root.context}}/{{@root.eventsModule}}.ts'
+anchor: '/^export type {{@root.eventsType}}\s*=\s*$/'
+position: after
+key: '| {{name}}'
+each: events
+---
+    | {{name}}

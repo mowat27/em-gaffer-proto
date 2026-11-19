@@ -1,0 +1,82 @@
+import {Request, Response, Router} from 'express';
+import {WebApiSetup} from '@event-driven-io/emmett-expressjs';
+import {requireUser} from '../../../supabase/requireUser';
+import {getKnexInstance} from '../../../common/db';
+import {type {{readModel.type}}, readModelColumns, tableName} from './{{names.pascal}}Projection';
+
+export const api = (): WebApiSetup => (router: Router): void => {
+
+    /**
+     * @openapi
+     * {{endpoint}}:
+     *   get:
+     *     tags: [{{context}}]
+     *     summary: {{readModel.summary}}
+     *     description: {{readModel.description}}
+     *     security:
+     *       - bearerAuth: []
+{{#if key}}
+     *     parameters:
+     *       - in: query
+     *         name: _id
+     *         required: false
+     *         schema:
+     *           type: string
+     *         description: When set, returns the row with this {{key.prop}} instead of the full collection
+{{/if}}
+     *     responses:
+     *       '200':
+     *         description: The {{readModel.title}} read model
+     *         content:
+     *           application/json:
+     *             schema:
+{{#if key}}
+     *               oneOf:
+     *                 - $ref: '#/components/schemas/{{readModel.type}}'
+     *                 - type: array
+     *                   items:
+     *                     $ref: '#/components/schemas/{{readModel.type}}'
+{{else}}
+     *               type: array
+     *               items:
+     *                 $ref: '#/components/schemas/{{readModel.type}}'
+{{/if}}
+     *       '401':
+     *         description: Not authenticated
+     *       '500':
+     *         description: Server error
+     * components:
+     *   schemas:
+     *     {{readModel.type}}:
+     *       type: object
+     *       properties:
+{{#each fields}}
+     *         {{prop}}:
+{{#each openapi}}
+     *           {{this}}
+{{/each}}
+{{/each}}
+     */
+    router.get('{{endpoint}}', async (req: Request, res: Response) => {
+        try {
+            const principal = await requireUser(req, res, true);
+            if (principal.error) return;
+
+            const db = getKnexInstance();
+            const query = db(tableName).withSchema('public').select(readModelColumns(db));
+{{#if key}}
+            const id = req.query._id?.toString();
+            const data: {{readModel.type}} | {{readModel.type}}[] | null = id
+                ? ((await query.where('{{key.column}}', id).first()) ?? null)
+                : await query;
+{{else}}
+            const data: {{readModel.type}}[] = await query;
+{{/if}}
+
+            return res.status(200).json(data);
+        } catch (err) {
+            console.error(err);
+            return res.status(500).json({ok: false, error: 'Server error'});
+        }
+    });
+};

@@ -1,0 +1,71 @@
+import {postgreSQLRawSQLProjection} from '@event-driven-io/emmett-postgresql';
+import {sql, type SQL} from '@event-driven-io/dumbo';
+import knex, {type Knex} from 'knex';
+import type {{eventImport}} from '../{{eventsModule}}';
+{{#if otherReadModelsMarker}}
+
+// {{otherReadModelsMarker}}
+{{/if}}
+
+export const tableName = '{{table}}';
+
+// One row of the {{readModel.title}} read model: the slice's fields, in slice order.
+export type {{readModel.type}} = {
+{{#each fields}}
+    {{prop}}{{#if optional}}?{{/if}}: {{ts}};
+{{/each}}
+};
+
+// Reads the table as the read model: each column under its field name (DATE as text, BIGINT and NUMERIC as numbers).
+export const readModelColumns = (db: Knex) => [
+{{#each fields}}
+    {{select}},
+{{/each}}
+];
+
+const getKnexInstance = (connectionString: string): Knex =>
+    knex({client: 'pg', connection: connectionString, pool: {min: 0, max: 1}});
+
+export type {{projectionEvents}} = {{#each events}}{{name}}{{#unless @last}} | {{/unless}}{{/each}};
+
+export const {{names.pascal}}Projection = postgreSQLRawSQLProjection<{{projectionEvents}}>({
+    name: '{{names.pascal}}Projection',
+    canHandle: [{{#each events}}'{{name}}'{{#unless @last}}, {{/unless}}{{/each}}],
+    evolve: async (event, context): Promise<SQL[]> => {
+        const db = getKnexInstance(context.connection.connectionString);
+
+        try {
+            switch (event.type) {
+{{#each events}}
+                case '{{name}}':
+{{#if marker}}
+                    // {{marker}}
+{{/if}}
+{{#if upsert}}
+                    return [sql(db(tableName)
+                        .withSchema('public')
+                        .insert({
+{{#each upsert.values}}
+                            {{prop}}: {{value}},
+{{/each}}
+                        })
+                        .onConflict('{{@root.key.column}}')
+{{#if upsert.merge.length}}
+                        .merge([{{#each upsert.merge}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}])
+{{else}}
+                        .ignore()
+{{/if}}
+                        .toQuery())];
+{{else}}
+                    return [];
+{{/if}}
+
+{{/each}}
+                default:
+                    return [];
+            }
+        } finally {
+            await db.destroy();
+        }
+    },
+});

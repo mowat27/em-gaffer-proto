@@ -1,0 +1,97 @@
+{
+  "kind": "state-change",
+  "verdict": "NEW",
+  "files": [
+    {
+      "path": "src/slices/Invoicing/CreateInvoice/CreateInvoice.test.ts",
+      "action": "created"
+    },
+    {
+      "path": "src/slices/Invoicing/CreateInvoice/CreateInvoiceCommand.ts",
+      "action": "created"
+    },
+    {
+      "path": "src/slices/Invoicing/CreateInvoice/routes.ts",
+      "action": "created"
+    },
+    {
+      "path": "src/slices/Invoicing/InvoicingEvents.ts",
+      "action": "kept"
+    }
+  ],
+  "injections": [
+    {
+      "target": "src/slices/Invoicing/InvoicingEvents.ts",
+      "key": "InvoiceCreated",
+      "action": "inserted"
+    },
+    {
+      "target": "src/slices/Invoicing/InvoicingEvents.ts",
+      "key": "ClientCreated",
+      "action": "present"
+    },
+    {
+      "target": "src/slices/Invoicing/InvoicingEvents.ts",
+      "key": "Event<'InvoiceCreated'",
+      "action": "inserted"
+    },
+    {
+      "target": "src/slices/Invoicing/InvoicingEvents.ts",
+      "key": "Event<'ClientCreated'",
+      "action": "present"
+    }
+  ],
+  "tasks": [],
+  "markers": [
+    {
+      "path": "src/slices/Invoicing/CreateInvoice/CreateInvoice.test.ts",
+      "line": 21,
+      "text": "// BUILD: test data. The specification gives no example for amount and date: replace the placeholders with values that fit it."
+    },
+    {
+      "path": "src/slices/Invoicing/CreateInvoice/CreateInvoice.test.ts",
+      "line": 22,
+      "text": "// BUILD: test data. ClientCreated is defined by another slice: fill its data with the fields of its type."
+    },
+    {
+      "path": "src/slices/Invoicing/CreateInvoice/CreateInvoice.test.ts",
+      "line": 57,
+      "text": "// BUILD: test data. Give the command values that break only \"Unknown client is rejected\" (Client does not exist)."
+    },
+    {
+      "path": "src/slices/Invoicing/CreateInvoice/CreateInvoice.test.ts",
+      "line": 75,
+      "text": "// BUILD: test data. Give the command values that break only \"Zero amount is rejected\" (Amount must be greater than zero)."
+    },
+    {
+      "path": "src/slices/Invoicing/CreateInvoice/CreateInvoice.test.ts",
+      "line": 76,
+      "text": "// BUILD: test data. ClientCreated is defined by another slice: fill its data with the fields of its type."
+    },
+    {
+      "path": "src/slices/Invoicing/CreateInvoice/CreateInvoiceCommand.ts",
+      "line": 16,
+      "text": "// BUILD: state. Hold what decide needs from earlier events (ClientCreated); keep {} if it needs nothing."
+    },
+    {
+      "path": "src/slices/Invoicing/CreateInvoice/CreateInvoiceCommand.ts",
+      "line": 25,
+      "text": "// BUILD: evolve. Fold ClientCreated into the state for decide; return the state unchanged for every other event."
+    },
+    {
+      "path": "src/slices/Invoicing/CreateInvoice/CreateInvoiceCommand.ts",
+      "line": 36,
+      "text": "// BUILD: decide. \"Unknown client is rejected\": throw {code: 'unknown_client_is_rejected', message: 'Client does not exist'} when the command breaks this rule."
+    },
+    {
+      "path": "src/slices/Invoicing/CreateInvoice/CreateInvoiceCommand.ts",
+      "line": 37,
+      "text": "// BUILD: decide. \"Zero amount is rejected\": throw {code: 'zero_amount_is_rejected', message: 'Amount must be greater than zero'} when the command breaks this rule."
+    },
+    {
+      "path": "src/slices/Invoicing/CreateInvoice/CreateInvoiceCommand.ts",
+      "line": 62,
+      "text": "// BUILD: handle. ClientCreated comes from another slice. If it is on another stream than this command's, load that fact (for example from its read model with getKnexInstance() from src/common/db) and add it to the state before decide."
+    }
+  ]
+}

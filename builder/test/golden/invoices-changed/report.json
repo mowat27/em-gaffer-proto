@@ -1,0 +1,60 @@
+{
+  "kind": "state-view",
+  "verdict": "CHANGED",
+  "files": [
+    {
+      "path": "src/slices/Invoicing/Invoices/Invoices.test.ts",
+      "action": "kept"
+    },
+    {
+      "path": "src/slices/Invoicing/Invoices/InvoicesProjection.ts",
+      "action": "kept"
+    },
+    {
+      "path": "src/slices/Invoicing/Invoices/routes.ts",
+      "action": "kept"
+    },
+    {
+      "path": "src/slices/Invoicing/InvoicingEvents.ts",
+      "action": "kept"
+    },
+    {
+      "path": "supabase/migrations/V2__alter_invoices.sql",
+      "action": "created"
+    }
+  ],
+  "injections": [
+    {
+      "target": "src/common/loadPostgresEventstore.ts",
+      "key": "slices/Invoicing/Invoices/InvoicesProjection",
+      "action": "present"
+    },
+    {
+      "target": "src/common/loadPostgresEventstore.ts",
+      "key": " InvoicesProjection,",
+      "action": "present"
+    },
+    {
+      "target": "src/slices/Invoicing/InvoicingEvents.ts",
+      "key": "export type ClientCreated =",
+      "action": "present"
+    },
+    {
+      "target": "src/slices/Invoicing/InvoicingEvents.ts",
+      "key": "export type InvoiceCreated =",
+      "action": "present"
+    },
+    {
+      "target": "src/slices/Invoicing/InvoicingEvents.ts",
+      "key": "| ClientCreated",
+      "action": "present"
+    },
+    {
+      "target": "src/slices/Invoicing/InvoicingEvents.ts",
+      "key": "| InvoiceCreated",
+      "action": "present"
+    }
+  ],
+  "tasks": [],
+  "markers": []
+}

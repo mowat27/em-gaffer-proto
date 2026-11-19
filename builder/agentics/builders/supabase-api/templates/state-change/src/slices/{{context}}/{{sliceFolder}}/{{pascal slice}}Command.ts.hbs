@@ -1,0 +1,86 @@
+import type {Command} from '@event-driven-io/emmett';
+import {CommandHandler} from '@event-driven-io/emmett';
+import type { {{~eventsType~}} } from '../{{eventsModule}}';
+import {findEventstore} from '../../../common/loadPostgresEventstore';
+{{#if markers.commands}}
+
+// {{markers.commands}}
+{{/if}}
+
+export type {{commandType}} = Command<'{{command.type}}', {
+{{#each command.fields}}
+    {{prop}}{{#if optional}}?{{/if}}: {{ts}};
+{{/each}}
+}, {
+    correlation_id?: string;
+    causation_id?: string;
+}>;
+
+{{#if markers.state}}
+// {{markers.state}}
+{{/if}}
+export type {{stateType}} = {};
+
+export const {{initialState}} = (): {{stateType}} => ({});
+
+export const evolve = (
+    state: {{stateType}},
+    event: {{eventsType}},
+): {{stateType}} => {
+{{#if markers.evolve}}
+    // {{markers.evolve}}
+{{/if}}
+    switch (event.type) {
+        default:
+            return state;
+    }
+};
+
+export const decide = (
+    command: {{commandType}},
+    state: {{stateType}},
+): {{eventsType}}[] => {
+{{#each markers.decide}}
+    // {{this}}
+{{/each}}
+    return [
+{{#each emits}}
+        {
+            type: '{{type}}',
+            data: {
+{{#each data}}
+{{#if marker}}
+                // {{marker}}
+{{/if}}
+                {{prop}}: {{value}},
+{{/each}}
+            },
+            metadata: {
+                correlation_id: command.metadata?.correlation_id,
+                causation_id: command.metadata?.causation_id,
+            },
+        },
+{{/each}}
+    ];
+};
+
+const {{handlerName}} = CommandHandler<{{stateType}}, {{eventsType}}>({
+    evolve,
+    initialState: {{initialState}},
+});
+
+export const {{handleName}} = async (id: string, command: {{commandType}}) => {
+    const eventStore = await findEventstore();
+{{#if markers.handle}}
+    // {{markers.handle}}
+{{/if}}
+    const result = await {{handlerName}}(
+        eventStore,
+        id,
+        (state: {{stateType}}) => decide(command, state),
+    );
+    return {
+        nextExpectedStreamVersion: result.nextExpectedStreamVersion,
+        lastEventGlobalPosition: result.lastEventGlobalPosition,
+    };
+};

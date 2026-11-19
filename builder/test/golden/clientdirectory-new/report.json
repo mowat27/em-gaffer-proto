@@ -1,0 +1,56 @@
+{
+  "kind": "state-view",
+  "verdict": "NEW",
+  "files": [
+    {
+      "path": "src/slices/Reporting/ClientDirectory/ClientDirectory.test.ts",
+      "action": "created"
+    },
+    {
+      "path": "src/slices/Reporting/ClientDirectory/ClientDirectoryProjection.ts",
+      "action": "created"
+    },
+    {
+      "path": "src/slices/Reporting/ClientDirectory/routes.ts",
+      "action": "created"
+    },
+    {
+      "path": "src/slices/Reporting/ReportingEvents.ts",
+      "action": "created"
+    },
+    {
+      "path": "supabase/migrations/V1__client_directory.sql",
+      "action": "created"
+    }
+  ],
+  "injections": [
+    {
+      "target": "src/common/loadPostgresEventstore.ts",
+      "key": "slices/Reporting/ClientDirectory/ClientDirectoryProjection",
+      "action": "inserted"
+    },
+    {
+      "target": "src/common/loadPostgresEventstore.ts",
+      "key": " ClientDirectoryProjection,",
+      "action": "inserted"
+    },
+    {
+      "target": "src/slices/Reporting/ReportingEvents.ts",
+      "key": "export type ClientCreated =",
+      "action": "present"
+    },
+    {
+      "target": "src/slices/Reporting/ReportingEvents.ts",
+      "key": "| ClientCreated",
+      "action": "present"
+    }
+  ],
+  "tasks": [],
+  "markers": [
+    {
+      "path": "src/slices/Reporting/ClientDirectory/ClientDirectory.test.ts",
+      "line": 54,
+      "text": "// BUILD: test. The slice has no specification: give ClientCreated example data and expect the ClientDirectory rows it gives"
+    }
+  ]
+}

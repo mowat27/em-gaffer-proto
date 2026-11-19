@@ -1,0 +1,16 @@
+{{#if migration.create}}
+CREATE TABLE IF NOT EXISTS "public"."{{table}}"
+(
+{{#if keyMarker}}
+    -- {{keyMarker}}
+{{/if}}
+{{#each migration.columns}}
+    {{this}}{{#unless @last}},{{/unless}}
+{{/each}}
+);
+{{else}}
+-- {{readModel.title}} changed since its last build. New columns are nullable: rows projected before them have no value.
+{{#each migration.alters}}
+{{this}}
+{{/each}}
+{{/if}}

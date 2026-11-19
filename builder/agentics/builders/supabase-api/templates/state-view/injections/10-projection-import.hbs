@@ -1,0 +1,7 @@
+---
+target: 'src/common/loadPostgresEventstore.ts'
+anchor: '/^import .*\/db[''"];?\s*$/'
+position: after
+key: 'slices/{{context}}/{{sliceFolder}}/{{names.pascal}}Projection'
+---
+import {{projectionImport}} from "../slices/{{context}}/{{sliceFolder}}/{{names.pascal}}Projection";

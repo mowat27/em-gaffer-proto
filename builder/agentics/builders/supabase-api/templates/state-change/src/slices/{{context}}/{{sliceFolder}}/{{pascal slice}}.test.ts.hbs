@@ -1,0 +1,86 @@
+import {DeciderSpecification} from '@event-driven-io/emmett';
+import {describe, it} from 'node:test';
+{{#if foreignEvents.length}}
+import type { {{~#each foreignEvents}}{{name}}{{#unless @last}}, {{/unless}}{{/each~}} } from '../{{eventsModule}}';
+{{/if}}
+import {
+    type {{commandType}},
+    {{initialState}},
+    decide,
+    evolve,
+} from './{{pascal slice}}Command';
+{{#if errors.length}}
+
+const rejectedWith = (code: string) => (error: Error) => (error as Error & {code?: string}).code === code;
+{{/if}}
+
+describe('{{names.pascal}} Specification', () => {
+    const given = DeciderSpecification.for({
+        decide,
+        evolve,
+        initialState: {{initialState}},
+    });
+{{#each tests}}
+
+    it({{titleLiteral}}, () => {
+{{#each markers}}
+        // {{this}}
+{{/each}}
+        const command: {{@root.commandType}} = {
+            type: '{{@root.command.type}}',
+            data: {
+{{#each command}}
+                {{prop}}: {{value}},
+{{/each}}
+            },
+            metadata: {},
+        };
+
+{{#if given.length}}
+        given([
+{{#each given}}
+            {
+                type: '{{type}}',
+{{#if foreign}}
+                data: {} as {{name}}['data'],
+{{else}}
+                data: {
+{{#each data}}
+                    {{prop}}: {{value}},
+{{/each}}
+                },
+{{/if}}
+                metadata: {},
+            },
+{{/each}}
+        ])
+{{else}}
+        given([])
+{{/if}}
+            .when(command)
+{{#if errorCodeLiteral}}
+            .thenThrows(rejectedWith({{errorCodeLiteral}}));
+{{else if then.length}}
+            .then([
+{{#each then}}
+                {
+                    type: '{{type}}',
+{{#if foreign}}
+                    data: {} as {{name}}['data'],
+{{else}}
+                    data: {
+{{#each data}}
+                        {{prop}}: {{value}},
+{{/each}}
+                    },
+{{/if}}
+                    metadata: {},
+                },
+{{/each}}
+            ]);
+{{else}}
+            .thenNothingHappened();
+{{/if}}
+    });
+{{/each}}
+});

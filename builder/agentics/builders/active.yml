@@ -1,0 +1,2 @@
+# The builder the build server runs (builder_activate). The machine config's server.builder wins when the operator sets it.
+builder: supabase-api

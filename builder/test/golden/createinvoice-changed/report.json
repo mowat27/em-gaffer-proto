@@ -1,0 +1,46 @@
+{
+  "kind": "state-change",
+  "verdict": "CHANGED",
+  "files": [
+    {
+      "path": "src/slices/invoicing/CreateInvoice/CreateInvoice.test.ts",
+      "action": "kept"
+    },
+    {
+      "path": "src/slices/invoicing/CreateInvoice/CreateInvoiceCommand.ts",
+      "action": "kept"
+    },
+    {
+      "path": "src/slices/invoicing/CreateInvoice/routes.ts",
+      "action": "kept"
+    },
+    {
+      "path": "src/slices/invoicing/InvoicingEvents.ts",
+      "action": "kept"
+    }
+  ],
+  "injections": [
+    {
+      "target": "src/slices/invoicing/InvoicingEvents.ts",
+      "key": "InvoiceCreated",
+      "action": "present"
+    },
+    {
+      "target": "src/slices/invoicing/InvoicingEvents.ts",
+      "key": "ClientCreated",
+      "action": "present"
+    },
+    {
+      "target": "src/slices/invoicing/InvoicingEvents.ts",
+      "key": "Event<'InvoiceCreated'",
+      "action": "present"
+    },
+    {
+      "target": "src/slices/invoicing/InvoicingEvents.ts",
+      "key": "Event<'ClientCreated'",
+      "action": "present"
+    }
+  ],
+  "tasks": [],
+  "markers": []
+}
