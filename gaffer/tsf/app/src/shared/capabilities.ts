@@ -833,6 +833,11 @@ export const INFRA_ROUTES: readonly RouteRef[] = [
   post("/api/uploads"),
   // A screenshot PNG (ui.screenshot writes it): served only from tsf/data/screenshots, by plain file name.
   get("/api/screenshots/:file"),
+  // Gaffer > Turns: read-only views of the turn captures gaffer.ts writes under tsf/data/layers/gaffer/captures.
+  get("/api/gaffer-captures/turns"),
+  get("/api/gaffer-captures/turn"),
+  get("/api/gaffer-captures/blob"),
+  get("/api/gaffer-captures/diff"),
   // The P2-P4 reads (models, layers, tools, ceiling, runs) are owned by the P5 capabilities models.list, layers.list,
   // tools.list, ceiling.view, runs.list and runs.get.
   // GET /api/ui-config and POST /api/ui-config/update are owned by ui_config.get and layout.panes from P4.

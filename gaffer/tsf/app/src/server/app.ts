@@ -11,6 +11,7 @@ import { chatRoutes } from "./routes/chat.ts";
 import { core4Routes } from "./routes/core4.ts";
 import { cronRoutes } from "./routes/cron.ts";
 import { factoryRoutes } from "./routes/factory.ts";
+import { gafferCaptureRoutes } from "./routes/gaffer-captures.ts";
 import { jevRoutes } from "./routes/jev.ts";
 import { layerHandlerRoutes } from "./routes/layer-handlers.ts";
 import { layerRoutes } from "./routes/layers.ts";
@@ -97,6 +98,7 @@ export function createApp(deps: { service: FactoryService; hub: SseHub; log: Log
   api.route("/uploads", uploadRoutes(service));
   api.route("/layers", layerHandlerRoutes(service));
   api.route("/", factoryRoutes(service));
+  api.route("/", gafferCaptureRoutes());
   app.route("/api", api);
 
   app.all("/api/*", (c) => c.json({ error: { code: "not_found", message: `no such route: ${c.req.method} ${c.req.path}` } }, 404));

@@ -4,6 +4,7 @@ import { KeyRound, Play, RefreshCw, Square, Wrench } from "lucide-react";
 import { Alert, Badge, Button, Card, Field, Input } from "@pw/ui/react";
 import type { Json } from "../../shared/types.ts";
 import { Pre, RecentEvents, ScreenTabs, SettingsForm, StatusChip, Timeline, ago, type FactoryEvent, type ScreenTab } from "./common.tsx";
+import { TurnsView } from "./TurnsView.tsx";
 import { useLayerAction, useLayerQuery } from "./useLayer.ts";
 
 interface GafferStatus {
@@ -149,7 +150,9 @@ export function GafferView() {
         </Alert>
       )}
 
-      <ScreenTabs value={tab} onChange={setTab} />
+      <ScreenTabs value={tab} onChange={setTab} turns />
+
+      {tab === "turns" && <TurnsView />}
 
       {tab === "timeline" && (
         <Card title="Timeline" description={s?.lastEvent ? `Last event ${ago(s.lastEvent.ts)}` : "Nothing yet"} actions={<Button size="sm" variant="ghost" onClick={() => void act.run("clear_events")}>Clear</Button>}>

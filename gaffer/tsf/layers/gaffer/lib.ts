@@ -71,6 +71,8 @@ export class GafferLayer {
   readonly runLog: string;
   readonly pidFile: string;
   readonly tokenFile: string;
+  /** One folder per turn written by gaffer.ts (kit capture.ts), read by the Turns tab through /api/gaffer-captures. */
+  readonly capturesDir: string;
   private settings: GafferSettings;
   private renderTimer: NodeJS.Timeout | null = null;
   private lastSize = -1;
@@ -83,6 +85,7 @@ export class GafferLayer {
     this.runLog = join(this.dir, "run.log");
     this.pidFile = join(this.dir, "run.pid");
     this.tokenFile = join(this.dir, "board-token");
+    this.capturesDir = join(this.dir, "captures");
     this.settings = this.load();
   }
 
@@ -188,6 +191,8 @@ export class GafferLayer {
       gate: s.gate,
       turnTimeoutMinutes: s.turnTimeoutMinutes,
       eventsFile: this.eventsFile,
+      capturesDir: this.capturesDir,
+      runLog: this.runLog,
     };
     writeFileSync(join(home, "gaffer.json"), JSON.stringify(config, null, 2));
   }

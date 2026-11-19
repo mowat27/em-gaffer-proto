@@ -133,7 +133,67 @@ export function newRequestId(): string {
 /** A seed or token value as the theme routes take it: one colour, or one per mode. */
 export type ThemeValues = { readonly [name: string]: ModeValues<string> | string | number | null };
 
+/** One captured gaffer turn (kit/templates/build-kit/capture.ts `TurnSummary`). */
+export interface CapturedTurn {
+  id: string;
+  startedAt: string;
+  endedAt?: string;
+  durationMs?: number;
+  kind: "build" | "skip" | "unknown";
+  outcome?: "merged" | "failed" | "skipped";
+  reason?: string;
+  exitCode?: number;
+  jobId?: string;
+  slice?: string;
+  sliceId?: string;
+  context?: string;
+  entries: number;
+  blobs: number;
+  bytes: number;
+}
+
+export interface CapturedBlob {
+  name: string;
+  file: string;
+  bytes: number;
+  type: string;
+}
+
+/** One thing a turn received, sent or changed. */
+export interface CapturedEntry {
+  n: number;
+  ts: string;
+  kind: string;
+  title: string;
+  dir: "in" | "out" | "local";
+  ms?: number;
+  data: Record<string, unknown>;
+  blobs: CapturedBlob[];
+}
+
+const captureQs = (turn: string, file: string): string => `turn=${encodeURIComponent(turn)}&file=${encodeURIComponent(file)}`;
+
 export const api = {
+  gafferCaptures: {
+    turns(): Promise<{ root: string; turns: CapturedTurn[] }> {
+      return get("/api/gaffer-captures/turns");
+    },
+    turn(id: string): Promise<{ summary: CapturedTurn; entries: CapturedEntry[] }> {
+      return get(`/api/gaffer-captures/turn?id=${encodeURIComponent(id)}`);
+    },
+    /** The blob's text as stored (not parsed). */
+    async blob(turn: string, file: string): Promise<string> {
+      const res = await fetch(`/api/gaffer-captures/blob?${captureQs(turn, file)}`);
+      if (!res.ok) throw new ApiError(res.status, codeFor(res.status), `The blob could not be read (HTTP ${res.status}).`);
+      return res.text();
+    },
+    blobUrl(turn: string, file: string): string {
+      return `/api/gaffer-captures/blob?${captureQs(turn, file)}`;
+    },
+    diffUrl(turn: string, file: string): string {
+      return `/api/gaffer-captures/diff?${captureQs(turn, file)}`;
+    },
+  },
   uploads: {
     /** POST /api/uploads?name=: save a file in tsf/uploads; a taken name gets a number. */
     upload(file: File): Promise<UploadResult> {

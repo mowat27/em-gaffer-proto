@@ -1,0 +1,340 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "slice.schema.json",
+  "title": "Slice (STATE_CHANGE and STATE_VIEW)",
+  "description": "One slice as GET /slicedata returns it (full graph, json format) and as the runner writes it to .build-kit/.slices/<ctx>/<folder>/slice.json. Reverse engineered from the Invoice Lite board on 2026-11-16, the four examples/*-slice.json files, the CLI 2.0.57 learn-eventmodelers-api references and the upstream dilgerma/event-modeling-spec eventmodeling.schema.json, which the live API has outgrown. Covers command (STATE_CHANGE) and read model (STATE_VIEW) slices only. Closed objects: a property the API adds later fails validation until it is added here.",
+  "type": "object",
+  "properties": {
+    "id": { "type": "string", "description": "The slice's SLICE_BORDER node id." },
+    "title": { "type": "string" },
+    "status": { "$ref": "#/definitions/SliceStatus" },
+    "sliceType": { "type": "string", "enum": ["STATE_CHANGE", "STATE_VIEW"] },
+    "index": { "type": "integer" },
+    "chapter": { "type": "string", "description": "Chapter (timeline) title." },
+    "context": { "type": "string", "description": "Effective MODEL_CONTEXT name, or the timeline name when it has none." },
+    "ticketNumber": { "type": ["string", "null"] },
+    "assignee": { "type": ["string", "null"] },
+    "features": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Feature names from the SLICE_BORDER's meta.features. Omitted when there are none."
+    },
+    "commands": { "type": "array", "items": { "$ref": "#/definitions/Command" } },
+    "events": { "type": "array", "items": { "$ref": "#/definitions/Event" } },
+    "readmodels": { "type": "array", "items": { "$ref": "#/definitions/ReadModel" } },
+    "screens": { "type": "array", "items": { "$ref": "#/definitions/Screen" } },
+    "processors": { "type": "array", "maxItems": 0, "description": "Automations. Always empty in STATE_CHANGE and STATE_VIEW slices." },
+    "tables": { "type": "array", "items": { "$ref": "#/definitions/Table" } },
+    "specifications": { "type": "array", "items": { "$ref": "#/definitions/Specification" } },
+    "storylines": { "type": "array", "items": { "$ref": "#/definitions/Storyline" } },
+    "actors": { "type": "array", "items": { "$ref": "#/definitions/Actor" } },
+    "aggregates": { "type": "array", "items": { "type": "string" } },
+    "screenImages": { "type": "array", "items": { "$ref": "#/definitions/ScreenImage" } },
+    "comments": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Comment texts on the slice, oldest first: build notes such as \"[decision] ...\" and \"[limitation] ...\", and runner messages such as the auto-block notice."
+    }
+  },
+  "required": [
+    "id", "title", "status", "sliceType", "chapter", "context",
+    "commands", "events", "readmodels", "screens", "processors", "tables", "specifications",
+    "actors", "aggregates", "screenImages", "comments"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": { "properties": { "sliceType": { "const": "STATE_CHANGE" } } },
+      "then": {
+        "description": "A command slice: a screen sends a command, the command records events. Specs are given events, when one command, then events or an error.",
+        "properties": {
+          "commands": { "minItems": 1 },
+          "events": { "minItems": 1 },
+          "readmodels": { "maxItems": 0 },
+          "specifications": { "items": { "$ref": "#/definitions/StateChangeSpecification" } }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "sliceType": { "const": "STATE_VIEW" } } },
+      "then": {
+        "description": "A read model slice: events from other slices project into a read model that screens show. Its events are not part of it: they appear only as the read model's INBOUND dependencies. Specs are given events, no command, then the read model.",
+        "properties": {
+          "commands": { "maxItems": 0 },
+          "events": { "maxItems": 0 },
+          "readmodels": { "minItems": 1 },
+          "specifications": { "items": { "$ref": "#/definitions/StateViewSpecification" } }
+        }
+      }
+    }
+  ],
+
+  "definitions": {
+    "SliceStatus": {
+      "type": "string",
+      "enum": ["Created", "Ready", "Planned", "Assigned", "InProgress", "Waiting", "Review", "Done", "Blocked", "Informational"],
+      "description": "Progress order: Created, Ready, Planned, Assigned, InProgress, Waiting, Review, Done. Blocked is set by the runner after 5 failed attempts. Informational slices are never built."
+    },
+
+    "FieldType": {
+      "type": "string",
+      "enum": ["String", "Boolean", "Int", "Long", "Double", "Decimal", "Date", "DateTime", "UUID", "Custom"],
+      "description": "Date has no time part. Decimal is for money. Custom is a nested value described by subfields or schema."
+    },
+
+    "Field": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "$ref": "#/definitions/FieldType" },
+        "cardinality": { "type": "string", "enum": ["Single", "List"] },
+        "optional": { "type": "boolean" },
+        "idAttribute": { "type": "boolean", "description": "The field identifies the entity (the aggregate or read model row key)." },
+        "generated": { "type": "boolean", "description": "The system creates the value (for example a new id), so the caller does not supply it." },
+        "technicalAttribute": { "type": "boolean" },
+        "tag": { "type": "boolean", "description": "The value tags the event for Dynamic Consistency Boundaries." },
+        "pii": { "type": "boolean" },
+        "query": { "type": "boolean" },
+        "showAttributes": { "type": "boolean", "description": "Board display flag." },
+        "edited": { "type": "boolean", "description": "Board editing flag." },
+        "example": { "oneOf": [{ "type": "string" }, { "type": "object" }] },
+        "schema": { "type": "string" },
+        "subfields": { "type": "array", "items": { "$ref": "#/definitions/Field" } },
+        "mapping": { "type": "string", "description": "Screens only: the name of the field on the connected command or read model that this screen field maps to." }
+      },
+      "required": ["name", "type", "cardinality", "optional", "idAttribute", "generated", "technicalAttribute", "tag", "subfields"],
+      "additionalProperties": false
+    },
+
+    "Dependency": {
+      "type": "object",
+      "description": "An edge to another element, possibly in another slice. INBOUND: the other element points at this one. OUTBOUND: this one points at it.",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["INBOUND", "OUTBOUND"] },
+        "title": { "type": "string" },
+        "elementType": { "type": "string", "enum": ["COMMAND", "EVENT", "READMODEL", "SCREEN", "HTML_SCREEN", "AUTOMATION"] }
+      },
+      "required": ["id", "type", "title", "elementType"],
+      "additionalProperties": false
+    },
+
+    "ElementBase": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "type": "string" },
+        "fields": { "type": "array", "items": { "$ref": "#/definitions/Field" } },
+        "dependencies": { "type": "array", "items": { "$ref": "#/definitions/Dependency" } },
+        "description": { "type": "string" },
+        "slice": { "type": "string", "description": "Owning slice title." },
+        "modelContext": { "type": "string" },
+        "lane": { "type": "string", "description": "Board row label: Actor (screens), Interaction (commands, read models), Swimlane (events)." },
+        "context": { "type": "string", "enum": ["INTERNAL", "EXTERNAL"] },
+        "elementContext": { "type": "string", "enum": ["INTERNAL", "EXTERNAL"] },
+        "aggregate": { "type": "string", "description": "\"default\" when none is named." },
+        "aggregateDependencies": { "type": "array", "items": { "type": "string" } },
+        "createsAggregate": { "type": "boolean" },
+        "triggers": { "type": "array", "items": { "type": "string" } },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "listElement": { "type": "boolean" },
+        "todoList": { "type": "boolean" },
+        "sketched": { "type": "boolean" },
+        "elementCopy": { "type": "boolean", "description": "This node is a copy of an element defined elsewhere." },
+        "linkedId": { "type": "string", "description": "The original element's id. Equals id unless elementCopy is true." },
+        "apiEndpoint": { "type": "string" },
+        "service": { "type": ["string", "null"] },
+        "groupId": { "type": "string" },
+        "domain": { "type": "string" },
+        "prototype": { "type": "object" },
+        "comments": { "type": "array", "description": "Comments on this element. Item shape not yet observed." }
+      },
+      "required": [
+        "id", "title", "type", "fields", "dependencies", "description", "slice", "modelContext", "lane",
+        "context", "elementContext", "aggregate", "aggregateDependencies", "createsAggregate", "triggers", "tags",
+        "listElement", "todoList", "sketched", "elementCopy", "linkedId", "comments"
+      ]
+    },
+
+    "Command": {
+      "allOf": [{ "$ref": "#/definitions/ElementBase" }],
+      "properties": {
+        "type": { "const": "COMMAND" },
+        "id": {}, "title": {}, "fields": {}, "dependencies": {}, "description": {}, "slice": {}, "modelContext": {}, "lane": {},
+        "context": {}, "elementContext": {}, "aggregate": {}, "aggregateDependencies": {}, "createsAggregate": {}, "triggers": {},
+        "tags": {}, "listElement": {}, "todoList": {}, "sketched": {}, "elementCopy": {}, "linkedId": {}, "apiEndpoint": {},
+        "service": {}, "groupId": {}, "domain": {}, "prototype": {}, "comments": {}
+      },
+      "additionalProperties": false
+    },
+
+    "Event": {
+      "allOf": [{ "$ref": "#/definitions/ElementBase" }],
+      "properties": {
+        "type": { "const": "EVENT" },
+        "id": {}, "title": {}, "fields": {}, "dependencies": {}, "description": {}, "slice": {}, "modelContext": {}, "lane": {},
+        "context": {}, "elementContext": {}, "aggregate": {}, "aggregateDependencies": {}, "createsAggregate": {}, "triggers": {},
+        "tags": {}, "listElement": {}, "todoList": {}, "sketched": {}, "elementCopy": {}, "linkedId": {}, "apiEndpoint": {},
+        "service": {}, "groupId": {}, "domain": {}, "prototype": {}, "comments": {}
+      },
+      "additionalProperties": false
+    },
+
+    "ReadModel": {
+      "allOf": [{ "$ref": "#/definitions/ElementBase" }],
+      "properties": {
+        "type": { "const": "READMODEL" },
+        "id": {}, "title": {}, "fields": {}, "dependencies": {}, "description": {}, "slice": {}, "modelContext": {}, "lane": {},
+        "context": {}, "elementContext": {}, "aggregate": {}, "aggregateDependencies": {}, "createsAggregate": {}, "triggers": {},
+        "tags": {}, "listElement": {}, "todoList": {}, "sketched": {}, "elementCopy": {}, "linkedId": {}, "apiEndpoint": {},
+        "service": {}, "groupId": {}, "domain": {}, "prototype": {}, "comments": {}
+      },
+      "additionalProperties": false
+    },
+
+    "Screen": {
+      "allOf": [{ "$ref": "#/definitions/ElementBase" }],
+      "properties": {
+        "type": { "enum": ["HTML_SCREEN", "SCREEN"] },
+        "id": {}, "title": {}, "fields": {}, "dependencies": {}, "description": {}, "slice": {}, "modelContext": {}, "lane": {},
+        "context": {}, "elementContext": {}, "aggregate": {}, "aggregateDependencies": {}, "createsAggregate": {}, "triggers": {},
+        "tags": {}, "listElement": {}, "todoList": {}, "sketched": {}, "elementCopy": {}, "linkedId": {}, "apiEndpoint": {},
+        "service": {}, "groupId": {}, "domain": {}, "prototype": {}, "comments": {}
+      },
+      "additionalProperties": false
+    },
+
+    "Table": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "fields": { "type": "array", "items": { "$ref": "#/definitions/Field" } }
+      },
+      "required": ["id", "title", "fields"],
+      "additionalProperties": false
+    },
+
+    "StepField": {
+      "type": "object",
+      "description": "A field reference inside a spec step. Usually only the name, with an example value when the spec sets one.",
+      "properties": {
+        "name": { "type": "string" },
+        "example": { "oneOf": [{ "type": "string" }, { "type": "object" }] },
+        "type": { "$ref": "#/definitions/FieldType" }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    },
+
+    "ElementStep": {
+      "type": "object",
+      "description": "A given, when or then step that points at a model element by id.",
+      "properties": {
+        "id": { "type": "string", "description": "The element's id: an event, command or read model in the slice or one it depends on." },
+        "title": { "type": "string" },
+        "type": { "type": "string", "enum": ["EVENT", "COMMAND", "READMODEL"] },
+        "index": { "type": "integer" },
+        "specRow": { "type": "integer" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "fields": { "type": "array", "items": { "$ref": "#/definitions/StepField" } },
+        "linkedId": { "type": "string" },
+        "examples": { "type": "array", "items": { "type": "object" } },
+        "expectEmptyList": { "type": "boolean", "description": "On a READMODEL then step: the read model is expected to be empty." }
+      },
+      "required": ["id", "title", "type", "index", "specRow", "tags", "fields"],
+      "additionalProperties": false
+    },
+
+    "ErrorStep": {
+      "type": "object",
+      "description": "A then step stating that the command is rejected.",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "const": "SPEC_ERROR" },
+        "description": { "type": "string", "description": "The rejection message." },
+        "fields": { "type": "array", "items": { "$ref": "#/definitions/StepField" } }
+      },
+      "required": ["id", "title", "type", "fields"],
+      "additionalProperties": false
+    },
+
+    "Specification": {
+      "type": "object",
+      "description": "A given / when / then scenario.",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "chapter": { "type": "string" },
+        "sliceName": { "type": "string" },
+        "vertical": { "type": "boolean" },
+        "expectEmptyList": { "type": "boolean" },
+        "examples": {
+          "type": "array",
+          "items": { "type": "object" },
+          "description": "Example rows, one object per row keyed by field name. In a STATE_VIEW spec they are the expected read model rows, and the given events carry no field values of their own."
+        },
+        "contextNote": { "type": "string", "description": "Free text that explains the scenario's data." },
+        "given": { "type": "array", "items": { "$ref": "#/definitions/ElementStep" } },
+        "when": { "type": "array", "items": { "$ref": "#/definitions/ElementStep" } },
+        "then": { "type": "array", "items": { "oneOf": [{ "$ref": "#/definitions/ElementStep" }, { "$ref": "#/definitions/ErrorStep" }] } },
+        "comments": { "type": "array" },
+        "linkedId": { "type": "string" }
+      },
+      "required": ["id", "title", "chapter", "sliceName", "vertical", "expectEmptyList", "examples", "given", "when", "then"],
+      "additionalProperties": false
+    },
+
+    "StateChangeSpecification": {
+      "properties": {
+        "given": { "items": { "properties": { "type": { "const": "EVENT" } } } },
+        "when": { "minItems": 1, "maxItems": 1, "items": { "properties": { "type": { "const": "COMMAND" } } } },
+        "then": { "minItems": 1, "items": { "properties": { "type": { "enum": ["EVENT", "SPEC_ERROR"] } } } }
+      }
+    },
+
+    "StateViewSpecification": {
+      "properties": {
+        "given": { "items": { "properties": { "type": { "const": "EVENT" } } } },
+        "when": { "maxItems": 0 },
+        "then": { "minItems": 1, "maxItems": 1, "items": { "properties": { "type": { "const": "READMODEL" } } } }
+      }
+    },
+
+    "Storyline": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "elements": { "type": "array" }
+      },
+      "required": ["id", "title", "elements"],
+      "additionalProperties": false
+    },
+
+    "Actor": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "authRequired": { "type": "boolean" },
+        "rolesRequired": { "type": "array", "items": { "type": "string" } },
+        "tags": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["name", "authRequired"],
+      "additionalProperties": false
+    },
+
+    "ScreenImage": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "url": { "type": "string" }
+      },
+      "required": ["id", "title"],
+      "additionalProperties": false
+    }
+  }
+}

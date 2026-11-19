@@ -1,0 +1,215 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "dispatch.schema.json",
+  "title": "Dispatch (POST /slices)",
+  "description": "The body the gaffer POSTs to the builder's /slices: one slice per job. Written from docs/contract.md and the request gaffer/kit/templates/build-kit/gaffer.ts builds. The slice and its source event elements are defined in slice.schema.json. Closed objects: a property added to the contract fails validation until it is added here.",
+  "type": "object",
+  "properties": {
+    "requires": {
+      "type": "array",
+      "description": "Capabilities the builder must have, as <kind>:<value>. repo:<host>/<owner>/<repo> is always present and includes being able to fetch repo.base.",
+      "items": { "type": "string", "pattern": "^[a-z]+:.+$" },
+      "contains": { "type": "string", "pattern": "^repo:.+$" },
+      "uniqueItems": true
+    },
+    "repo": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "minLength": 1, "description": "The target repository's git URL." },
+        "base": { "$ref": "#/definitions/CommitSha", "description": "The commit the builder must build on." }
+      },
+      "required": ["url", "base"],
+      "additionalProperties": false
+    },
+    "task": {
+      "type": "object",
+      "properties": {
+        "sliceId": { "type": "string", "minLength": 1 },
+        "title": { "type": "string" },
+        "context": { "type": "string" },
+        "handover": { "type": "boolean", "description": "The runner's Handover line. On means the gaffer records Waiting instead of Done." },
+        "attempt": { "type": "integer", "minimum": 1 }
+      },
+      "required": ["sliceId", "title", "context", "handover", "attempt"],
+      "additionalProperties": false
+    },
+    "slice": { "$ref": "slice.schema.json", "description": "The full slice from the board, verbatim." },
+    "sourceEvents": {
+      "type": "array",
+      "description": "STATE_VIEW slices only: one entry per event the slice's read models project (INBOUND EVENT dependencies). Empty when they project none.",
+      "items": { "$ref": "#/definitions/SourceEvent" }
+    },
+    "changes": { "$ref": "#/definitions/Changes" },
+    "callback": {
+      "type": "string",
+      "pattern": "^https?://[^/]+/jobs/[^/]+$",
+      "description": "Where the builder POSTs the result. The last path segment is the jobId, new for every attempt."
+    }
+  },
+  "required": ["requires", "repo", "task", "slice", "changes", "callback"],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": { "properties": { "slice": { "properties": { "sliceType": { "const": "STATE_VIEW" } } } } },
+      "then": { "required": ["sourceEvents"] },
+      "else": { "not": { "required": ["sourceEvents"] } }
+    }
+  ],
+
+  "definitions": {
+    "CommitSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+
+    "SourceEvent": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "type": "object",
+          "description": "The slice that owns the event, in any chapter or context on the board, and its status at dispatch time.",
+          "properties": {
+            "sliceId": { "type": "string" },
+            "title": { "type": "string" },
+            "status": { "$ref": "slice.schema.json#/definitions/SliceStatus" },
+            "sliceType": { "type": "string" },
+            "chapterId": { "type": "string" }
+          },
+          "required": ["sliceId", "title", "status", "sliceType", "chapterId"],
+          "additionalProperties": false
+        },
+        "event": { "$ref": "slice.schema.json#/definitions/Event", "description": "The event element verbatim from the owner's events[]." }
+      },
+      "required": ["owner", "event"],
+      "additionalProperties": false
+    },
+
+    "Changes": {
+      "type": "object",
+      "description": "What changed in the slice since it was last built on the branch repo.base is on, from the baseline .gaffer/slices/<sliceId>.json at repo.base. An unchanged slice is never dispatched.",
+      "properties": {
+        "verdict": { "type": "string", "enum": ["NEW", "CHANGED"], "description": "NEW: no baseline, build the whole slice. CHANGED: rework only what is listed." },
+        "since": {
+          "description": "The commit that recorded the baseline, and when. Null for NEW.",
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "properties": {
+                "commit": { "$ref": "#/definitions/CommitSha" },
+                "recordedAt": { "type": "string", "format": "date-time" }
+              },
+              "required": ["commit", "recordedAt"],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "slice": {
+          "type": "object",
+          "properties": {
+            "changed": { "type": "array", "items": { "type": "string" }, "description": "The slice's own fields that changed (title, actors, aggregates, ...)." }
+          },
+          "required": ["changed"],
+          "additionalProperties": false
+        },
+        "elements": {
+          "type": "object",
+          "description": "Elements of the slice: any list of objects with an id (commands, events, readmodels, screens, specifications, tables, ...).",
+          "properties": {
+            "changed": { "type": "array", "items": { "$ref": "#/definitions/ElementWithBefore" } },
+            "added": { "type": "array", "items": { "$ref": "#/definitions/ElementRef" } },
+            "removed": { "type": "array", "items": { "$ref": "#/definitions/ElementWithBefore" } }
+          },
+          "required": ["changed", "added", "removed"],
+          "additionalProperties": false
+        },
+        "sourceEvents": {
+          "type": "object",
+          "properties": {
+            "changed": { "type": "array", "items": { "$ref": "#/definitions/SourceEventWithBefore" } },
+            "added": { "type": "array", "items": { "$ref": "#/definitions/SourceEventRef" } },
+            "removed": { "type": "array", "items": { "$ref": "#/definitions/SourceEventWithBefore" } }
+          },
+          "required": ["changed", "added", "removed"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["verdict", "since", "slice", "elements", "sourceEvents"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "verdict": { "const": "NEW" } } },
+          "then": {
+            "description": "No baseline: nothing to list.",
+            "properties": {
+              "since": { "type": "null" },
+              "slice": { "properties": { "changed": { "maxItems": 0 } } },
+              "elements": { "properties": { "changed": { "maxItems": 0 }, "added": { "maxItems": 0 }, "removed": { "maxItems": 0 } } },
+              "sourceEvents": { "properties": { "changed": { "maxItems": 0 }, "added": { "maxItems": 0 }, "removed": { "maxItems": 0 } } }
+            }
+          },
+          "else": {
+            "description": "CHANGED: a baseline exists and at least one list is non-empty.",
+            "properties": { "since": { "type": "object" } },
+            "anyOf": [
+              { "properties": { "slice": { "properties": { "changed": { "minItems": 1 } } } } },
+              { "properties": { "elements": { "properties": { "changed": { "minItems": 1 } } } } },
+              { "properties": { "elements": { "properties": { "added": { "minItems": 1 } } } } },
+              { "properties": { "elements": { "properties": { "removed": { "minItems": 1 } } } } },
+              { "properties": { "sourceEvents": { "properties": { "changed": { "minItems": 1 } } } } },
+              { "properties": { "sourceEvents": { "properties": { "added": { "minItems": 1 } } } } },
+              { "properties": { "sourceEvents": { "properties": { "removed": { "minItems": 1 } } } } }
+            ]
+          }
+        }
+      ]
+    },
+
+    "ElementRef": {
+      "type": "object",
+      "description": "An added element. Its definition is in slice.",
+      "properties": {
+        "kind": { "type": "string", "description": "The slice key that holds the element (commands, events, readmodels, screens, specifications, ...)." },
+        "id": { "type": "string" },
+        "title": { "type": "string" }
+      },
+      "required": ["kind", "id", "title"],
+      "additionalProperties": false
+    },
+
+    "ElementWithBefore": {
+      "type": "object",
+      "description": "A changed or removed element. A changed element's current definition is in slice.",
+      "properties": {
+        "kind": { "type": "string" },
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "before": { "type": "object", "description": "The element as last built, verbatim from the baseline." }
+      },
+      "required": ["kind", "id", "title", "before"],
+      "additionalProperties": false
+    },
+
+    "SourceEventRef": {
+      "type": "object",
+      "description": "An added source event. Its definition is in sourceEvents.",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "owner": { "type": "string", "description": "Title of the slice that owns the event." }
+      },
+      "required": ["id", "title", "owner"],
+      "additionalProperties": false
+    },
+
+    "SourceEventWithBefore": {
+      "type": "object",
+      "description": "A changed or removed source event. A changed event's current definition is in sourceEvents.",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "owner": { "type": "string" },
+        "before": { "$ref": "slice.schema.json#/definitions/Event", "description": "The event as last built, verbatim from the baseline." }
+      },
+      "required": ["id", "title", "owner", "before"],
+      "additionalProperties": false
+    }
+  }
+}

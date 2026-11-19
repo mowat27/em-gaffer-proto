@@ -1032,3 +1032,118 @@
 .tsf-ss-bar[aria-pressed="true"] .tsf-ss-bar-fill { background: var(--pw-brand); }
 .tsf-ss-bar:focus-visible { outline: 2px solid var(--pw-focus); outline-offset: 2px; }
 .tsf-ss-bar-label { position: absolute; top: calc(100% + .2rem); font-size: .65rem; line-height: 1; color: var(--pw-text-muted); white-space: nowrap; }
+
+/* --- Gaffer > Turns: one captured turn as a list of entries ------------------------------------------------------- */
+
+.tsf-tv-turns {
+  max-height: 20rem;
+  overflow: auto;
+}
+
+.tsf-tv-turn {
+  cursor: pointer;
+}
+
+.tsf-tv-turn:hover td {
+  background: color-mix(in srgb, var(--pw-brand) 6%, transparent);
+}
+
+.tsf-tv-turn[aria-selected="true"] td {
+  background: color-mix(in srgb, var(--pw-brand) 14%, transparent);
+}
+
+.tsf-tv-turn:focus-visible {
+  outline: 2px solid var(--pw-focus);
+  outline-offset: -2px;
+}
+
+.tsf-tv-check {
+  display: flex;
+  align-items: center;
+  gap: var(--pw-sp-2);
+  margin-bottom: var(--pw-sp-2);
+  color: var(--pw-text-3);
+  font-size: var(--pw-fs-xs);
+}
+
+.tsf-tv-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pw-sp-2);
+}
+
+.tsf-tv-key {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pw-sp-1);
+  min-height: var(--pw-ctl-h-sm, 1.75rem);
+  padding: 0 var(--pw-sp-3);
+  border: 1px solid var(--pw-border);
+  border-radius: var(--pw-r-sm);
+  color: var(--pw-text);
+  font-size: var(--pw-fs-xs);
+  text-decoration: none;
+}
+
+.tsf-tv-key:hover {
+  background: color-mix(in srgb, var(--pw-brand) 10%, transparent);
+}
+
+.tsf-tv-blobs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-sp-1);
+}
+
+.tsf-tv-blob-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pw-sp-3);
+  font-size: var(--pw-fs-xs);
+}
+
+.tsf-tv-blob-head a {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.tsf-tv-pre {
+  max-height: 32rem;
+  white-space: pre;
+  word-break: normal;
+}
+
+.tsf-ss-entry[data-kind="board"],
+.tsf-ss-entry[data-kind="board.download"],
+.tsf-ss-chip[data-kind="board"],
+.tsf-ss-chip[data-kind="board.download"] {
+  --ss: var(--pw-info, var(--pw-brand-text));
+}
+
+.tsf-ss-entry[data-kind="dispatch"],
+.tsf-ss-entry[data-kind="callback"],
+.tsf-ss-chip[data-kind="dispatch"],
+.tsf-ss-chip[data-kind="callback"] {
+  --ss: var(--pw-accent, var(--pw-brand-text));
+}
+
+.tsf-ss-entry[data-kind="applied"],
+.tsf-ss-entry[data-kind="slice.full"],
+.tsf-ss-chip[data-kind="applied"],
+.tsf-ss-chip[data-kind="slice.full"] {
+  --ss: var(--pw-success);
+}
+
+.tsf-ss-entry[data-kind="prompt"],
+.tsf-ss-entry[data-kind="task"],
+.tsf-ss-chip[data-kind="prompt"],
+.tsf-ss-chip[data-kind="task"] {
+  --ss: var(--pw-warning);
+}
+
+.tsf-ss-entry[data-failed="true"],
+.tsf-ss-chip[data-kind="error"] {
+  --ss: var(--pw-error);
+}

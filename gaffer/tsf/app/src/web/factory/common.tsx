@@ -280,13 +280,14 @@ export function RecentEvents({ events, n = 5, onMore, showSource = false }: { ev
   );
 }
 
-export type ScreenTab = "dashboard" | "timeline" | "logs" | "sessions";
+export type ScreenTab = "dashboard" | "timeline" | "logs" | "sessions" | "turns";
 
 /** The tab strip at the top of a factory screen. */
-export function ScreenTabs({ value, onChange, logs = true, sessions = false }: { value: ScreenTab; onChange: (t: ScreenTab) => void; logs?: boolean; sessions?: boolean }) {
+export function ScreenTabs({ value, onChange, logs = true, sessions = false, turns = false }: { value: ScreenTab; onChange: (t: ScreenTab) => void; logs?: boolean; sessions?: boolean; turns?: boolean }) {
   const items = [
     { id: "dashboard", label: "Dashboard" },
     { id: "timeline", label: "Timeline" },
+    ...(turns ? [{ id: "turns", label: "Turns" }] : []),
     ...(logs ? [{ id: "logs", label: "Logs" }] : []),
     ...(sessions ? [{ id: "sessions", label: "Sessions" }] : []),
   ];
