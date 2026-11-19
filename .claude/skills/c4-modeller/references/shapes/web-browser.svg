@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Web browser container (SPA)">
+<title>Web browser container (SPA)</title>
+<style>
+.c4-person{fill:var(--c4-person-fill,#08427b);stroke:var(--c4-person-stroke,#073b6f)}
+.c4-system{fill:var(--c4-system-fill,#1168bd);stroke:var(--c4-system-stroke,#0b4884)}
+.c4-container{fill:var(--c4-container-fill,#438dd5);stroke:var(--c4-container-stroke,#3c7fc0)}
+.c4-component{fill:var(--c4-component-fill,#85bbf0);stroke:var(--c4-component-stroke,#78a8d8)}
+.c4-external{fill:var(--c4-external-fill,#999999);stroke:var(--c4-external-stroke,#8a8a8a)}
+.c4-node{fill:var(--c4-node-fill,#ffffff);stroke:var(--c4-node-stroke,#888888)}
+.c4-infra{fill:var(--c4-infra-fill,#ffffff);stroke:var(--c4-infra-stroke,#444444)}
+.c4-boundary{fill:none;stroke:var(--c4-boundary-stroke,#444444);stroke-dasharray:8 6}
+.c4-detail{fill:none;stroke:var(--c4-detail-stroke,rgba(255,255,255,.75))}
+.c4-line{fill:none;stroke:var(--c4-line,#707070)}
+.c4-line-async{fill:none;stroke:var(--c4-line,#707070);stroke-dasharray:6 4}
+.c4-arrow{fill:var(--c4-line,#707070)}
+text{font-family:var(--c4-font,Arial,Helvetica,sans-serif);text-anchor:middle}
+.c4-name{font-size:15px;font-weight:700;fill:var(--c4-text-light,#ffffff)}
+.c4-meta{font-size:11px;fill:var(--c4-text-light,#ffffff)}
+.c4-desc{font-size:12px;fill:var(--c4-text-light,#ffffff)}
+.c4-dark .c4-name,.c4-dark .c4-meta,.c4-dark .c4-desc{fill:var(--c4-text-dark,#000000)}
+.c4-label{font-size:12px;fill:var(--c4-line-text,#707070)}
+.c4-label-strong{font-size:13px;font-weight:700;fill:var(--c4-line-text,#444444);text-anchor:start}
+.c4-label-start{font-size:11px;fill:var(--c4-line-text,#707070);text-anchor:start}
+</style>
+<rect class="c4-container" x="2" y="2" width="236" height="166" rx="8" stroke-width="2"/><line class="c4-detail" x1="2" y1="30" x2="238" y2="30" stroke-width="2"/><circle class="c4-detail" cx="18" cy="16" r="5" stroke-width="2"/><circle class="c4-detail" cx="34" cy="16" r="5" stroke-width="2"/><rect class="c4-detail" x="50" y="9" width="176" height="14" rx="7" stroke-width="2"/><g><text class="c4-name" x="120" y="70">Name</text><text class="c4-meta" x="120" y="88">[Container: React]</text><text class="c4-desc" x="120" y="112">Short description of</text><text class="c4-desc" x="120" y="128">its key responsibility.</text></g>
+</svg>

@@ -1,0 +1,42 @@
+{
+  "port": 47145,
+  "chat": {
+    "provider": "openrouter",
+    "models": {
+      "openrouter": "anthropic/claude-sonnet-5.5",
+      "fireworks": "accounts/fireworks/models/kimi-k3",
+      "anthropic": "claude-sonnet-5-5"
+    }
+  },
+  "claude": {
+    "model": "opus",
+    "effort": "high",
+    "permissionMode": "acceptEdits",
+    "allowedTools": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Write",
+      "Edit",
+      "Agent",
+      "Skill",
+      "Bash(bash:*)",
+      "Bash(sh:*)",
+      "Bash(docker:*)",
+      "Bash(structurizr:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(git:*)",
+      "Bash(mkdir:*)",
+      "Bash(node:*)",
+      "Bash(npx:*)"
+    ],
+    "args": []
+  }
+}

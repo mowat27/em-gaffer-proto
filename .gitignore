@@ -1,4 +1,8 @@
+tmp/
 builder/jobs/
 builder/pi-agent/sessions/
 
 .eventmodelers/
+c4-studio/.env
+c4-studio/models/.jobs/
+c4-studio/models/*/branches/*/.job.lock

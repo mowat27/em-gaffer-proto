@@ -18,3 +18,6 @@ pi *ARGS:
 # Check built slices on invoice-lite's origin/test/run-1 with the verify-slice skill: verify-slice [options] <slice.json>...
 verify-slice *ARGS:
     av node .claude/skills/verify-slice/verify-slice.ts --repo ../invoice-lite --ref origin/test/run-1 "$@"
+
+# C4 Studio: C4 models as Structurizr DSL (serve, create, reverse, update, ask, delete, branch, versions)
+mod c4-studio

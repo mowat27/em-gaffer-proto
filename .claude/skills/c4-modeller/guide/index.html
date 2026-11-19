@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<title>C4 Modeller guide</title>
+<script>(function(){try{var t=localStorage.getItem('pw-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})()</script>
+<link rel="stylesheet" href="pw-ui.css">
+<style>
+/* Guide layer: only what @pw/ui has no class for. Tokens only. */
+.guide-sidenav { max-height: calc(100vh - var(--pw-topbar-h) - var(--pw-sp-12)); overflow-y: auto; }
+@media (max-width: 1023px) { .guide-sidenav { max-height: none; } }
+.pw-main { max-width: 1040px; /* pw-allow: reading column wide enough for the gallery */ }
+.guide-section { margin-bottom: var(--pw-sp-6); padding: var(--pw-sp-6) var(--pw-sp-8); scroll-margin-top: calc(var(--pw-topbar-h) + var(--pw-sp-6)); display: grid; gap: var(--pw-sp-4); align-content: start; }
+.guide-section > * { min-width: 0; }
+.guide-kicker { font-size: var(--pw-fs-xs); font-weight: var(--pw-fw-semibold); text-transform: uppercase; letter-spacing: 0.08em; color: var(--pw-brand-text); }
+.guide-list { margin: 0; padding-left: var(--pw-sp-5); display: grid; gap: var(--pw-sp-2); list-style: disc; }
+ol.guide-list { list-style: decimal; }
+.guide-table td { white-space: normal; height: auto; padding-top: var(--pw-sp-3); padding-bottom: var(--pw-sp-3); vertical-align: top; }
+.guide-table td:first-child { font-weight: var(--pw-fw-semibold); }
+.guide-snippet { border: 1px solid var(--pw-border-subtle); border-radius: var(--pw-r-md); overflow: hidden; background: var(--pw-surface-sunken); }
+.guide-snippet-label { padding: var(--pw-sp-2) var(--pw-sp-4); font-size: var(--pw-fs-xs); font-weight: var(--pw-fw-medium); text-transform: uppercase; letter-spacing: 0.04em; color: var(--pw-text-2); border-bottom: 1px solid var(--pw-border-subtle); }
+.guide-snippet pre { margin: 0; padding: var(--pw-sp-4); font-family: var(--pw-font-mono); font-size: var(--pw-fs-sm); line-height: var(--pw-lh-relaxed); color: var(--pw-text); overflow-x: auto; }
+.guide-snippet pre code { padding: 0; background: none; border-radius: 0; }
+.guide-shape { margin: 0; display: grid; gap: var(--pw-sp-3); align-content: start; }
+.guide-shape figcaption code { white-space: nowrap; }
+.guide-shape-art { display: grid; place-items: center; min-height: 200px; padding: var(--pw-sp-4); border-radius: var(--pw-r-md); background: var(--pw-surface-sunken); }
+.guide-shape-art img { display: block; max-width: 100%; max-height: 180px; height: auto; }
+.guide-shape-name { font-weight: var(--pw-fw-semibold); }
+.guide-wrap { flex-wrap: wrap; }
+.guide-theme .pw-btn { gap: var(--pw-sp-1); }
+@media (max-width: 639px) { .guide-theme-label { display: none; } .guide-section { padding: var(--pw-sp-5); } }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+    <symbol id="i-warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 10 5-10 5L2 7l10-5Z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></symbol>
+  </defs>
+</svg>
+
+<a class="pw-skip-link" href="#overview">Skip to content</a>
+
+<header class="pw-topbar">
+  <div class="pw-topbar-inner">
+    <a class="pw-brand" href="#overview"><span class="pw-avatar pw-avatar-square pw-avatar-sm" aria-hidden="true">C4</span><span class="pw-brand-name">C4 Modeller</span><span class="pw-brand-sep" aria-hidden="true"></span><span class="pw-brand-sub">User guide</span></a>
+    <nav class="pw-topbar-nav" aria-label="Main"><a href="#modes">Using the skill</a><a href="#abstractions">C4 basics</a><a href="#gallery">Shapes</a></nav>
+    <div class="pw-topbar-actions">
+      <div class="pw-btn-group guide-theme" role="group" aria-label="Colour mode">
+        <button class="pw-btn pw-btn-secondary pw-btn-sm" type="button" data-theme-choice="light" aria-pressed="false" title="Light mode"><svg class="pw-icon" aria-hidden="true"><use href="#i-sun"/></svg><span class="guide-theme-label">Light</span></button>
+        <button class="pw-btn pw-btn-secondary pw-btn-sm" type="button" data-theme-choice="dark" aria-pressed="false" title="Dark mode"><svg class="pw-icon" aria-hidden="true"><use href="#i-moon"/></svg><span class="guide-theme-label">Dark</span></button>
+        <button class="pw-btn pw-btn-secondary pw-btn-sm" type="button" data-theme-choice="system" aria-pressed="true" title="Follow the system setting"><svg class="pw-icon" aria-hidden="true"><use href="#i-monitor"/></svg><span class="guide-theme-label">System</span></button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="pw-shell">
+
+  <nav class="pw-sidenav guide-sidenav" aria-label="Contents">
+    <div class="pw-sidenav-group"><div class="pw-sidenav-label">Using the skill</div><ul>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#quick-start">Quick start</a></li>
+      <li><a href="#modes">Modes</a></li>
+      <li><a href="#composition">Composing with other skills</a></li>
+      <li><a href="#outputs">Outputs and validation</a></li>
+    </ul></div>
+    <div class="pw-sidenav-group"><div class="pw-sidenav-label">C4 basics</div><ul>
+      <li><a href="#abstractions">Abstractions</a></li>
+      <li><a href="#levels">Levels as a lens</a></li>
+      <li><a href="#diagrams">Diagram types</a></li>
+      <li><a href="#classify">Classification rules</a></li>
+      <li><a href="#anti-patterns">Anti-patterns</a></li>
+    </ul></div>
+    <div class="pw-sidenav-group"><div class="pw-sidenav-label">Shapes</div><ul>
+      <li><a href="#gallery">Component gallery</a></li>
+      <li><a href="#notation">Notation rules</a></li>
+    </ul></div>
+    <div class="pw-sidenav-group"><div class="pw-sidenav-label">Reference</div><ul>
+      <li><a href="#files">Files in the skill</a></li>
+    </ul></div>
+  </nav>
+
+  <main class="pw-main" id="main">
+
+    <section class="pw-card guide-section" id="overview">
+      <div class="guide-kicker">Using the skill</div>
+      <h1 class="pw-h2">C4 Modeller</h1>
+      <p class="pw-lead">Builds C4 architecture models as data in Structurizr DSL, answers questions scoped to a C4 level, and hands the model to whatever presents it. It never draws diagrams itself.</p>
+      <div class="pw-kpi-grid">
+        <div class="pw-kpi"><div class="pw-kpi-label">Modes</div><div class="pw-kpi-value">6</div><div class="pw-kpi-delta pw-kpi-delta-flat">model, update, ask, review, notation, user-guide</div></div>
+        <div class="pw-kpi"><div class="pw-kpi-label">Output</div><div class="pw-kpi-value">DSL</div><div class="pw-kpi-delta pw-kpi-delta-flat">workspace.dsl, plus optional resolved JSON</div></div>
+        <div class="pw-kpi"><div class="pw-kpi-label">Standard shapes</div><div class="pw-kpi-value">19</div><div class="pw-kpi-delta pw-kpi-delta-flat">for presenters; never inside a model</div></div>
+      </div>
+      <p>Why C4: the level names are a shared vocabulary for detail. "What are the inputs to the rendering engine?" invites a wall of text. "What are the inputs to the rendering engine at the C4 container level?" says which elements to consider and how much to say.</p>
+      <div class="pw-alert pw-alert-info pw-alert-soft"><svg class="pw-icon" aria-hidden="true"><use href="#i-info"/></svg><div class="pw-alert-body"><div class="pw-alert-text">Models stay renderer-agnostic. A renderer adds styling and layout in its own <code>workspace extends</code> file, so adding a renderer never changes this skill.</div></div></div>
+    </section>
+
+    <section class="pw-card guide-section" id="quick-start">
+      <div class="guide-kicker">Using the skill</div>
+      <h2 class="pw-h3">Quick start</h2>
+      <div class="guide-snippet"><div class="guide-snippet-label">Model the system in this repository</div><pre><code>/c4-modeller model this repo</code></pre></div>
+      <div class="guide-snippet"><div class="guide-snippet-label">Ask a question at a fixed level</div><pre><code>/c4-modeller what are the inputs to the API at the C4 container level?</code></pre></div>
+      <div class="guide-snippet"><div class="guide-snippet-label">Present a model with another skill</div><pre><code>/html-artefact c4 model for the system using /c4-modeller</code></pre></div>
+      <div class="guide-snippet"><div class="guide-snippet-label">Open this guide</div><pre><code>/c4-modeller user-guide</code></pre></div>
+      <p>The first word picks the mode. Without one, the skill infers it: a question goes to <code>ask</code>, "review" or "check" to <code>review</code>, "add" or "sync" with an existing model to <code>update</code>, talk of shapes or styling to <code>notation</code>, and anything else to <code>model</code>.</p>
+    </section>
+
+    <section class="pw-card guide-section" id="modes">
+      <div class="guide-kicker">Using the skill</div>
+      <h2 class="pw-h3">Modes</h2>
+      <div class="pw-table-wrap"><table class="pw-table guide-table">
+        <thead><tr><th scope="col">Mode</th><th scope="col">What it does</th><th scope="col">Try</th></tr></thead>
+        <tbody>
+          <tr><td><code>model</code></td><td>Builds a new model from a codebase, documents, an existing diagram or a description. Defaults to system context and container levels, plus deployment when deployment configuration exists.</td><td><code>model the billing service at all levels</code></td></tr>
+          <tr><td><code>update</code></td><td>Changes an existing model: adds components to a container, a deployment environment or a dynamic flow; edits elements; resyncs with the code. Keeps identifiers and view keys stable.</td><td><code>update add components for the API</code></td></tr>
+          <tr><td><code>ask</code></td><td>Answers a question scoped to a C4 level, or a question about C4 itself. Writes nothing.</td><td><code>is S3 a container?</code></td></tr>
+          <tr><td><code>review</code></td><td>Validates a model and checks it against C4 rules and, on request, against the code. "fix" applies the findings.</td><td><code>review against code</code></td></tr>
+          <tr><td><code>notation</code></td><td>Returns the notation rules, standard shapes and default colours for drawing a model, and maps a model's elements to shapes.</td><td><code>notation for docs/architecture/workspace.dsl</code></td></tr>
+          <tr><td><code>user-guide</code></td><td>Starts a local web server for this guide and opens it.</td><td><code>user-guide</code></td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="pw-card guide-section" id="composition">
+      <div class="guide-kicker">Using the skill</div>
+      <h2 class="pw-h3">Composing with other skills</h2>
+      <p>The skill is a model provider. Another skill asks for a model, gets a validated workspace back, and owns every visual decision.</p>
+      <ol class="guide-list">
+        <li>The calling skill invokes <code>c4-modeller</code> (usually <code>model</code>).</li>
+        <li>The model is written to <code>tmp/c4/&lt;system&gt;/workspace.dsl</code> in the caller's working directory, with <code>workspace.json</code> beside it.</li>
+        <li>The skill returns a hand-off block: paths, validation result, levels, a table of views, assumptions and what was not modelled.</li>
+        <li>The caller reads the DSL or the JSON (where every view's elements are already resolved) and draws what it needs. It may run <code>notation</code> for standard shapes.</li>
+      </ol>
+      <div class="guide-snippet"><div class="guide-snippet-label">Hand-off block (shape)</div><pre><code>## C4 model
+
+- Workspace: tmp/c4/content-forge/workspace.dsl
+- JSON: tmp/c4/content-forge/workspace.json
+- Validation: ok
+- System in scope: Content Forge (contentForge)
+- Levels modelled: system context, container, deployment (Live)
+
+| View key       | Type           | Scope        | Shows                       |
+|----------------|----------------|--------------|-----------------------------|
+| system-context | System context | contentForge | Editors and the AI APIs     |
+| containers     | Container      | contentForge | SPA, API Worker, D1, R2     |
+
+- Assumptions: none
+- Not modelled: stubbed integrations, unused bindings</code></pre></div>
+    </section>
+
+    <section class="pw-card guide-section" id="outputs">
+      <div class="guide-kicker">Using the skill</div>
+      <h2 class="pw-h3">Outputs and validation</h2>
+      <div class="pw-table-wrap"><table class="pw-table guide-table">
+        <thead><tr><th scope="col">Situation</th><th scope="col">Where the model goes</th></tr></thead>
+        <tbody>
+          <tr><td>You name a path</td><td>That path</td></tr>
+          <tr><td>Another skill or a presentation request drives the call</td><td><code>tmp/c4/&lt;system&gt;/workspace.dsl</code> plus <code>workspace.json</code></td></tr>
+          <tr><td>Anything else</td><td><code>docs/architecture/workspace.dsl</code></td></tr>
+        </tbody>
+      </table></div>
+      <p>Every write is checked by <code>scripts/validate.sh</code>, which uses a local Structurizr CLI or the <code>structurizr/structurizr</code> Docker image.</p>
+      <div class="pw-table-wrap"><table class="pw-table guide-table">
+        <thead><tr><th scope="col">Exit</th><th scope="col">Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td><span class="pw-badge pw-badge-success"><svg class="pw-icon" aria-hidden="true"><use href="#i-check"/></svg>Valid</span> Parses and passes the C4 inspections</td></tr>
+          <tr><td>1</td><td><span class="pw-badge pw-badge-error"><svg class="pw-icon" aria-hidden="true"><use href="#i-warning"/></svg>Parse error</span> The message names the line</td></tr>
+          <tr><td>2</td><td><span class="pw-badge pw-badge-warning"><svg class="pw-icon" aria-hidden="true"><use href="#i-warning"/></svg>Inspections</span> Missing descriptions, technologies or relationship detail</td></tr>
+          <tr><td>3</td><td><span class="pw-badge pw-badge-neutral">No tooling</span> Neither a Structurizr CLI nor Docker is available</td></tr>
+        </tbody>
+      </table></div>
+      <div class="guide-snippet"><div class="guide-snippet-label">Run it yourself</div><pre><code>bash skills/c4-modeller/scripts/validate.sh docs/architecture/workspace.dsl --json docs/architecture/workspace.json</code></pre></div>
+    </section>
+
+    <section class="pw-card guide-section" id="abstractions">
+      <div class="guide-kicker">C4 basics</div>
+      <h2 class="pw-h3">Abstractions</h2>
+      <p>A software system is made of containers; a container is made of components; a component is implemented by code. People use software systems. These meanings come from c4model.com and the skill never stretches them.</p>
+      <div class="pw-table-wrap"><table class="pw-table guide-table">
+        <thead><tr><th scope="col">Abstraction</th><th scope="col">Meaning</th><th scope="col">Is not</th></tr></thead>
+        <tbody>
+          <tr><td>Person</td><td>An actor, role or persona who uses the software</td><td>The team that builds it</td></tr>
+          <tr><td>Software system</td><td>Something that delivers value to its users; typically what one team owns and can see inside</td><td>A domain, bounded context, business capability or squad</td></tr>
+          <tr><td>Container</td><td>An application or data store that must be running for the system to work: a web app, SPA, mobile app, function, database schema, bucket, queue</td><td>A Docker container, a JAR or library, a whole message broker</td></tr>
+          <tr><td>Component</td><td>Related functionality behind a well-defined interface, inside one container; not separately deployable</td><td>A class, a folder, a running process</td></tr>
+          <tr><td>Code</td><td>Classes, functions and tables that implement a component; drawn in UML</td><td>Anything in the DSL; the DSL has no code level</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="pw-card guide-section" id="levels">
+      <div class="guide-kicker">C4 basics</div>
+      <h2 class="pw-h3">Levels as a lens</h2>
+      <p>Naming a level fixes which elements are in play and how much detail to give. Use it in any request to an agent.</p>
+      <div class="pw-table-wrap"><table class="pw-table guide-table">
+        <thead><tr><th scope="col">At the … level</th><th scope="col">Consider</th><th scope="col">Give</th><th scope="col">Leave out</th></tr></thead>
+        <tbody>
+          <tr><td>System context</td><td>The system, its users, the systems it talks to</td><td>Purpose and the business information flowing in and out</td><td>Technology, protocols, anything inside a system</td></tr>
+          <tr><td>Container</td><td>Containers in the system, plus connected people and systems</td><td>Responsibilities, technology choices, domain data between containers, protocols</td><td>Classes, endpoints, payloads, field lists, hosting topology</td></tr>
+          <tr><td>Component</td><td>Components in one container, plus what they connect to</td><td>Responsibilities, named operations, dependencies, frameworks</td><td>Class lists, method signatures, field-level schemas</td></tr>
+          <tr><td>Code</td><td>Code inside one component</td><td>Classes, functions, signatures, tables</td><td>Anything outside the component</td></tr>
+          <tr><td>Deployment</td><td>Nodes, infrastructure and instances in one environment</td><td>Where containers run, node technology, instance counts</td><td>Business logic, component internals</td></tr>
+        </tbody>
+      </table></div>
+      <div class="guide-snippet"><div class="guide-snippet-label">Example answer at container level</div><pre><code>Scope: Rendering Engine (container, Node.js worker) in Report Builder, at container level.
+
+| From               | Type                   | What flows                      | Via                    |
+|--------------------|------------------------|---------------------------------|------------------------|
+| Report API         | Container (Node.js)    | Render jobs                     | SQS (render.requested) |
+| Template Store     | Container (Amazon S3)  | Report templates, brand assets  | AWS SDK/HTTPS          |
+| Reporting Database | Container (PostgreSQL) | The report's figures            | SQL                    |</code></pre></div>
+      <p>"Inputs" and "outputs" follow data flow, whoever starts the call. "Depends on" and "calls" follow the caller.</p>
+    </section>
+
+    <section class="pw-card guide-section" id="diagrams">
+      <div class="guide-kicker">C4 basics</div>
+      <h2 class="pw-h3">Diagram types</h2>
+      <div class="pw-table-wrap"><table class="pw-table guide-table">
+        <thead><tr><th scope="col">Diagram</th><th scope="col">Scope</th><th scope="col">Audience</th><th scope="col">Recommended</th></tr></thead>
+        <tbody>
+          <tr><td>System landscape</td><td>An organisation or department</td><td>Everyone</td><td>For portfolios of systems</td></tr>
+          <tr><td>System context</td><td>One software system</td><td>Everyone, technical or not</td><td><span class="pw-badge pw-badge-success"><svg class="pw-icon" aria-hidden="true"><use href="#i-check"/></svg>Always</span></td></tr>
+          <tr><td>Container</td><td>One software system</td><td>Architects, developers, operations</td><td><span class="pw-badge pw-badge-success"><svg class="pw-icon" aria-hidden="true"><use href="#i-check"/></svg>Always</span></td></tr>
+          <tr><td>Component</td><td>One container</td><td>Architects and developers</td><td>When it adds value</td></tr>
+          <tr><td>Code</td><td>One component</td><td>Developers</td><td>Rarely; IDEs generate it</td></tr>
+          <tr><td>Dynamic</td><td>One feature or use case</td><td>Everyone</td><td>Sparingly, for complex flows</td></tr>
+          <tr><td>Deployment</td><td>One environment</td><td>Technical people, operations</td><td><span class="pw-badge pw-badge-success"><svg class="pw-icon" aria-hidden="true"><use href="#i-check"/></svg>Yes</span></td></tr>
+        </tbody>
+      </table></div>
+      <p>System context plus container is enough for most teams.</p>
+    </section>
+
+    <section class="pw-card guide-section" id="classify">
+      <div class="guide-kicker">C4 basics</div>
+      <h2 class="pw-h3">Classification rules</h2>
+      <p>Ownership and runtime boundaries decide what a thing is, not its technology.</p>
+      <ul class="guide-list">
+        <li><strong>Microservices.</strong> One team: each service is a group of containers (API plus its database) inside one system. Separate teams: each service is its own software system.</li>
+        <li><strong>Server app with an SPA.</strong> Two containers, because they run in separate processes.</li>
+        <li><strong>Managed data stores</strong> (S3, RDS, D1, Supabase Postgres) are containers: you own the bucket or schema.</li>
+        <li><strong>Third-party APIs you only call</strong> (Stripe, an LLM provider) are external software systems, shown as black boxes.</li>
+        <li><strong>Message brokers.</strong> Each queue or topic is a container; the broker itself is not.</li>
+        <li><strong>Libraries and SDKs</strong> are not containers; they are code inside containers.</li>
+        <li><strong>Infrastructure</strong> (load balancers, gateways, DNS, cron triggers) belongs in deployment models as infrastructure nodes.</li>
+        <li><strong>AI agents.</strong> The agent process is a container; its tools and planner are components; the model API is an external system.</li>
+      </ul>
+    </section>
+
+    <section class="pw-card guide-section" id="anti-patterns">
+      <div class="guide-kicker">C4 basics</div>
+      <h2 class="pw-h3">Anti-patterns</h2>
+      <div class="pw-table-wrap"><table class="pw-table guide-table">
+        <thead><tr><th scope="col">Avoid</th><th scope="col">Instead</th></tr></thead>
+        <tbody>
+          <tr><td>Invented levels ("subsystem", "level 2.5")</td><td>The nearest real level, with a group if grouping helps</td></tr>
+          <tr><td>A message broker as one hub box</td><td>One container per queue or topic</td></tr>
+          <tr><td>Internals of an external system</td><td>One black-box software system</td></tr>
+          <tr><td>"Uses" as a relationship label</td><td>Say what flows: "Fetches account balances from"</td></tr>
+          <tr><td>Bidirectional arrows</td><td>Two arrows, each labelled from its source</td></tr>
+          <tr><td>Infrastructure in a container diagram</td><td>A deployment diagram for a named environment</td></tr>
+          <tr><td>More than 20 elements in one view</td><td>Focused views by group or by one element and its neighbours</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="pw-card guide-section" id="gallery">
+      <div class="guide-kicker">Shapes</div>
+      <h2 class="pw-h3">Component gallery</h2>
+      <p>Standard shapes for presenting a model, picked from an element's C4 type and its tag. They use the classic C4 palette; each colour is a <code>--c4-*</code> CSS variable a presenter can map onto its own tokens. Code level uses UML.</p>
+      <div class="pw-grid-3">
+        <figure class="guide-shape"><div class="guide-shape-art"><img src="../references/shapes/person.svg" alt="Person shape"></div><figcaption><div class="guide-shape-name">Person</div><p class="pw-small pw-muted">A user role or actor. <code>person.svg</code></p></figcaption></figure>
+        <figure class="guide-shape"><div class="guide-shape-art"><img src="../references/shapes/person-external.svg" alt="External person shape"></div><figcaption><div class="guide-shape-name">External person</div><p class="pw-small pw-muted">Tag <code>External</code>. <code>person-external.svg</code></p></figcaption></figure>
+        <figure class="guide-shape"><div class="guide-shape-art"><img src="../references/shapes/software-system.svg" alt="Software system shape"></div><figcaption><div class="guide-shape-name">Software system</div><p class="pw-small pw-muted">The system in scope. <code>software-system.svg</code></p></figcaption></figure>
+        <figure class="guide-shape"><div class="guide-shape-art"><img src="../references/shapes/software-system-external.svg" alt="External software system shape"></div><figcaption><div class="guide-shape-name">External software system</div><p class="pw-small pw-muted">Tag <code>External</code>. <code>software-system-external.svg</code></p></figcaption></figure>
+        <figure class="guide-shape"><div class="guide-shape-art"><img src="../references/shapes/container.svg" alt="Container shape"></div><figcaption><div class="guide-shape-name">Container</div><p class="pw-small pw-muted">An app or service. <code>container.svg</code></p></figcaption></figure>
+        <figure class="guide-shape"><div class="guide-shape-art"><img src="../references/shapes/database.svg" alt="Database shape"></div><figcaption><div class="guide-shape-name">Database</div><p class="pw-small pw-muted">Tag <code>Database</code>. <code>database.svg</code></p></figcaption></figure>
+        <figure class="guide-shape"><div class="guide-shape-art"><img src="../references/shapes/queue.svg" alt="Queue shape"></div><figcaption><div class="guide-shape-name">Queue or topic</div><p class="pw-small pw-muted">Tag <code>Queue</code> or <code>Topic</code>. <code>queue.svg</code></p></figcaption></figure>
+        <figure class="guide-shape"><div class="guide-shape-art"><img src="../references/shapes/web-browser.svg" alt="Web browser shape"></div><figcaption><div class="guide-shape-name">Web browser</div><p class="pw-small pw-muted">Tag <code>Web Browser</code>, for SPAs. <code>web-browser.svg</code></p></figcaption></figure>
+        <figure class="guide-shape"><div class="guide-shape-art"><img src="../references/shapes/desktop-app.svg" alt="Desktop app shape"></div><figcaption><div class="guide-shape-name">Desktop app</div><p class="pw-small pw-muted">Tag <code>Desktop App</code>. <code>desktop-app.svg</code></p></figcaption></figure>
+        <figure class="guide-shape"><div class="guide-shape-art"><img src="../references/shapes/mobile-app.svg" alt="Mobile app shape"></div><figcaption><div class="guide-shape-name">Mobile app</div><p class="pw-small pw-muted">Tag <code>Mobile App</code>. <code>mobile-app.svg</code></p></figcaption></figure>
+        <figure class="guide-shape"><div class="guide-shape-art"><img src="../references/shapes/file-store.svg" alt="File store shape"></div><figcaption><div class="guide-shape-name">File system or folder</div><p class="pw-small pw-muted">Tag <code>File Store</code>. <code>file-store.svg</code></p></figcaption></figure>
+        <figure class="guide-shape"><div class="guide-shape-art"><img src="../references/shapes/bucket.svg" alt="Bucket shape"></div><figcaption><div class="guide-shape-name">Bucket or blob store</div><p class="pw-small pw-muted">Tag <code>File Store</code>. <code>bucket.svg</code></p></figcaption></figure>
+        <figure class="guide-shape"><div class="guide-shape-art"><img src="../references/shapes/container-function.svg" alt="Serverless function shape"></div><figcaption><div class="guide-shape-name">Serverless function</div><p class="pw-small pw-muted">Tag <code>Function</code>. <code>container-function.svg</code></p></figcaption></figure>
+        <figure class="guide-shape"><div class="guide-shape-art"><img src="../references/shapes/component.svg" alt="Component shape"></div><figcaption><div class="guide-shape-name">Component</div><p class="pw-small pw-muted">Inside one container. <code>component.svg</code></p></figcaption></figure>
+        <figure class="guide-shape"><div class="guide-shape-art"><img src="../references/shapes/infrastructure-node.svg" alt="Infrastructure node shape"></div><figcaption><div class="guide-shape-name">Infrastructure node</div><p class="pw-small pw-muted">Load balancer, gateway, DNS. <code>infrastructure-node.svg</code></p></figcaption></figure>
+        <figure class="guide-shape"><div class="guide-shape-art"><img src="../references/shapes/relationship.svg" alt="Relationship lines"></div><figcaption><div class="guide-shape-name">Relationships</div><p class="pw-small pw-muted">Solid for synchronous, dashed for asynchronous. <code>relationship.svg</code></p></figcaption></figure>
+        <figure class="guide-shape"><div class="guide-shape-art"><img src="../references/shapes/boundary.svg" alt="Boundary shape"></div><figcaption><div class="guide-shape-name">Boundary</div><p class="pw-small pw-muted">The system or container in scope. <code>boundary.svg</code></p></figcaption></figure>
+        <figure class="guide-shape"><div class="guide-shape-art"><img src="../references/shapes/group.svg" alt="Group shape"></div><figcaption><div class="guide-shape-name">Group</div><p class="pw-small pw-muted">Elements at one level, grouped. <code>group.svg</code></p></figcaption></figure>
+        <figure class="guide-shape"><div class="guide-shape-art"><img src="../references/shapes/deployment-node.svg" alt="Deployment node shape"></div><figcaption><div class="guide-shape-name">Deployment node</div><p class="pw-small pw-muted">Where instances run; nests. <code>deployment-node.svg</code></p></figcaption></figure>
+      </div>
+      <div class="pw-alert pw-alert-info pw-alert-soft"><svg class="pw-icon" aria-hidden="true"><use href="#i-info"/></svg><div class="pw-alert-body"><div class="pw-alert-text">Shapes are for presenters. Models built by the skill never contain shapes, colours or layout.</div></div></div>
+    </section>
+
+    <section class="pw-card guide-section" id="notation">
+      <div class="guide-kicker">Shapes</div>
+      <h2 class="pw-h3">Notation rules</h2>
+      <ul class="guide-list">
+        <li>Every diagram has a title naming its type and scope, and a legend for every shape, colour and line style used.</li>
+        <li>Every element shows its name, its type and technology in brackets (<code>[Container: PostgreSQL]</code>) and a short description.</li>
+        <li>Every line points one way and says what flows; between containers it also gives the protocol in brackets.</li>
+        <li>Colour is never the only signal: the shape and the type label still work in black and white.</li>
+        <li>Fill darkens as you zoom out: person and system darkest, component lightest.</li>
+        <li>No more than 20 elements on one diagram.</li>
+      </ul>
+      <p>The full guidelines, including the colour variables, are in <code>references/notation.md</code>.</p>
+    </section>
+
+    <section class="pw-card guide-section" id="files">
+      <div class="guide-kicker">Reference</div>
+      <h2 class="pw-h3">Files in the skill</h2>
+      <div class="pw-table-wrap"><table class="pw-table guide-table">
+        <thead><tr><th scope="col">File</th><th scope="col">Holds</th></tr></thead>
+        <tbody>
+          <tr><td><code>SKILL.md</code></td><td>Modes, dispatch and composition</td></tr>
+          <tr><td><code>cookbook/*.md</code></td><td>One recipe per mode, plus shared rules in <code>preferences.md</code></td></tr>
+          <tr><td><code>references/c4-model.md</code></td><td>Abstractions, classification rules, levels, anti-patterns</td></tr>
+          <tr><td><code>references/structurizr-dsl.md</code></td><td>The DSL subset, syntax rules, tags and view keys</td></tr>
+          <tr><td><code>references/example.dsl</code></td><td>A complete validated model at every level</td></tr>
+          <tr><td><code>references/notation.md</code></td><td>Notation rules, shapes and default colours</td></tr>
+          <tr><td><code>references/shapes/</code></td><td>The standard shapes as SVG, with <code>index.html</code></td></tr>
+          <tr><td><code>scripts/validate.sh</code></td><td>Parse, inspect and export a workspace</td></tr>
+          <tr><td><code>guide/</code></td><td>This guide and its copy of the design system CSS</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var buttons = Array.prototype.slice.call(document.querySelectorAll('[data-theme-choice]'));
+  function current() {
+    try { return localStorage.getItem('pw-theme') || 'system'; } catch (e) { return 'system'; }
+  }
+  function apply(choice) {
+    if (choice === 'system') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', choice);
+    try { if (choice === 'system') localStorage.removeItem('pw-theme'); else localStorage.setItem('pw-theme', choice); } catch (e) {}
+    buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-theme-choice') === choice)); });
+  }
+  buttons.forEach(function (b) { b.addEventListener('click', function () { apply(b.getAttribute('data-theme-choice')); }); });
+  apply(current());
+
+  var links = Array.prototype.slice.call(document.querySelectorAll('.pw-sidenav a[href^="#"]'));
+  var byId = {};
+  links.forEach(function (a) { byId[a.getAttribute('href').slice(1)] = a; });
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting || !byId[e.target.id]) return;
+        links.forEach(function (a) { a.removeAttribute('aria-current'); });
+        byId[e.target.id].setAttribute('aria-current', 'page');
+      });
+    }, { rootMargin: '-20% 0px -70% 0px' });
+    document.querySelectorAll('main section[id]').forEach(function (s) { io.observe(s); });
+  }
+})();
+</script>
+</body>
+</html>

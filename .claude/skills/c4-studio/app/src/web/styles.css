@@ -1,0 +1,357 @@
+/* C4 Studio layout. Tokens only: colours and sizes come from @pw/ui. Components keep their own classes. */
+
+html, body, #root { height: 100%; }
+body { margin: 0; }
+.c4-contents { display: contents; }
+.c4-contents[hidden] { display: none; }
+
+/* ---- App shell ------------------------------------------------------------------------------ */
+.c4-app { display: flex; flex-direction: column; height: 100dvh; min-height: 0; }
+.c4-body { flex: 1; min-height: 0; display: flex; }
+.c4-main { flex: 1; min-width: 0; min-height: 0; overflow: auto; padding: var(--pw-sp-4) var(--pw-gutter); }
+.c4-main:has(.c4-diagram-page) { padding: 0; overflow: hidden; }
+.c4-contextbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--pw-sp-3);
+  padding: var(--pw-sp-2) var(--pw-gutter); border-bottom: 1px solid var(--pw-border-subtle);
+}
+.c4-tb-inline { display: inline-flex; align-items: center; gap: var(--pw-sp-2); font-size: var(--pw-fs-sm); color: var(--pw-text-2); }
+.c4-tb-inline .pw-select-wrap { min-width: var(--pw-menu-min-w); }
+.c4-parse-alert { margin: var(--pw-sp-2) var(--pw-gutter); }
+.c4-spacer { flex: 1; }
+.c4-statusbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--pw-sp-4);
+  padding: var(--pw-sp-1) var(--pw-gutter); border-top: 1px solid var(--pw-border-subtle);
+  font-size: var(--pw-fs-xs); color: var(--pw-text-2); font-variant-numeric: tabular-nums;
+}
+
+/* ---- Generic helpers ------------------------------------------------------------------------ */
+.c4-muted { color: var(--pw-text-3); }
+.c4-inline { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--pw-sp-2); }
+.c4-plain-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--pw-sp-2); }
+.c4-form { display: grid; gap: var(--pw-sp-4); }
+.c4-mono, .c4-pre { font-family: var(--pw-font-mono); }
+.c4-pre {
+  margin: 0; padding: var(--pw-sp-3); overflow: auto; max-height: calc(var(--pw-sp-16) * 8);
+  background: var(--pw-surface-sunken); border: 1px solid var(--pw-border-subtle); border-radius: var(--pw-r-sm);
+  font-size: var(--pw-fs-sm); line-height: var(--pw-lh-normal); white-space: pre;
+}
+.c4-pre-sm { max-height: calc(var(--pw-sp-16) * 4); font-size: var(--pw-fs-xs); }
+.c4-wrap { white-space: pre-wrap; }
+.c4-link {
+  appearance: none; background: none; border: 0; padding: 0; font: inherit; color: var(--pw-link);
+  text-decoration: underline; text-underline-offset: var(--pw-sp-1); cursor: pointer; text-align: left;
+}
+.c4-link:hover { text-decoration-thickness: 2px; }
+.c4-link:focus-visible, .c4-rel-desc:focus-visible, .c4-badge-button:focus-visible, .c4-edge-label:focus-visible {
+  outline: 2px solid var(--pw-focus); outline-offset: 2px;
+}
+.c4-link.is-current { font-weight: var(--pw-fw-semibold); }
+.c4-link:disabled { color: var(--pw-text-disabled); cursor: default; text-decoration: none; }
+.c4-badge-button { appearance: none; background: none; border: 0; padding: 0; cursor: pointer; border-radius: var(--pw-r-full); }
+.c4-details summary { cursor: pointer; color: var(--pw-text-2); }
+.c4-chip-row { display: flex; flex-wrap: wrap; gap: var(--pw-sp-2); }
+.c4-tags-field { display: grid; gap: var(--pw-sp-2); }
+.c4-markdown { max-width: 68ch; line-height: var(--pw-lh-relaxed); }
+.c4-markdown h2 { font-size: var(--pw-fs-lg); margin: var(--pw-sp-4) 0 var(--pw-sp-2); }
+.c4-markdown h2:first-child { margin-top: 0; }
+.c4-markdown pre { overflow: auto; padding: var(--pw-sp-3); background: var(--pw-surface-sunken); border-radius: var(--pw-r-sm); }
+.c4-markdown code { font-family: var(--pw-font-mono); font-size: 0.9em; }
+.c4-markdown p { margin: 0 0 var(--pw-sp-3); }
+.c4-markdown > :last-child { margin-bottom: 0; }
+.c4-markdown h1, .c4-markdown h3, .c4-markdown h4 { font-size: var(--pw-fs-md); margin: var(--pw-sp-4) 0 var(--pw-sp-2); }
+.c4-markdown ul, .c4-markdown ol { margin: 0 0 var(--pw-sp-3); padding-left: var(--pw-sp-5); }
+.c4-markdown li { margin: var(--pw-sp-1) 0; }
+.c4-markdown li > p { margin: 0; }
+.c4-markdown blockquote { margin: 0 0 var(--pw-sp-3); padding-left: var(--pw-sp-3); border-left: 2px solid var(--pw-border); color: var(--pw-text-2); }
+.c4-markdown hr { border: 0; border-top: 1px solid var(--pw-border-subtle); margin: var(--pw-sp-4) 0; }
+.c4-markdown :not(pre) > code { padding: 0 var(--pw-sp-1); background: var(--pw-surface-sunken); border-radius: var(--pw-r-xs); }
+.c4-markdown input[type="checkbox"] { margin-right: var(--pw-sp-2); }
+.c4-md-table { overflow-x: auto; margin: 0 0 var(--pw-sp-3); border: 1px solid var(--pw-border-subtle); border-radius: var(--pw-r-sm); background: var(--pw-surface); }
+.c4-md-table .pw-table th, .c4-md-table .pw-table td { height: auto; padding-top: var(--pw-sp-2); padding-bottom: var(--pw-sp-2); white-space: normal; vertical-align: top; min-width: calc(var(--pw-sp-16) * 1.5); }
+.c4-md-table .pw-table td code { white-space: nowrap; }
+/* In the narrow chat panel, prose may use the full width. */
+.c4-chat .c4-markdown { max-width: none; }
+
+/* ---- Pages ---------------------------------------------------------------------------------- */
+.c4-page { display: grid; gap: var(--pw-sp-4); align-content: start; max-width: var(--pw-content-max); margin: 0 auto; }
+.c4-page-title { margin: 0; font-size: var(--pw-fs-xl); }
+.c4-page-head { display: flex; align-items: center; justify-content: space-between; gap: var(--pw-sp-4); }
+
+.c4-history { grid-template-columns: calc(var(--pw-sp-16) * 5) minmax(0, 1fr); max-width: none; }
+.c4-history-main { display: grid; gap: var(--pw-sp-4); align-content: start; min-width: 0; }
+.c4-tree { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--pw-sp-2); }
+.c4-tree .c4-tree { margin-top: var(--pw-sp-2); margin-left: var(--pw-sp-4); padding-left: var(--pw-sp-3); border-left: 1px solid var(--pw-border); }
+.c4-branch-row { display: flex; align-items: center; gap: var(--pw-sp-2); flex-wrap: wrap; }
+.c4-branch-meta { font-size: var(--pw-fs-xs); margin-left: var(--pw-sp-6); }
+
+.c4-compare { max-width: none; }
+.c4-compare-pickers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pw-sp-4); align-items: start; }
+.c4-ref-picker { border: 1px solid var(--pw-border); border-radius: var(--pw-r-md); padding: var(--pw-sp-3) var(--pw-sp-4); margin: 0; min-width: 0; }
+.c4-ref-picker legend { padding: 0 var(--pw-sp-2); font-size: var(--pw-fs-sm); font-weight: var(--pw-fw-medium); }
+.c4-compare-canvases { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pw-sp-4); }
+.c4-compare-canvas { height: calc(var(--pw-sp-16) * 7); position: relative; }
+.c4-diff { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pw-sp-4); align-items: start; }
+.c4-diff-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pw-sp-2); }
+
+.c4-multiselect { border: 1px solid var(--pw-border); border-radius: var(--pw-r-md); padding: var(--pw-sp-3); margin: 0; display: grid; gap: var(--pw-sp-2); }
+.c4-multiselect legend { padding: 0 var(--pw-sp-2); font-size: var(--pw-fs-sm); font-weight: var(--pw-fw-medium); }
+.c4-multiselect-list { max-height: calc(var(--pw-sp-16) * 3); overflow: auto; display: grid; grid-auto-rows: max-content; gap: var(--pw-sp-2); }
+.c4-adr-elements { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pw-sp-2); margin: 0 0 var(--pw-sp-4); }
+.c4-status-trigger { all: unset; display: inline-flex; align-items: center; gap: var(--pw-sp-1); cursor: pointer; border-radius: var(--pw-r-sm); }
+.c4-status-trigger:focus-visible { outline: 2px solid var(--pw-focus); outline-offset: 2px; }
+.c4-status-trigger:disabled { cursor: progress; opacity: 0.6; }
+
+/* ---- Diagram page ----------------------------------------------------------------------------- */
+.c4-diagram-page {
+  /* --c4-aside-w is the width the inspector was dragged to (lib/resize.tsx) */
+  --c4-aside: min(var(--c4-aside-w, calc(var(--pw-sp-16) * 5 + var(--pw-sp-6))), 50vw);
+  position: relative; height: 100%; min-height: 0; display: grid;
+  grid-template-columns: var(--c4-aside) minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+.c4-toolbar {
+  grid-column: 2; grid-row: 1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--pw-sp-2);
+  padding: var(--pw-sp-2) var(--pw-gutter);
+}
+.c4-tb-sep { width: 1px; align-self: stretch; background: var(--pw-border); margin: 0 var(--pw-sp-1); }
+.c4-crumbs { grid-column: 2; grid-row: 2; padding: 0 var(--pw-gutter) var(--pw-sp-2); }
+.c4-canvas-area { grid-column: 2; grid-row: 3; min-height: 0; position: relative; }
+.c4-aside {
+  grid-column: 1; grid-row: 1 / -1; overflow: auto; padding: var(--pw-sp-3);
+  border-right: 1px solid var(--pw-border-subtle);
+}
+.c4-inspector { display: grid; gap: var(--pw-sp-3); align-content: start; }
+.c4-inspector-section { display: grid; gap: var(--pw-sp-3); }
+.c4-inspector-head h2 { margin: 0 0 var(--pw-sp-1); font-size: var(--pw-fs-xl); overflow-wrap: anywhere; }
+.c4-actions { display: flex; flex-wrap: wrap; gap: var(--pw-sp-2); margin-top: var(--pw-sp-3); }
+.c4-rel-group h4 { margin: var(--pw-sp-2) 0 var(--pw-sp-1); font-size: var(--pw-fs-sm); color: var(--pw-text-2); }
+.c4-rel-item { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--pw-sp-2); font-size: var(--pw-fs-sm); }
+.c4-rel-desc {
+  appearance: none; background: none; border: 0; padding: 0; font: inherit; color: var(--pw-text-2); cursor: pointer; text-align: left;
+}
+.c4-rel-desc:hover { color: var(--pw-text); }
+
+/* ---- Canvas --------------------------------------------------------------------------------- */
+.c4-canvas { position: absolute; inset: 0; }
+.c4-canvas .react-flow {
+  --xy-background-color: var(--pw-canvas);
+  --xy-background-pattern-color: var(--pw-border);
+  --xy-controls-button-background-color: var(--pw-surface);
+  --xy-controls-button-background-color-hover: var(--pw-surface-hover);
+  --xy-controls-button-color: var(--pw-text);
+  --xy-controls-button-border-color: var(--pw-border);
+  --xy-minimap-background-color: var(--pw-surface);
+  --xy-minimap-mask-background-color: var(--pw-backdrop);
+  --xy-minimap-node-background-color: var(--pw-brand);
+  --xy-attribution-background-color: transparent;
+  font-family: var(--pw-font-sans);
+}
+/* pw-ui sets svg { max-width: 100% }, which collapses React Flow's zero-width edge layers. */
+.c4-canvas svg { max-width: none; }
+.c4-canvas .react-flow__attribution { color: var(--pw-text-3); }
+.c4-defs { position: absolute; width: 0; height: 0; }
+.c4-arrowhead { fill: var(--pw-text-2); }
+.c4-arrowhead-light { fill: var(--pw-text-3); }
+.c4-arrowhead-sel { fill: var(--pw-focus); }
+.c4-handle { opacity: 0; pointer-events: none; width: 1px; height: 1px; min-width: 0; min-height: 0; border: 0; }
+
+.c4-node { position: relative; box-sizing: border-box; color: var(--c4-fg); font-family: var(--pw-font-sans); }
+.c4-node--person, .c4-node--system { --c4-bg: var(--pw-brand); --c4-fg: var(--pw-on-brand); }
+.c4-node--container { --c4-bg: color-mix(in srgb, var(--pw-brand) 68%, var(--pw-surface)); --c4-fg: var(--pw-on-brand); }
+.c4-node--component { --c4-bg: color-mix(in srgb, var(--pw-brand) 25%, var(--pw-surface)); --c4-fg: var(--pw-text); }
+.c4-node--infra { --c4-bg: var(--pw-surface); --c4-fg: var(--pw-text); }
+.c4-node.is-external { --c4-bg: var(--pw-n-400); --c4-fg: var(--pw-n-1000); }
+.c4-node { --c4-line: color-mix(in srgb, var(--c4-bg) 55%, var(--pw-text)); --c4-detail: color-mix(in srgb, var(--c4-fg) 55%, transparent); }
+.c4-shape { position: absolute; inset: 0; overflow: visible; }
+.c4-fill { fill: var(--c4-bg); stroke: var(--c4-line); stroke-width: 1.5; }
+.c4-fill-infra { stroke: var(--pw-text); stroke-width: 2.5; }
+.c4-detail { fill: none; stroke: var(--c4-detail); stroke-width: 1.5; }
+.c4-node.is-assumed .c4-fill { stroke-dasharray: 6 4; }
+.c4-node.is-selected .c4-fill, .c4-group.is-selected { stroke: var(--pw-focus); stroke-width: 3; }
+.c4-node.is-selected { filter: drop-shadow(0 0 4px var(--pw-focus)); }
+.c4-node.is-added .c4-fill, .c4-node.is-removed .c4-fill, .c4-node.is-changed .c4-fill { stroke: var(--pw-accent); stroke-width: 3; }
+.c4-node.is-removed .c4-text { text-decoration: line-through; text-decoration-thickness: 1px; }
+
+.c4-text {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: var(--pw-sp-1); padding: var(--pw-sp-2) var(--pw-sp-4); text-align: center; overflow: hidden;
+}
+.c4-shape-person .c4-text { padding-top: calc(var(--pw-sp-10) + var(--pw-sp-1)); }
+.c4-shape-database .c4-text { padding-top: var(--pw-sp-8); }
+.c4-shape-queue .c4-text { padding-left: var(--pw-sp-8); padding-right: var(--pw-sp-8); }
+.c4-shape-browser .c4-text { padding-top: var(--pw-sp-8); }
+.c4-shape-desktop .c4-text { padding-top: var(--pw-sp-6); }
+.c4-shape-mobile .c4-text { padding-top: var(--pw-sp-6); }
+.c4-shape-folder .c4-text { padding-top: var(--pw-sp-6); }
+.c4-shape-bucket .c4-text { padding-top: var(--pw-sp-8); padding-left: var(--pw-sp-8); padding-right: var(--pw-sp-8); }
+.c4-name {
+  font-size: var(--pw-fs-md); font-weight: var(--pw-fw-semibold); line-height: var(--pw-lh-tight);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.c4-type { font-size: var(--pw-fs-xs); line-height: var(--pw-lh-tight); }
+.c4-marks { font-weight: var(--pw-fw-medium); }
+.c4-desc {
+  font-size: var(--pw-fs-sm); line-height: var(--pw-lh-tight);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.c4-change {
+  position: absolute; top: calc(-1 * var(--pw-sp-3)); right: var(--pw-sp-2); padding: 0 var(--pw-sp-2);
+  background: var(--pw-accent); color: var(--pw-on-accent); border-radius: var(--pw-r-full);
+  font-size: var(--pw-fs-xs); font-weight: var(--pw-fw-medium);
+}
+
+.react-flow__node-c4group { pointer-events: none !important; }
+.c4-group { position: relative; box-sizing: border-box; border-radius: var(--pw-r-md); }
+.c4-group--boundary { border: 2px dashed var(--pw-text-3); background: color-mix(in srgb, var(--pw-brand) 5%, transparent); }
+.c4-group--deployment { border: 1px solid var(--pw-control-border); }
+.c4-group.is-assumed { border-style: dotted; }
+.c4-group.is-selected { border-color: var(--pw-focus); border-width: 3px; }
+.c4-group.is-added, .c4-group.is-removed, .c4-group.is-changed { border-color: var(--pw-accent); border-width: 3px; }
+.c4-group-label {
+  position: absolute; left: var(--pw-sp-3); bottom: var(--pw-sp-2); display: flex; flex-direction: column;
+  pointer-events: auto; cursor: pointer; color: var(--pw-text); max-width: 80%;
+}
+.c4-group-name { font-size: var(--pw-fs-sm); font-weight: var(--pw-fw-semibold); }
+.c4-group-type { font-size: var(--pw-fs-xs); color: var(--pw-text-2); }
+.c4-group-count { position: absolute; right: var(--pw-sp-3); bottom: var(--pw-sp-2); font-size: var(--pw-fs-xs); color: var(--pw-text-2); }
+
+.c4-edge-line { fill: none; stroke: var(--pw-text-2); stroke-width: 1.5; }
+.c4-edge-line.is-async { stroke-dasharray: 6 4; }
+.c4-edge-line.is-implied { stroke: var(--pw-text-3); stroke-width: 1; opacity: 0.8; }
+.c4-edge-line.is-selected { stroke: var(--pw-focus); stroke-width: 2.5; opacity: 1; }
+.c4-edge-hit { fill: none; stroke: var(--pw-text); stroke-opacity: 0; stroke-width: 16; pointer-events: stroke; cursor: pointer; }
+.c4-edge-label {
+  position: absolute; pointer-events: all; display: flex; flex-direction: column; align-items: center; max-width: calc(var(--pw-sp-16) * 3);
+  padding: var(--pw-sp-1) var(--pw-sp-2); background: var(--pw-surface); color: var(--pw-text-2);
+  border: 1px solid var(--pw-border); border-radius: var(--pw-r-sm); font: inherit; font-size: var(--pw-fs-xs);
+  line-height: var(--pw-lh-tight); text-align: center; cursor: pointer;
+}
+.c4-edge-label.is-implied { color: var(--pw-text-3); border-style: dashed; }
+.c4-edge-label.is-selected { border-color: var(--pw-focus); color: var(--pw-text); }
+.c4-edge-tech { color: var(--pw-text-3); }
+.c4-tip-tech { color: var(--pw-text-inverse); opacity: 0.8; }
+/* React Flow raises edges that touch nodes inside a boundary above its label layer; keep labels and
+   edge tooltips above every edge and boundary so lines never cross them. */
+.c4-canvas .react-flow__edgelabel-renderer { z-index: var(--pw-z-overlay); }
+/* Edge tooltip: anchored just below-right of the pointer, in flow coordinates. */
+.c4-edge-tip { position: absolute; left: 0; top: 0; transform-origin: 0 0; width: max-content; }
+
+/* ---- Sidebar resize handles ------------------------------------------------------------------ */
+/* A strip wider than the line it shows, so it is easy to grab; the line appears on hover, focus and drag. */
+.c4-resize { position: absolute; top: 0; bottom: 0; z-index: 2; width: var(--pw-sp-2); cursor: col-resize; touch-action: none; }
+.c4-resize::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; transform: translateX(-50%);
+  background: transparent; transition: background-color var(--pw-ease);
+}
+.c4-resize:hover::after, .c4-resizing .c4-resize::after { background: var(--pw-text-3); }
+.c4-resize:focus-visible { outline: none; }
+.c4-resize:focus-visible::after { width: var(--pw-sp-1); background: var(--pw-focus); }
+.c4-resize-aside { left: calc(var(--c4-aside) - var(--pw-sp-1)); }
+.c4-resize-chat { left: calc(var(--pw-sp-1) * -1); }
+/* While dragging, the pointer stays a resize cursor and nothing under it gets selected. */
+.c4-resizing, .c4-resizing * { cursor: col-resize; user-select: none; }
+
+/* ---- Chat panel ----------------------------------------------------------------------------- */
+.c4-chat {
+  position: relative; flex: none; width: var(--c4-chat-w, var(--pw-drawer-w)); max-width: 70vw; display: flex; flex-direction: column; min-height: 0;
+  border-left: 1px solid var(--pw-glass-edge, var(--pw-border-subtle)); background: var(--pw-glass, var(--pw-surface));
+  backdrop-filter: var(--pw-glass-blur, none); -webkit-backdrop-filter: var(--pw-glass-blur, none);
+}
+.c4-chat[hidden] { display: none; }
+.c4-chat-head { display: flex; align-items: center; gap: var(--pw-sp-1); padding: var(--pw-sp-3) var(--pw-sp-4); border-bottom: 1px solid var(--pw-border-subtle); }
+.c4-chat-head h2 { margin: 0; font-size: var(--pw-fs-lg); }
+.c4-chat-settings { display: grid; gap: var(--pw-sp-3); padding: var(--pw-sp-3) var(--pw-sp-4); border-bottom: 1px solid var(--pw-border-subtle); }
+/* glass.css pulls the log outwards by the glow size; inside the docked panel that overlaps the settings and blocks clicks. */
+.c4-chat .pw-chat-log { flex: 1; min-height: 0; overflow: auto; margin: 0; padding: var(--pw-sp-4); }
+.c4-chat-empty { padding: var(--pw-sp-4); }
+/* Earlier chats replace the log and composer while open. The rows are buttons, not links. */
+.c4-chat-list { flex: 1; min-height: 0; overflow: auto; padding: var(--pw-sp-4); display: grid; align-content: start; gap: var(--pw-sp-3); }
+.c4-chat-list h3 { margin: 0; font-size: var(--pw-fs-md); }
+.c4-chat-list .pw-list-row {
+  width: 100%; grid-template-columns: minmax(0, 1fr) auto; font: inherit; text-align: start; cursor: pointer;
+  background: transparent; border-top: 0; border-right: 0;
+}
+.c4-chat-list .pw-list-row:hover { background: var(--pw-surface-hover); }
+.c4-chat-list .pw-list-row[aria-current="true"] { background: var(--pw-surface-selected); }
+/* The design system's composer has no side padding; in the panel its box would touch both edges. */
+.c4-chat .pw-composer { padding-inline: var(--pw-sp-4); }
+/* Maximised: the same panel, so nothing in it remounts, floating over a blurred backdrop at 80% of the
+   window's width, with more room between lines, paragraphs and messages than the docked panel has.
+   The panel itself is opaque: glass over the diagram leaves the text hard to read. */
+.c4-chat.is-max {
+  --c4-max-inset: var(--pw-sp-8);
+  position: fixed; inset: var(--pw-sp-6) 10%; z-index: var(--pw-z-overlay); width: auto; max-width: none;
+  border: 1px solid var(--pw-glass-edge, var(--pw-border-subtle)); border-radius: var(--pw-r-lg);
+  box-shadow: var(--pw-glass-shadow, var(--pw-shadow-3)); overflow: hidden;
+  background: var(--pw-surface-overlay);
+}
+.c4-chat.is-max :is(.c4-chat-head, .c4-chat-settings, .c4-chat-list, .pw-chat-log, .pw-composer) { padding-inline: var(--c4-max-inset); }
+.c4-chat.is-max > .c4-contents > .pw-alert { margin-inline: var(--c4-max-inset); }
+.c4-chat.is-max .c4-chat-settings { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+.c4-chat.is-max .pw-chat-log { gap: var(--pw-sp-10); padding-block: var(--pw-sp-8); }
+.c4-chat.is-max .pw-msg { max-width: none; }
+.c4-chat.is-max .pw-msg-user { max-width: 75%; }
+.c4-chat.is-max .pw-msg-body { gap: var(--pw-sp-4); }
+.c4-chat.is-max .pw-msg-text, .c4-chat.is-max .c4-markdown { line-height: 1.85; }
+.c4-chat.is-max .c4-markdown :is(p, ul, ol, pre) { margin-bottom: var(--pw-sp-5); }
+.c4-chat.is-max .c4-markdown li { margin: var(--pw-sp-2) 0; }
+.c4-chat.is-max .c4-markdown :is(h1, h2, h3, h4) { margin: var(--pw-sp-8) 0 var(--pw-sp-3); }
+.c4-chat.is-max .c4-markdown > :first-child { margin-top: 0; }
+.c4-chat.is-max .c4-markdown > :last-child { margin-bottom: 0; }
+/* Text and tool activity alternate within an answer; keep the same space either side of each box. */
+.c4-chat.is-max .pw-msg-text > * + * { margin-top: var(--pw-sp-5); }
+
+@media (max-width: 768px) {
+  .c4-diagram-page { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(calc(var(--pw-sp-16) * 6), 1fr) auto; overflow: auto; }
+  .c4-toolbar, .c4-crumbs, .c4-canvas-area { grid-column: 1; }
+  .c4-aside { grid-column: 1; grid-row: 4; border-right: 0; border-top: 1px solid var(--pw-border-subtle); }
+  .c4-main:has(.c4-diagram-page) { overflow: auto; }
+  .c4-history, .c4-compare-pickers, .c4-compare-canvases, .c4-diff { grid-template-columns: minmax(0, 1fr); }
+  .c4-chat { position: fixed; inset: var(--pw-topbar-h) 0 0 auto; width: 100%; max-width: 100%; z-index: var(--pw-z-overlay); }
+  .c4-resize { display: none; }
+  .c4-chat.is-max { --c4-max-inset: var(--pw-sp-4); inset: 0; border: 0; border-radius: 0; }
+  .c4-chat.is-max .c4-chat-settings { grid-template-columns: minmax(0, 1fr); }
+  .c4-chat.is-max .pw-msg-user { max-width: 90%; }
+}
+
+/* Chat model picker: select plus a favourite star */
+.c4-model-pick { display: flex; gap: var(--pw-sp-2); align-items: center; }
+.c4-model-pick > :first-child { flex: 1; min-width: 0; }
+.c4-fav.is-on svg { fill: var(--pw-ai); stroke: var(--pw-ai); }
+
+/* ---- Drill-down and per-label controls --------------------------------------------------------- */
+.c4-drill {
+  position: absolute; top: var(--pw-sp-1); right: var(--pw-sp-1); z-index: 1;
+  display: grid; place-items: center; width: var(--pw-sp-6); height: var(--pw-sp-6); padding: 0;
+  border: 1px solid var(--pw-border); border-radius: var(--pw-r-sm); background: var(--pw-surface); color: var(--pw-text);
+  box-shadow: var(--pw-shadow-1); cursor: pointer;
+}
+.c4-drill svg { width: var(--pw-sp-4); height: var(--pw-sp-4); stroke-width: 1.75; }
+.c4-drill:hover { border-color: var(--pw-focus); color: var(--pw-focus); }
+.c4-drill:focus-visible { outline: 2px solid var(--pw-focus); outline-offset: 2px; }
+.c4-node.has-drill { cursor: zoom-in; }
+
+/* A label and its collapse button; the hovered or focused one comes to the top of overlapping labels. */
+.c4-edge-label-wrap { position: absolute; display: flex; align-items: flex-start; pointer-events: all; }
+.c4-edge-label-wrap .c4-edge-label { position: static; }
+.c4-edge-label-wrap:hover, .c4-edge-label-wrap:focus-within, .c4-edge-label-wrap.is-selected { z-index: 1; }
+.c4-edge-label-wrap:hover .c4-edge-label { box-shadow: var(--pw-shadow-2); color: var(--pw-text); }
+.c4-edge-hide {
+  position: absolute; top: calc(var(--pw-sp-2) * -1); right: calc(var(--pw-sp-2) * -1);
+  display: none; place-items: center; width: var(--pw-sp-5); height: var(--pw-sp-5); padding: 0;
+  border: 1px solid var(--pw-border); border-radius: var(--pw-r-full); background: var(--pw-surface); color: var(--pw-text-2); cursor: pointer;
+}
+.c4-edge-hide svg { width: var(--pw-sp-3); height: var(--pw-sp-3); }
+.c4-edge-label-wrap:hover .c4-edge-hide, .c4-edge-label-wrap:focus-within .c4-edge-hide { display: grid; }
+.c4-edge-hide:hover { color: var(--pw-text); border-color: var(--pw-focus); }
+/* Where a collapsed label sits: click to show that label. */
+.c4-edge-dot {
+  position: absolute; width: var(--pw-sp-3); height: var(--pw-sp-3); padding: 0; pointer-events: all;
+  border: 1px solid var(--pw-text-3); border-radius: var(--pw-r-full); background: var(--pw-surface); cursor: pointer;
+}
+.c4-edge-dot:hover, .c4-edge-dot:focus-visible { border-color: var(--pw-focus); background: var(--pw-focus); z-index: 1; }
+.c4-edge-dot.is-selected { border-color: var(--pw-focus); }
+/* React Flow fills control icons; Lucide icons are strokes. */
+.c4-canvas .react-flow__controls-button svg.lucide { fill: none; stroke: currentColor; stroke-width: 2; max-width: var(--pw-sp-4); max-height: var(--pw-sp-4); }
+.c4-agent-io { display: grid; gap: var(--pw-sp-1); }
+.c4-agent-filter { max-width: 48ch; }
