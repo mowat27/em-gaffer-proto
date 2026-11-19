@@ -3,3 +3,14 @@ tsf/data/
 tsf/app/node_modules/
 tsf/app/dist/
 tsf/app/.vite/
+node_modules/
+runs/
+# The server's control inbox and outbox (server/control.ts), beside runs/.
+control/
+# Agent tree: credentials, the verifier's model cache, machine-local data and durable state.
+agentics/agents/**/auth.json
+agentics/agents/verifier/models-store.json
+agentics/**/data/local/
+agentics/agents/**/state/
+# E2: a history version of the active builder runs from a copy beside the builders (ops/definitions/active.ts).
+agentics/builders/.fallback-*/
