@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "views": {
+    "containers": {
+      "elements": {
+        "builder": {
+          "x": 222,
+          "y": 220
+        },
+        "operator": {
+          "x": 1096,
+          "y": 0
+        },
+        "builder.factoryUi": {
+          "x": 1890,
+          "y": 248
+        },
+        "builder.factoryServer": {
+          "x": 1568,
+          "y": 326
+        },
+        "builder.cli": {
+          "x": 665,
+          "y": 773
+        },
+        "builder.buildServer": {
+          "x": 1864,
+          "y": 473
+        },
+        "builder.runProcess": {
+          "x": 1679,
+          "y": 1224
+        },
+        "builder.piAgent": {
+          "x": 1712,
+          "y": 1506
+        },
+        "builder.opsAgent": {
+          "x": 1167,
+          "y": 304
+        },
+        "builder.agentics": {
+          "x": 748,
+          "y": 1640
+        },
+        "builder.runs": {
+          "x": 1306,
+          "y": 1684
+        },
+        "builder.machineFeed": {
+          "x": 374,
+          "y": 1454
+        },
+        "builder.controlFiles": {
+          "x": 447,
+          "y": 357
+        },
+        "builder.machineConfig": {
+          "x": 294,
+          "y": 1027
+        },
+        "gaffer": {
+          "x": 2358,
+          "y": 477
+        },
+        "targetRepo": {
+          "x": 2365,
+          "y": 952
+        },
+        "llmProvider": {
+          "x": 2339,
+          "y": 1560
+        },
+        "jev": {
+          "x": 2339,
+          "y": 1277
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "defaultBranch": "main",
+  "branches": {
+    "main": {
+      "name": "main",
+      "parent": null,
+      "forkedFrom": null,
+      "head": "mwo105k9fi1k",
+      "createdAt": "2026-11-19T20:50:08.797Z"
+    }
+  },
+  "versions": [
+    {
+      "id": "mwo0xrucmk3h",
+      "branch": "main",
+      "parent": null,
+      "createdAt": "2026-11-19T20:50:08.824Z",
+      "message": "Model created",
+      "source": "init",
+      "dslHash": "d3a23f430122160aac2b4232aef44de20e37f28504b37cc40be50031397d46cc"
+    },
+    {
+      "id": "mwo105k9fi1k",
+      "branch": "main",
+      "parent": "mwo0xrucmk3h",
+      "createdAt": "2026-11-19T20:51:59.916Z",
+      "message": "Reverse engineered from builder/",
+      "source": "cli",
+      "dslHash": "207ed644acb33f893335c3aabc35f7202bcf37677bfd0a82e6e5a48468fa1156"
+    }
+  ]
+}
